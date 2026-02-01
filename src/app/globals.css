@@ -1,21 +1,72 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --theme-background: #ffffff;
+  --theme-surface: #ffffff;
+  --theme-header: #ffffff;
+  --theme-foreground: #171717;
+  --theme-muted: #f4f4f5;
+  --theme-muted-foreground: #52525b;
+  --theme-border: #e4e4e7;
+
+  --theme-primary: #18181b;
+  --theme-primary-hover: #27272a;
+  --theme-primary-foreground: #ffffff;
+
+  --theme-secondary: #f4f4f5;
+  --theme-secondary-hover: #e4e4e7;
+  --theme-secondary-foreground: #18181b;
+
+  --theme-ring: rgba(24, 24, 27, 0.18);
+
+  --background: var(--theme-background);
+  --foreground: var(--theme-foreground);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--theme-surface);
+  --color-header: var(--theme-header);
+  --color-muted: var(--theme-muted);
+  --color-muted-foreground: var(--theme-muted-foreground);
+  --color-border: var(--theme-border);
+  --color-ring: var(--theme-ring);
+
+  --color-primary: var(--theme-primary);
+  --color-primary-hover: var(--theme-primary-hover);
+  --color-primary-foreground: var(--theme-primary-foreground);
+
+  --color-secondary: var(--theme-secondary);
+  --color-secondary-hover: var(--theme-secondary-hover);
+  --color-secondary-foreground: var(--theme-secondary-foreground);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --theme-background: #0a0a0a;
+    --theme-surface: #0a0a0a;
+    --theme-header: #0a0a0a;
+    --theme-foreground: #ededed;
+    --theme-muted: #18181b;
+    --theme-muted-foreground: #a1a1aa;
+    --theme-border: #27272a;
+
+    --theme-primary: #fafafa;
+    --theme-primary-hover: #e4e4e7;
+    --theme-primary-foreground: #18181b;
+
+    --theme-secondary: #18181b;
+    --theme-secondary-hover: #27272a;
+    --theme-secondary-foreground: #fafafa;
+
+    --theme-ring: rgba(250, 250, 250, 0.18);
+
+    --background: var(--theme-background);
+    --foreground: var(--theme-foreground);
   }
 }
 
