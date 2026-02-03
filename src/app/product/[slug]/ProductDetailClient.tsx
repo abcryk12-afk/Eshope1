@@ -9,11 +9,12 @@ import { toast } from "sonner";
 
 import { formatMoneyFromPkr } from "@/lib/currency";
 import { formatCompactNumber } from "@/lib/numberFormat";
-import { formatEtaText } from "@/lib/shipping";
+import { formatEtaText, type StorefrontSettings } from "@/lib/shipping";
 import { cn } from "@/lib/utils";
 import Skeleton from "@/components/ui/Skeleton";
 import { StarRatingDisplay } from "@/components/ui/StarRating";
 import ProductCard from "@/components/product/ProductCard";
+import ProductGrid from "@/components/product/ProductGrid";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { addToCart } from "@/store/slices/cartSlice";
 import { toggleWishlist } from "@/store/slices/wishlistSlice";
@@ -43,15 +44,6 @@ type Product = {
   ratingAvg: number;
   ratingCount: number;
   soldCount?: number;
-};
-
-type StorefrontSettings = {
-  inventory: { lowStockThreshold: number };
-  shipping: {
-    defaultFee: number;
-    etaDefault: { minDays: number; maxDays: number };
-    cityRules: Array<{ city: string; fee: number }>;
-  };
 };
 
 type ProductListItem = {
@@ -839,7 +831,8 @@ export default function ProductDetailClient({ slug }: Props) {
               </Link>
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
+            <div className="mt-4">
+              <ProductGrid>
               {loadingRelated
                 ? Array.from({ length: 4 }).map((_, idx) => (
                     <div
@@ -858,6 +851,7 @@ export default function ProductDetailClient({ slug }: Props) {
                       onQuickView={() => router.push(`/product/${p.slug}`)}
                     />
                   ))}
+              </ProductGrid>
             </div>
           </div>
         ) : null}
@@ -865,14 +859,16 @@ export default function ProductDetailClient({ slug }: Props) {
         {recentlyViewed.length > 0 ? (
           <div className="mt-10">
             <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">Recently viewed</h2>
-            <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
-              {recentlyViewed.map((p) => (
-                <ProductCard
-                  key={p._id}
-                  product={p}
-                  onQuickView={() => router.push(`/product/${p.slug}`)}
-                />
-              ))}
+            <div className="mt-4">
+              <ProductGrid>
+                {recentlyViewed.map((p) => (
+                  <ProductCard
+                    key={p._id}
+                    product={p}
+                    onQuickView={() => router.push(`/product/${p.slug}`)}
+                  />
+                ))}
+              </ProductGrid>
             </div>
           </div>
         ) : null}

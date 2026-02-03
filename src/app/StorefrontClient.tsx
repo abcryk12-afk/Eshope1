@@ -6,6 +6,7 @@ import { Search, SlidersHorizontal } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import ProductCard from "@/components/product/ProductCard";
+import ProductGrid from "@/components/product/ProductGrid";
 import SuperDealsSection from "@/components/deals/SuperDealsSection";
 import HomeBanners from "@/components/home/HomeBanners";
 import Skeleton from "@/components/ui/Skeleton";
@@ -505,7 +506,7 @@ export default function StorefrontClient({
               ) : null}
 
               {loading ? (
-                <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+                <ProductGrid>
                   {Array.from({ length: 12 }).map((_, idx) => (
                     <div key={idx} className="rounded-3xl border border-border bg-surface p-3">
                       <Skeleton className="aspect-square w-full rounded-2xl" />
@@ -513,14 +514,14 @@ export default function StorefrontClient({
                       <Skeleton className="mt-2 h-4 w-1/2" />
                     </div>
                   ))}
-                </div>
+                </ProductGrid>
               ) : items.length === 0 ? (
                 <div className="rounded-3xl border border-border bg-surface p-8 text-center">
                   <p className="text-sm font-medium text-foreground">No products found</p>
                   <p className="mt-1 text-sm text-muted-foreground">Try adjusting filters.</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+                <ProductGrid>
                   {items.map((p) => (
                     <ProductCard
                       key={p._id}
@@ -528,7 +529,7 @@ export default function StorefrontClient({
                       onQuickView={() => setQuickViewSlug(p.slug)}
                     />
                   ))}
-                </div>
+                </ProductGrid>
               )}
 
               <div className="mt-8 flex items-center justify-between">

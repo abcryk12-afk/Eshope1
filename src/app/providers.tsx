@@ -5,6 +5,7 @@ import { SessionProvider } from "next-auth/react";
 import { Toaster } from "sonner";
 
 import { store } from "@/store/store";
+import QuickCheckoutBar from "@/components/layout/QuickCheckoutBar";
 import { useAuthSync } from "@/hooks/useAuthSync";
 import { useCurrencySync } from "@/hooks/useCurrencySync";
 import { useLanguageSync } from "@/hooks/useLanguageSync";
@@ -33,6 +34,7 @@ export default function Providers({ children }: ProvidersProps) {
       <ReduxProvider store={store}>
         <StoreEffects />
         {children}
+        <QuickCheckoutBar />
         <Toaster richColors position="top-right" closeButton />
       </ReduxProvider>
     </SessionProvider>

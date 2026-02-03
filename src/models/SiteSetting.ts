@@ -105,6 +105,30 @@ const ReturnsSettingsSchema = new Schema(
   { _id: false }
  );
 
+ const StorefrontGridSchema = new Schema(
+  {
+    mobileCols: { type: Number, default: 2, min: 2, max: 5 },
+    tabletCols: { type: Number, default: 3, min: 3, max: 5 },
+    desktopCols: { type: Number, default: 4, min: 4, max: 6 },
+  },
+  { _id: false }
+ );
+
+ const StorefrontLayoutSchema = new Schema(
+  {
+    grid: { type: StorefrontGridSchema, default: () => ({}) },
+  },
+  { _id: false }
+ );
+
+ const CartUxSettingsSchema = new Schema(
+  {
+    quickCheckoutEnabled: { type: Boolean, default: true },
+    quickCheckoutAutoHideSeconds: { type: Number, default: 4, min: 1, max: 30 },
+  },
+  { _id: false }
+ );
+
 const SiteSettingSchema = new Schema(
   {
     key: { type: String, required: true, unique: true, trim: true, index: true },
@@ -117,6 +141,8 @@ const SiteSettingSchema = new Schema(
     returns: { type: ReturnsSettingsSchema, default: () => ({}) },
     inventory: { type: InventorySettingsSchema, default: () => ({}) },
     shipping: { type: ShippingSettingsSchema, default: () => ({}) },
+    storefrontLayout: { type: StorefrontLayoutSchema, default: () => ({}) },
+    cartUx: { type: CartUxSettingsSchema, default: () => ({}) },
     payments: {
       codEnabled: { type: Boolean, default: true },
       manual: {

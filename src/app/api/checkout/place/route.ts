@@ -115,7 +115,9 @@ export async function POST(req: NextRequest) {
 
   await dbConnect();
 
-  const settingsDoc = (await SiteSetting.findOne({ key: "global" }).select("payments inventory shipping").lean()) as unknown;
+  const settingsDoc = (await SiteSetting.findOne({ key: "global" })
+    .select("payments inventory shipping storefrontLayout cartUx")
+    .lean()) as unknown;
   const settingsRoot = isRecord(settingsDoc) ? settingsDoc : null;
   const payments = normalizePayments(settingsRoot?.payments);
   const storefrontSettings = normalizeStorefrontSettings(settingsDoc);

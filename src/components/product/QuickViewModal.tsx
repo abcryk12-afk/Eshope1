@@ -9,7 +9,7 @@ import { toast } from "sonner";
 
 import { formatMoneyFromPkr } from "@/lib/currency";
 import { formatCompactNumber } from "@/lib/numberFormat";
-import { formatEtaText } from "@/lib/shipping";
+import { formatEtaText, type StorefrontSettings } from "@/lib/shipping";
 import { cn } from "@/lib/utils";
 import Skeleton from "@/components/ui/Skeleton";
 import { StarRatingDisplay } from "@/components/ui/StarRating";
@@ -47,15 +47,6 @@ type QuickViewModalProps = {
   open: boolean;
   slug: string | null;
   onClose: () => void;
-};
-
-type StorefrontSettings = {
-  inventory: { lowStockThreshold: number };
-  shipping: {
-    defaultFee: number;
-    etaDefault: { minDays: number; maxDays: number };
-    cityRules: Array<{ city: string; fee: number }>;
-  };
 };
 
 function stripHtml(html: string) {

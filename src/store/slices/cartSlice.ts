@@ -11,10 +11,14 @@ export type CartItem = {
 
 type CartState = {
   items: CartItem[];
+  lastAdded: CartItem | null;
+  lastAddedAt: number;
 };
 
 const initialState: CartState = {
   items: [],
+  lastAdded: null,
+  lastAddedAt: 0,
 };
 
 function upsertItem(items: CartItem[], next: CartItem) {
@@ -44,6 +48,8 @@ const cartSlice = createSlice({
     },
     addToCart(state, action: PayloadAction<CartItem>) {
       state.items = upsertItem(state.items, action.payload);
+      state.lastAdded = action.payload;
+      state.lastAddedAt = Date.now();
     },
     setCartItemQuantity(
       state,

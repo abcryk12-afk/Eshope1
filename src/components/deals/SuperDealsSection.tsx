@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import ProductCard from "@/components/product/ProductCard";
+import ProductGrid from "@/components/product/ProductGrid";
 import Skeleton from "@/components/ui/Skeleton";
 
 type DealInfo = {
@@ -111,7 +112,7 @@ export default function SuperDealsSection({ categorySlug, onQuickView }: Props) 
 
       <div className="mt-4">
         {loading ? (
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+          <ProductGrid>
             {Array.from({ length: 6 }).map((_, idx) => (
               <div key={idx} className="rounded-3xl border border-border bg-background p-3">
                 <Skeleton className="aspect-square w-full rounded-2xl" />
@@ -119,13 +120,13 @@ export default function SuperDealsSection({ categorySlug, onQuickView }: Props) 
                 <Skeleton className="mt-2 h-4 w-1/2" />
               </div>
             ))}
-          </div>
+          </ProductGrid>
         ) : (
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+          <ProductGrid>
             {items.map((p) => (
               <ProductCard key={p._id} product={p} onQuickView={() => onQuickView(p.slug)} />
             ))}
-          </div>
+          </ProductGrid>
         )}
       </div>
     </div>

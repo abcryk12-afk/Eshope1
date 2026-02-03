@@ -381,7 +381,9 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const settingsDoc = (await SiteSetting.findOne({ key: "global" }).select("inventory shipping").lean()) as unknown;
+  const settingsDoc = (await SiteSetting.findOne({ key: "global" })
+    .select("inventory shipping storefrontLayout cartUx")
+    .lean()) as unknown;
   const settings = normalizeStorefrontSettings(settingsDoc);
 
   const discountAmount = round2(couponDiscountAmount + promotionDiscountAmount);

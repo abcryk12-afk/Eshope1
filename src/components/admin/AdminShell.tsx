@@ -34,6 +34,7 @@ const nav: NavItem[] = [
   { href: "/admin/cms", label: "CMS", icon: <LayoutDashboard className="h-4 w-4" /> },
   { href: "/admin/logs", label: "Logs", icon: <LayoutDashboard className="h-4 w-4" /> },
   { href: "/admin/settings/appearance", label: "Appearance", icon: <Palette className="h-4 w-4" /> },
+  { href: "/admin/settings/storefront", label: "Storefront", icon: <Settings className="h-4 w-4" /> },
   { href: "/admin/settings/payments", label: "Payments", icon: <CreditCard className="h-4 w-4" /> },
   { href: "/admin/cms/settings", label: "Settings", icon: <Settings className="h-4 w-4" /> },
 ];

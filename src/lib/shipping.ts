@@ -18,9 +18,26 @@ export type NormalizedShippingSettings = {
   cityRules: NormalizedShippingCityRule[];
 };
 
+export type StorefrontGridSettings = {
+  mobileCols: number;
+  tabletCols: number;
+  desktopCols: number;
+};
+
+export type StorefrontLayoutSettings = {
+  grid: StorefrontGridSettings;
+};
+
+export type CartUxSettings = {
+  quickCheckoutEnabled: boolean;
+  quickCheckoutAutoHideSeconds: number;
+};
+
 export type StorefrontSettings = {
   inventory: { lowStockThreshold: number };
   shipping: NormalizedShippingSettings;
+  storefrontLayout: StorefrontLayoutSettings;
+  cartUx: CartUxSettings;
 };
 
 export type ShippingEta = {
@@ -124,9 +141,21 @@ export function normalizeStorefrontSettings(doc: unknown): StorefrontSettings {
 
   const shipping = normalizeShippingSettings(root.shipping);
 
+  const layout = isRecord(root.storefrontLayout) ? root.storefrontLayout : {};
+  const grid = isRecord(layout.grid) ? layout.grid : {};
+  const mobileCols = clampInt(readNumber(grid.mobileCols, 2), 2, 5);
+  const tabletCols = clampInt(readNumber(grid.tabletCols, 3), 3, 5);
+  const desktopCols = clampInt(readNumber(grid.desktopCols, 4), 4, 6);
+
+  const cartUx = isRecord(root.cartUx) ? root.cartUx : {};
+  const quickCheckoutEnabled = typeof cartUx.quickCheckoutEnabled === "boolean" ? cartUx.quickCheckoutEnabled : true;
+  const quickCheckoutAutoHideSeconds = clampInt(readNumber(cartUx.quickCheckoutAutoHideSeconds, 4), 1, 30);
+
   return {
     inventory: { lowStockThreshold },
     shipping,
+    storefrontLayout: { grid: { mobileCols, tabletCols, desktopCols } },
+    cartUx: { quickCheckoutEnabled, quickCheckoutAutoHideSeconds },
   };
 }
 

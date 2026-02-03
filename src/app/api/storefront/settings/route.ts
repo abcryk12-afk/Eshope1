@@ -10,7 +10,9 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   await dbConnect();
 
-  const doc = (await SiteSetting.findOne({ key: "global" }).select("inventory shipping").lean()) as unknown;
+  const doc = (await SiteSetting.findOne({ key: "global" })
+    .select("inventory shipping storefrontLayout cartUx")
+    .lean()) as unknown;
   const settings = normalizeStorefrontSettings(doc);
 
   return NextResponse.json({ settings }, { headers: { "Cache-Control": "no-store, max-age=0" } });
