@@ -51,33 +51,47 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
   const hasDiscount =
     typeof product.compareAtPrice === "number" && product.compareAtPrice > product.basePrice;
   const isDeal = Boolean(product.deal?.label);
-  const topBadge = isDeal ? product.deal!.label : hasDiscount ? "Sale" : "";
+  const discountBadge = isDeal
+    ? product.deal!.label
+    : hasDiscount
+      ? (() => {
+          const compareAt = Number(product.compareAtPrice ?? 0);
+          const base = Number(product.basePrice ?? 0);
+          if (!Number.isFinite(compareAt) || !Number.isFinite(base) || compareAt <= 0 || base <= 0) {
+            return "Sale";
+          }
+          const pct = Math.round(((compareAt - base) / compareAt) * 100);
+          return pct >= 5 ? `${pct}% OFF` : "Sale";
+        })()
+      : "";
 
   const aspectClass = imageAspect === "portrait" ? "aspect-[4/5]" : "aspect-square";
   const objectClass = imageAspect === "auto" ? "object-contain" : "object-cover";
 
-  const shellClass =
+  const shellClass = density === "compact" ? "rounded-2xl" : "rounded-3xl";
+
+  const contentPadClass =
     density === "compact"
-      ? "rounded-2xl p-2"
+      ? "px-2 pb-2 pt-2"
       : density === "image_focused"
-        ? "rounded-3xl p-2.5"
-        : "rounded-3xl p-3";
+        ? "px-2.5 pb-2.5 pt-2.5"
+        : "px-2.5 pb-2.5 pt-2.5";
 
   const titleClass =
     density === "compact" ? "text-[13px]" : density === "image_focused" ? "text-sm" : "text-sm";
-  const contentGapClass = density === "compact" ? "mt-2 space-y-1.5" : "mt-3 space-y-2";
+  const contentGapClass = density === "compact" ? "space-y-1" : "space-y-1.5";
   const iconBtnClass = density === "compact" ? "h-8 w-8" : "h-9 w-9";
 
   return (
     <motion.div
       layout
-      whileHover={{ y: -2 }}
       className={cn(
         "group relative overflow-hidden border border-border bg-surface shadow-sm transition",
+        "transition-transform md:hover:-translate-y-0.5 md:hover:shadow-md",
         shellClass
       )}
     >
-      <div className={cn("relative overflow-hidden bg-muted", aspectClass, density === "compact" ? "rounded-2xl" : "rounded-3xl")}>
+      <div className={cn("relative overflow-hidden bg-muted", aspectClass)}>
         {image ? (
           <Image
             src={image}
@@ -88,15 +102,15 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
           />
         ) : null}
 
-        <div className="absolute left-2 top-2 flex gap-2">
-          {showDiscountBadge && topBadge ? (
-            <span className="rounded-full bg-surface/90 px-2 py-1 text-xs font-semibold text-foreground">
-              {topBadge}
+        <div className="absolute left-2 top-2 flex flex-col items-start gap-1.5">
+          {showDiscountBadge && discountBadge ? (
+            <span className="rounded-full bg-destructive px-2 py-1 text-[11px] font-extrabold tracking-tight text-destructive-foreground shadow-sm ring-1 ring-foreground/10">
+              {discountBadge}
             </span>
           ) : null}
 
           {showDiscountBadge && isDeal ? (
-            <span className="rounded-full bg-surface/90 px-2 py-1 text-xs font-semibold text-foreground">
+            <span className="rounded-full border border-border bg-surface/90 px-2 py-1 text-[11px] font-semibold tracking-tight text-muted-foreground backdrop-blur-sm">
               Limited time
             </span>
           ) : null}
@@ -108,9 +122,9 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
               type="button"
               onClick={() => dispatch(toggleWishlist(product._id))}
               className={cn(
-                "inline-flex items-center justify-center rounded-full bg-surface/90 text-foreground",
+                "inline-flex items-center justify-center rounded-full bg-surface/80 text-foreground shadow-sm ring-1 ring-border/70 backdrop-blur-sm",
                 iconBtnClass,
-                wished && "bg-primary text-primary-foreground"
+                wished && "bg-primary text-primary-foreground ring-0"
               )}
               aria-label="Toggle wishlist"
             >
@@ -134,7 +148,7 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
         </div>
       </div>
 
-      <div className={contentGapClass}>
+      <div className={cn(contentPadClass, contentGapClass)}>
         <Link
           href={`/product/${product.slug}`}
           className={cn(
@@ -146,7 +160,11 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
         </Link>
 
         {showRating && product.ratingCount > 0 ? (
-          <div className={cn("flex items-center gap-2 text-xs text-muted-foreground", density === "compact" ? "-mt-0.5" : "")}
+          <div
+            className={cn(
+              "flex items-center gap-2 text-xs text-muted-foreground",
+              density === "compact" ? "-mt-0.5" : ""
+            )}
           >
             <Star className="h-4 w-4 fill-primary text-primary" />
             <span className="font-semibold text-foreground">{product.ratingAvg.toFixed(1)}</span>

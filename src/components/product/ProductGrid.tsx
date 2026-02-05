@@ -20,7 +20,12 @@ export default function ProductGrid({ children, className }: ProductGridProps) {
   const { settings } = useStorefrontSettings();
 
   const gap = settings?.storefrontLayout?.grid?.gap ?? "normal";
-  const gapClass = gap === "compact" ? "gap-2 sm:gap-3" : gap === "spacious" ? "gap-4 sm:gap-6" : "gap-3 sm:gap-4";
+  const gapClass =
+    gap === "compact"
+      ? "gap-1.5 sm:gap-2.5"
+      : gap === "spacious"
+        ? "gap-3 sm:gap-5"
+        : "gap-2 sm:gap-3";
 
   const cols = useMemo(() => {
     const grid = settings?.storefrontLayout?.grid;

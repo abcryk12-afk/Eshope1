@@ -131,10 +131,13 @@ export default function SuperDealsSection({ categorySlug, onQuickView }: Props) 
         {loading ? (
           <ProductGrid>
             {Array.from({ length: 6 }).map((_, idx) => (
-              <div key={idx} className="rounded-3xl border border-border bg-background p-3">
-                <Skeleton className="aspect-square w-full rounded-2xl" />
-                <Skeleton className="mt-3 h-4 w-3/4" />
-                <Skeleton className="mt-2 h-4 w-1/2" />
+              <div key={idx} className="group relative overflow-hidden rounded-3xl border border-border bg-surface shadow-sm">
+                <Skeleton className="aspect-square w-full" />
+                <div className="space-y-1.5 px-2.5 pb-2.5 pt-2.5">
+                  <Skeleton className="h-4 w-5/6" />
+                  <Skeleton className="h-3.5 w-2/3" />
+                  <Skeleton className="h-4 w-1/2" />
+                </div>
               </div>
             ))}
           </ProductGrid>

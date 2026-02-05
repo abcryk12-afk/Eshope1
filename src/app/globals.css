@@ -9,6 +9,9 @@
   --theme-muted-foreground: #52525b;
   --theme-border: #e4e4e7;
 
+  --theme-destructive: #ef4444;
+  --theme-destructive-foreground: #ffffff;
+
   --theme-primary: #18181b;
   --theme-primary-hover: #27272a;
   --theme-primary-foreground: #ffffff;
@@ -33,6 +36,9 @@
   --color-border: var(--theme-border);
   --color-ring: var(--theme-ring);
 
+  --color-destructive: var(--theme-destructive);
+  --color-destructive-foreground: var(--theme-destructive-foreground);
+
   --color-primary: var(--theme-primary);
   --color-primary-hover: var(--theme-primary-hover);
   --color-primary-foreground: var(--theme-primary-foreground);
@@ -54,6 +60,9 @@
     --theme-muted: #18181b;
     --theme-muted-foreground: #a1a1aa;
     --theme-border: #27272a;
+
+    --theme-destructive: #ef4444;
+    --theme-destructive-foreground: #ffffff;
 
     --theme-primary: #fafafa;
     --theme-primary-hover: #e4e4e7;
