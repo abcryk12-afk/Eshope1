@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import ProductCard from "@/components/product/ProductCard";
 import ProductGrid from "@/components/product/ProductGrid";
 import Skeleton from "@/components/ui/Skeleton";
+import { useStorefrontSettings } from "@/hooks/useStorefrontSettings";
 
 type DealInfo = {
   id: string;
@@ -63,6 +64,17 @@ function readItems(json: unknown): DealProduct[] {
 }
 
 export default function SuperDealsSection({ categorySlug, onQuickView }: Props) {
+  const { settings } = useStorefrontSettings();
+  const style = settings?.storefrontLayout?.productCard?.style ?? "rounded";
+  const sectionRadius =
+    style === "squared"
+      ? "var(--radius-none)"
+      : style === "image_first"
+        ? "var(--radius-md)"
+        : style === "poster"
+          ? "var(--radius-lg)"
+          : "var(--radius-xl)";
+
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<DealProduct[]>([]);
 
@@ -119,7 +131,7 @@ export default function SuperDealsSection({ categorySlug, onQuickView }: Props) 
   if (!loading && items.length === 0) return null;
 
   return (
-    <div className="mb-6 rounded-3xl border border-border bg-surface p-4">
+    <div className="mb-6 border border-border bg-surface p-4" style={{ borderRadius: sectionRadius }}>
       <div className="flex items-end justify-between gap-4">
         <div>
           <p className="text-sm font-semibold tracking-tight text-foreground">Super Deals</p>
@@ -131,8 +143,12 @@ export default function SuperDealsSection({ categorySlug, onQuickView }: Props) 
         {loading ? (
           <ProductGrid>
             {Array.from({ length: 6 }).map((_, idx) => (
-              <div key={idx} className="group relative overflow-hidden rounded-3xl border border-border bg-surface shadow-sm">
-                <Skeleton className="aspect-square w-full" />
+              <div
+                key={idx}
+                className="group relative overflow-hidden border border-border bg-surface shadow-sm"
+                style={{ borderRadius: sectionRadius }}
+              >
+                <Skeleton className="aspect-square w-full" style={{ borderRadius: sectionRadius }} />
                 <div className="space-y-1.5 px-2.5 pb-2.5 pt-2.5">
                   <Skeleton className="h-4 w-5/6" />
                   <Skeleton className="h-3.5 w-2/3" />

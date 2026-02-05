@@ -28,6 +28,7 @@ const ListingHeaderSchema = z.object({
 });
 
 const ProductCardSchema = z.object({
+  style: z.enum(["rounded", "squared", "image_first", "poster"]).optional().default("rounded"),
   density: z.enum(["compact", "balanced", "image_focused"]),
   imageAspect: z.enum(["square", "portrait", "auto"]),
   showRating: z.boolean(),

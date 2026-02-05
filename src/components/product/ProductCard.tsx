@@ -39,6 +39,7 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
 
   const { settings } = useStorefrontSettings();
   const card = settings?.storefrontLayout?.productCard;
+  const style = card?.style ?? "rounded";
   const density = card?.density ?? "balanced";
   const imageAspect = card?.imageAspect ?? "square";
 
@@ -68,28 +69,39 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
   const aspectClass = imageAspect === "portrait" ? "aspect-[4/5]" : "aspect-square";
   const objectClass = imageAspect === "auto" ? "object-contain" : "object-cover";
 
-  const shellClass = density === "compact" ? "rounded-2xl" : "rounded-3xl";
+  const cardRadius =
+    style === "squared"
+      ? "var(--radius-none)"
+      : style === "image_first"
+        ? "var(--radius-md)"
+        : style === "poster"
+          ? "var(--radius-lg)"
+          : "var(--radius-xl)";
 
   const contentPadClass =
-    density === "compact"
+    style === "image_first"
       ? "px-2 pb-2 pt-2"
-      : density === "image_focused"
-        ? "px-2.5 pb-2.5 pt-2.5"
-        : "px-2.5 pb-2.5 pt-2.5";
+      : density === "compact"
+        ? "px-2 pb-2 pt-2"
+        : density === "image_focused"
+          ? "px-2.5 pb-2.5 pt-2.5"
+          : "px-2.5 pb-2.5 pt-2.5";
 
   const titleClass =
     density === "compact" ? "text-[13px]" : density === "image_focused" ? "text-sm" : "text-sm";
   const contentGapClass = density === "compact" ? "space-y-1" : "space-y-1.5";
   const iconBtnClass = density === "compact" ? "h-8 w-8" : "h-9 w-9";
 
+  const isPoster = style === "poster";
+
   return (
     <motion.div
       layout
       className={cn(
         "group relative overflow-hidden border border-border bg-surface shadow-sm transition",
-        "transition-transform md:hover:-translate-y-0.5 md:hover:shadow-md",
-        shellClass
+        "transition-transform md:hover:-translate-y-0.5 md:hover:shadow-md"
       )}
+      style={{ borderRadius: cardRadius }}
     >
       <div className={cn("relative overflow-hidden bg-muted", aspectClass)}>
         {image ? (
@@ -104,13 +116,19 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
 
         <div className="absolute left-2 top-2 flex flex-col items-start gap-1.5">
           {showDiscountBadge && discountBadge ? (
-            <span className="rounded-full bg-destructive px-2 py-1 text-[11px] font-extrabold tracking-tight text-destructive-foreground shadow-sm ring-1 ring-foreground/10">
+            <span
+              className="bg-destructive px-2 py-1 text-[11px] font-extrabold tracking-tight text-destructive-foreground shadow-sm ring-1 ring-foreground/10"
+              style={{ borderRadius: "var(--radius-pill)" }}
+            >
               {discountBadge}
             </span>
           ) : null}
 
           {showDiscountBadge && isDeal ? (
-            <span className="rounded-full border border-border bg-surface/90 px-2 py-1 text-[11px] font-semibold tracking-tight text-muted-foreground backdrop-blur-sm">
+            <span
+              className="border border-border bg-surface/90 px-2 py-1 text-[11px] font-semibold tracking-tight text-muted-foreground backdrop-blur-sm"
+              style={{ borderRadius: "var(--radius-pill)" }}
+            >
               Limited time
             </span>
           ) : null}
@@ -122,10 +140,11 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
               type="button"
               onClick={() => dispatch(toggleWishlist(product._id))}
               className={cn(
-                "inline-flex items-center justify-center rounded-full bg-surface/80 text-foreground shadow-sm ring-1 ring-border/70 backdrop-blur-sm",
+                "inline-flex items-center justify-center bg-surface/80 text-foreground shadow-sm ring-1 ring-border/70 backdrop-blur-sm",
                 iconBtnClass,
                 wished && "bg-primary text-primary-foreground ring-0"
               )}
+              style={{ borderRadius: "var(--radius-pill)" }}
               aria-label="Toggle wishlist"
             >
               <Heart className={cn("h-4 w-4", wished && "fill-current")} />
@@ -133,22 +152,55 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
           </div>
         ) : null}
 
-        <div className="absolute bottom-2 left-2 right-2 flex gap-2 opacity-0 transition group-hover:opacity-100">
-          <button
-            type="button"
-            className={cn(
-              "inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-surface/90 text-sm font-semibold text-foreground",
-              density === "compact" ? "h-9" : "h-10"
-            )}
-            onClick={onQuickView}
-          >
-            <Eye className="h-4 w-4" />
-            Quick view
-          </button>
-        </div>
+        {isPoster ? null : (
+          <div className="absolute bottom-2 left-2 right-2 flex gap-2 opacity-0 transition group-hover:opacity-100">
+            <button
+              type="button"
+              className={cn(
+                "inline-flex flex-1 items-center justify-center gap-2 bg-surface/90 text-sm font-semibold text-foreground",
+                density === "compact" ? "h-9" : "h-10"
+              )}
+              style={{ borderRadius: "var(--radius-md)" }}
+              onClick={onQuickView}
+            >
+              <Eye className="h-4 w-4" />
+              Quick view
+            </button>
+          </div>
+        )}
+
+        {isPoster ? (
+          <div className="absolute inset-x-2 bottom-2">
+            <div
+              className="bg-foreground/60 p-2 text-background backdrop-blur-sm ring-1 ring-foreground/10"
+              style={{ borderRadius: "var(--radius-md)" }}
+            >
+              <Link
+                href={`/product/${product.slug}`}
+                className={cn("line-clamp-2 text-sm font-semibold tracking-tight hover:underline")}
+              >
+                {product.title}
+              </Link>
+
+              <div className="mt-1 flex items-center justify-between gap-2">
+                <p className="text-sm font-semibold">
+                  {formatMoneyFromPkr(product.basePrice, currency.selected, currency.pkrPerUsd)}
+                </p>
+
+                {showRating && product.ratingCount > 0 ? (
+                  <div className="flex items-center gap-1 text-xs">
+                    <Star className="h-4 w-4 fill-primary text-primary" />
+                    <span className="font-semibold">{product.ratingAvg.toFixed(1)}</span>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
 
-      <div className={cn(contentPadClass, contentGapClass)}>
+      {isPoster ? null : (
+        <div className={cn(contentPadClass, contentGapClass)}>
         <Link
           href={`/product/${product.slug}`}
           className={cn(
@@ -187,7 +239,8 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
             </p>
           ) : null}
         </div>
-      </div>
+        </div>
+      )}
     </motion.div>
   );
 }

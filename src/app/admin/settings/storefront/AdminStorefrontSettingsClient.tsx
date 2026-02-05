@@ -17,6 +17,7 @@ type GridSettings = {
 };
 
 type ProductCardSettings = {
+  style: "rounded" | "squared" | "image_first" | "poster";
   density: "compact" | "balanced" | "image_focused";
   imageAspect: "square" | "portrait" | "auto";
   showRating: boolean;
@@ -58,6 +59,7 @@ function emptySettings(): ApiResponse {
     storefrontLayout: {
       grid: { mobileCols: 2, tabletCols: 3, desktopCols: 4, gap: "normal" },
       productCard: {
+        style: "rounded",
         density: "balanced",
         imageAspect: "square",
         showRating: true,
@@ -108,6 +110,11 @@ function normalizeResponse(json: unknown): ApiResponse {
         })(),
       },
       productCard: {
+        style: (() => {
+          const raw = typeof card.style === "string" ? card.style : "";
+          if (raw === "squared" || raw === "image_first" || raw === "poster") return raw;
+          return "rounded";
+        })(),
         density: (() => {
           const raw = typeof card.density === "string" ? card.density : "";
           if (raw === "compact" || raw === "image_focused") return raw;
@@ -390,6 +397,45 @@ export default function AdminStorefrontSettingsClient() {
           <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Controls product card density, image emphasis, and what metadata shows.</p>
 
           <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className="space-y-2 md:col-span-2">
+              <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Product Card Style</label>
+              <select
+                value={settings.storefrontLayout.productCard.style}
+                onChange={(e) =>
+                  setSettings((s) =>
+                    s
+                      ? {
+                          ...s,
+                          storefrontLayout: {
+                            ...s.storefrontLayout,
+                            productCard: {
+                              ...s.storefrontLayout.productCard,
+                              style: (() => {
+                                const v = e.target.value;
+                                if (v === "squared") return "squared";
+                                if (v === "image_first") return "image_first";
+                                if (v === "poster") return "poster";
+                                return "rounded";
+                              })(),
+                            },
+                          },
+                        }
+                      : s
+                  )
+                }
+                className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+              >
+                <option value="rounded">Rounded (Default / Friendly)</option>
+                <option value="squared">Squared (Sharp / Professional)</option>
+                <option value="image_first">Image-First (AliExpress Style)</option>
+                <option value="poster">Full Image / Poster Style</option>
+              </select>
+
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                This controls card shape and how image/text are balanced across listings and Super Deals.
+              </p>
+            </div>
+
             <div className="space-y-2">
               <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Density</label>
               <select

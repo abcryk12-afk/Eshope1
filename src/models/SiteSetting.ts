@@ -117,6 +117,12 @@ const ReturnsSettingsSchema = new Schema(
 
  const StorefrontProductCardSchema = new Schema(
   {
+    style: {
+      type: String,
+      trim: true,
+      enum: ["rounded", "squared", "image_first", "poster"],
+      default: "rounded",
+    },
     density: {
       type: String,
       trim: true,

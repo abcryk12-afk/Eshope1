@@ -9,6 +9,13 @@
   --theme-muted-foreground: #52525b;
   --theme-border: #e4e4e7;
 
+  --radius-none: 0px;
+  --radius-sm: 0.5rem;
+  --radius-md: 1rem;
+  --radius-lg: 1.5rem;
+  --radius-xl: 1.875rem;
+  --radius-pill: 9999px;
+
   --theme-destructive: #ef4444;
   --theme-destructive-foreground: #ffffff;
 

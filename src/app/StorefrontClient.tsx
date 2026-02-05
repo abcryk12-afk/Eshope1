@@ -320,6 +320,16 @@ export default function StorefrontClient({
   const { settings: storefrontSettings } = useStorefrontSettings();
   const headerSettings = storefrontSettings?.storefrontLayout?.listingHeader;
 
+  const cardStyle = storefrontSettings?.storefrontLayout?.productCard?.style ?? "rounded";
+  const cardRadius =
+    cardStyle === "squared"
+      ? "var(--radius-none)"
+      : cardStyle === "image_first"
+        ? "var(--radius-md)"
+        : cardStyle === "poster"
+          ? "var(--radius-lg)"
+          : "var(--radius-xl)";
+
   const headerSpacing = headerSettings?.spacing ?? "compact";
   const showSearch = headerSettings?.showSearch ?? true;
   const showFilters = headerSettings?.showFilters ?? true;
@@ -543,8 +553,12 @@ export default function StorefrontClient({
               {loading ? (
                 <ProductGrid>
                   {Array.from({ length: 12 }).map((_, idx) => (
-                    <div key={idx} className="rounded-3xl border border-border bg-surface p-3">
-                      <Skeleton className="aspect-square w-full rounded-2xl" />
+                    <div
+                      key={idx}
+                      className="border border-border bg-surface p-3"
+                      style={{ borderRadius: cardRadius }}
+                    >
+                      <Skeleton className="aspect-square w-full" style={{ borderRadius: cardRadius }} />
                       <Skeleton className="mt-3 h-4 w-3/4" />
                       <Skeleton className="mt-2 h-4 w-1/2" />
                     </div>

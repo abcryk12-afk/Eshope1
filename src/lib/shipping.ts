@@ -26,6 +26,7 @@ export type StorefrontGridSettings = {
 };
 
 export type StorefrontProductCardSettings = {
+  style: "rounded" | "squared" | "image_first" | "poster";
   density: "compact" | "balanced" | "image_focused";
   imageAspect: "square" | "portrait" | "auto";
   showRating: boolean;
@@ -168,6 +169,9 @@ export function normalizeStorefrontSettings(doc: unknown): StorefrontSettings {
   const gap = gapRaw === "compact" || gapRaw === "spacious" ? gapRaw : "normal";
 
   const productCard = isRecord(layout.productCard) ? layout.productCard : {};
+  const styleRaw = String(productCard.style ?? "").trim();
+  const style =
+    styleRaw === "squared" || styleRaw === "image_first" || styleRaw === "poster" ? styleRaw : "rounded";
   const densityRaw = String(productCard.density ?? "").trim();
   const density = densityRaw === "compact" || densityRaw === "image_focused" ? densityRaw : "balanced";
   const aspectRaw = String(productCard.imageAspect ?? "").trim();
@@ -198,6 +202,7 @@ export function normalizeStorefrontSettings(doc: unknown): StorefrontSettings {
     storefrontLayout: {
       grid: { mobileCols, tabletCols, desktopCols, gap },
       productCard: {
+        style,
         density,
         imageAspect,
         showRating,
