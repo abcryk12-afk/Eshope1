@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
@@ -9,6 +10,7 @@ import { Menu, Search, ShoppingBag, User2, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useStorefrontSettings } from "@/hooks/useStorefrontSettings";
 import { useAppSelector } from "@/store/hooks";
 
 import MiniCartDrawer from "./MiniCartDrawer";
@@ -37,6 +39,9 @@ export default function Header() {
     s.cart.items.reduce((acc, i) => acc + i.quantity, 0)
   );
 
+  const { settings: storefrontSettings } = useStorefrontSettings();
+  const branding = storefrontSettings?.branding;
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [q, setQ] = useState("");
@@ -47,6 +52,74 @@ export default function Header() {
   const [meta, setMeta] = useState<ProductsMeta | null>(null);
 
   const userLabel = useMemo(() => session?.user?.email ?? "Account", [session?.user?.email]);
+
+  const brandNode = useMemo(() => {
+    const storeName = branding?.storeName?.trim() || "Shop";
+    const headerBrandText = branding?.headerBrandText?.trim() || storeName;
+
+    const mode = branding?.logoMode ?? "text";
+    const hasLogo = Boolean(branding?.logo?.url?.trim());
+    const showImage = (mode === "image" || mode === "both") && hasLogo;
+    const showText =
+      mode !== "image" && (!branding?.hideTextWhenLogoActive || !showImage);
+
+    const weight = typeof branding?.brandTextStyle?.weight === "number" ? branding.brandTextStyle.weight : 600;
+    const italic = Boolean(branding?.brandTextStyle?.italic);
+    const letterSpacing = branding?.brandTextStyle?.letterSpacing ?? "tight";
+    const color = branding?.brandTextStyle?.color ?? "foreground";
+
+    const colorVar = color === "primary" ? "var(--theme-primary)" : color === "muted" ? "var(--theme-muted-foreground)" : "var(--theme-foreground)";
+    const trackingClass = letterSpacing === "wide" ? "tracking-wide" : letterSpacing === "normal" ? "tracking-normal" : "tracking-tight";
+
+    const gradientEnabled = Boolean(branding?.brandTextStyle?.gradientEnabled);
+    const embossedEnabled = Boolean(branding?.brandTextStyle?.embossedEnabled);
+
+    const maxH = Math.max(16, Math.min(96, Math.trunc(Number(branding?.logoMaxHeight ?? 28) || 28)));
+    const logoW = branding?.logo?.width ?? null;
+    const logoH = branding?.logo?.height ?? null;
+    const aspect = logoW && logoH ? logoW / logoH : null;
+    const widthPx = aspect ? Math.round(maxH * aspect) : maxH;
+
+    const textEl = showText ? (
+      <span
+        className={cn("text-base font-semibold", trackingClass)}
+        style={{
+          fontWeight: weight,
+          fontStyle: italic ? "italic" : "normal",
+          color: gradientEnabled ? "transparent" : colorVar,
+          backgroundImage: gradientEnabled ? "linear-gradient(90deg, var(--theme-primary), var(--theme-foreground))" : undefined,
+          WebkitBackgroundClip: gradientEnabled ? "text" : undefined,
+          backgroundClip: gradientEnabled ? "text" : undefined,
+          textShadow: embossedEnabled
+            ? "0 1px 0 color-mix(in srgb, var(--theme-foreground) 18%, transparent), 0 -1px 0 color-mix(in srgb, var(--theme-background) 18%, transparent)"
+            : undefined,
+        }}
+      >
+        {headerBrandText}
+      </span>
+    ) : null;
+
+    const imgEl = showImage ? (
+      <span className="relative block shrink-0" style={{ height: maxH, width: widthPx }}>
+        <Image
+          src={branding!.logo.url}
+          alt={branding?.logo?.alt?.trim() || storeName}
+          fill
+          className="object-contain"
+          unoptimized
+          sizes={`${widthPx}px`}
+        />
+      </span>
+    ) : null;
+
+    const gapClass = mode === "both" ? "gap-2" : "gap-0";
+    return (
+      <span className={cn("inline-flex items-center", gapClass)}>
+        {imgEl}
+        {textEl}
+      </span>
+    );
+  }, [branding]);
 
   useEffect(() => {
     if (isAdminPath) return;
@@ -117,10 +190,17 @@ export default function Header() {
             <Menu className="h-5 w-5" />
           </button>
 
-          <Link href="/" className="text-base font-semibold tracking-tight text-foreground">
-            Shop
+          <Link
+            href="/"
+            className={cn(
+              "text-base font-semibold tracking-tight text-foreground",
+              branding?.logoAlignment === "center" ? "mx-auto" : ""
+            )}
+          >
+            {brandNode}
           </Link>
 
+          {branding?.logoAlignment === "center" ? null : (
           <nav className="hidden items-center gap-2 md:flex">
             <div className="group relative">
               <button
@@ -144,8 +224,14 @@ export default function Header() {
               </div>
             </div>
           </nav>
+          )}
 
-          <div className="relative ml-auto flex w-full max-w-xl items-center gap-2">
+          <div
+            className={cn(
+              "relative flex w-full max-w-xl items-center gap-2",
+              branding?.logoAlignment === "center" ? "flex-1" : "ml-auto"
+            )}
+          >
             <div className="relative w-full">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input

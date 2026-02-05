@@ -52,11 +52,55 @@ export type CartUxSettings = {
   quickCheckoutAutoHideSeconds: number;
 };
 
+export type BrandingLogo = {
+  url: string;
+  width: number | null;
+  height: number | null;
+  alt: string;
+  updatedAt: number;
+};
+
+export type BrandingTextStyle = {
+  weight: number;
+  italic: boolean;
+  letterSpacing: "tight" | "normal" | "wide";
+  color: "foreground" | "muted" | "primary";
+  gradientEnabled: boolean;
+  embossedEnabled: boolean;
+};
+
+export type BrandingSeo = {
+  title: string;
+  description: string;
+  ogImageUrl: string;
+};
+
+export type BrandingFavicon = {
+  sourceUrl: string;
+  assetsVersion: string;
+  updatedAt: number;
+};
+
+export type BrandingSettings = {
+  storeName: string;
+  headerBrandText: string;
+  logoMode: "text" | "image" | "both";
+  logoAlignment: "left" | "center";
+  hideTextWhenLogoActive: boolean;
+  logoMaxHeight: number;
+  logo: BrandingLogo;
+  brandTextStyle: BrandingTextStyle;
+  seo: BrandingSeo;
+  favicon: BrandingFavicon;
+  updatedAt: number;
+};
+
 export type StorefrontSettings = {
   inventory: { lowStockThreshold: number };
   shipping: NormalizedShippingSettings;
   storefrontLayout: StorefrontLayoutSettings;
   cartUx: CartUxSettings;
+  branding: BrandingSettings;
 };
 
 export type ShippingEta = {
@@ -77,6 +121,11 @@ function readNumber(v: unknown, fallback: number) {
 function clampInt(n: number, min: number, max: number) {
   const t = Math.trunc(n);
   return Math.min(max, Math.max(min, t));
+}
+
+function readString(v: unknown, fallback: string) {
+  const s = typeof v === "string" ? v.trim() : "";
+  return s || fallback;
 }
 
 function normalizeCityKey(v: string) {
@@ -196,6 +245,47 @@ export function normalizeStorefrontSettings(doc: unknown): StorefrontSettings {
   const quickCheckoutEnabled = typeof cartUx.quickCheckoutEnabled === "boolean" ? cartUx.quickCheckoutEnabled : true;
   const quickCheckoutAutoHideSeconds = clampInt(readNumber(cartUx.quickCheckoutAutoHideSeconds, 4), 1, 30);
 
+  const brandingRoot = isRecord(root.branding) ? root.branding : {};
+  const storeName = readString(brandingRoot.storeName, "Shop").slice(0, 80);
+  const headerBrandText = readString(brandingRoot.headerBrandText, storeName).slice(0, 80);
+
+  const logoModeRaw = String(brandingRoot.logoMode ?? "").trim();
+  const logoMode = logoModeRaw === "image" || logoModeRaw === "both" ? logoModeRaw : "text";
+
+  const logoAlignmentRaw = String(brandingRoot.logoAlignment ?? "").trim();
+  const logoAlignment = logoAlignmentRaw === "center" ? "center" : "left";
+
+  const hideTextWhenLogoActive =
+    typeof brandingRoot.hideTextWhenLogoActive === "boolean" ? brandingRoot.hideTextWhenLogoActive : false;
+  const logoMaxHeight = clampInt(readNumber(brandingRoot.logoMaxHeight, 28), 16, 96);
+
+  const logoRoot = isRecord(brandingRoot.logo) ? brandingRoot.logo : {};
+  const logoUpdatedAt = typeof logoRoot.updatedAt === "number" ? logoRoot.updatedAt : 0;
+  const logoWidthRaw = typeof logoRoot.width === "number" && Number.isFinite(logoRoot.width) && logoRoot.width > 0 ? logoRoot.width : null;
+  const logoHeightRaw = typeof logoRoot.height === "number" && Number.isFinite(logoRoot.height) && logoRoot.height > 0 ? logoRoot.height : null;
+
+  const styleRoot = isRecord(brandingRoot.brandTextStyle) ? brandingRoot.brandTextStyle : {};
+  const weight = clampInt(readNumber(styleRoot.weight, 600), 300, 900);
+  const italic = typeof styleRoot.italic === "boolean" ? styleRoot.italic : false;
+  const letterSpacingRaw = String(styleRoot.letterSpacing ?? "").trim();
+  const letterSpacing = letterSpacingRaw === "normal" || letterSpacingRaw === "wide" ? (letterSpacingRaw as "normal" | "wide") : "tight";
+  const colorRaw = String(styleRoot.color ?? "").trim();
+  const color = colorRaw === "muted" || colorRaw === "primary" ? (colorRaw as "muted" | "primary") : "foreground";
+  const gradientEnabled = typeof styleRoot.gradientEnabled === "boolean" ? styleRoot.gradientEnabled : false;
+  const embossedEnabled = typeof styleRoot.embossedEnabled === "boolean" ? styleRoot.embossedEnabled : false;
+
+  const seoRoot = isRecord(brandingRoot.seo) ? brandingRoot.seo : {};
+  const seoTitle = readString(seoRoot.title, "").slice(0, 160);
+  const seoDescription = readString(seoRoot.description, "").slice(0, 320);
+  const ogImageUrl = readString(seoRoot.ogImageUrl, "");
+
+  const faviconRoot = isRecord(brandingRoot.favicon) ? brandingRoot.favicon : {};
+  const faviconSourceUrl = readString(faviconRoot.sourceUrl, "");
+  const faviconAssetsVersion = readString(faviconRoot.assetsVersion, "");
+  const faviconUpdatedAt = typeof faviconRoot.updatedAt === "number" ? faviconRoot.updatedAt : 0;
+
+  const brandingUpdatedAt = typeof root.brandingUpdatedAt === "number" ? root.brandingUpdatedAt : 0;
+
   return {
     inventory: { lowStockThreshold },
     shipping,
@@ -213,6 +303,40 @@ export function normalizeStorefrontSettings(doc: unknown): StorefrontSettings {
       listingHeader: { showSearch, showFilters, spacing, showSort, enableLayoutSwitcher },
     },
     cartUx: { quickCheckoutEnabled, quickCheckoutAutoHideSeconds },
+    branding: {
+      storeName,
+      headerBrandText,
+      logoMode,
+      logoAlignment,
+      hideTextWhenLogoActive,
+      logoMaxHeight,
+      logo: {
+        url: readString(logoRoot.url, ""),
+        width: logoWidthRaw,
+        height: logoHeightRaw,
+        alt: readString(logoRoot.alt, storeName).slice(0, 160),
+        updatedAt: logoUpdatedAt,
+      },
+      brandTextStyle: {
+        weight,
+        italic,
+        letterSpacing,
+        color,
+        gradientEnabled,
+        embossedEnabled,
+      },
+      seo: {
+        title: seoTitle,
+        description: seoDescription,
+        ogImageUrl,
+      },
+      favicon: {
+        sourceUrl: faviconSourceUrl,
+        assetsVersion: faviconAssetsVersion,
+        updatedAt: faviconUpdatedAt,
+      },
+      updatedAt: brandingUpdatedAt,
+    },
   };
 }
 

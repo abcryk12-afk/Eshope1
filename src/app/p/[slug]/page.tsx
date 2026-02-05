@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { dbConnect } from "@/lib/db";
+import { getPublicSeoSettings } from "@/lib/siteBranding";
 import { absoluteUrl, safeJsonLdStringify, stripHtmlToText, truncate } from "@/lib/seo";
 import CmsPage from "@/models/CmsPage";
-import SiteSetting from "@/models/SiteSetting";
 
 export const runtime = "nodejs";
 
@@ -12,26 +12,6 @@ type PageProps = {
   params: Promise<{ slug: string }>;
 };
 
-type GlobalSeoSettings = {
-  globalSeoTitle?: string;
-  globalSeoDescription?: string;
-};
-
-async function getGlobalSeoSettings(): Promise<GlobalSeoSettings> {
-  await dbConnect();
-
-  const settings = (await SiteSetting.findOne({ key: "global" })
-    .select("globalSeoTitle globalSeoDescription")
-    .lean()) as unknown;
-
-  const root = settings as Record<string, unknown> | null;
-
-  return {
-    globalSeoTitle: typeof root?.globalSeoTitle === "string" ? root.globalSeoTitle : undefined,
-    globalSeoDescription:
-      typeof root?.globalSeoDescription === "string" ? root.globalSeoDescription : undefined,
-  };
-}
 
 async function getPage(slug: string) {
   await dbConnect();
@@ -53,9 +33,9 @@ function escapeHtmlText(s: string) {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
 
-  const [settings, page] = await Promise.all([getGlobalSeoSettings(), getPage(slug)]);
+  const [settings, page] = await Promise.all([getPublicSeoSettings(), getPage(slug)]);
 
-  const siteName = settings.globalSeoTitle?.trim() || "Shop";
+  const siteName = settings.siteName?.trim() || "Shop";
   const canonical = absoluteUrl(`/p/${encodeURIComponent(slug)}`);
 
   const p = page as
@@ -69,34 +49,36 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   if (!p?.title) {
     return {
-      title: siteName,
+      title: { absolute: siteName },
       alternates: { canonical },
       robots: { index: false, follow: false },
     };
   }
 
   const title = (p.seoTitle?.trim() || p.title).trim();
-  const finalTitle = `${title} | ${siteName}`;
+  const finalTitle = title;
 
   const description = p.seoDescription?.trim()
     ? p.seoDescription.trim()
-    : truncate(stripHtmlToText(p.content ?? ""), 160) || settings.globalSeoDescription?.trim() || "";
+    : truncate(stripHtmlToText(p.content ?? ""), 160) || settings.description?.trim() || "";
 
   return {
     title: finalTitle,
     description,
     alternates: { canonical },
     openGraph: {
-      title: finalTitle,
+      title: `${finalTitle} | ${siteName}`,
       description,
       url: canonical,
       siteName,
       type: "article",
+      images: settings.ogImageUrl ? [{ url: settings.ogImageUrl }] : undefined,
     },
     twitter: {
       card: "summary",
-      title: finalTitle,
+      title: `${finalTitle} | ${siteName}`,
       description,
+      images: settings.ogImageUrl ? [settings.ogImageUrl] : undefined,
     },
   };
 }

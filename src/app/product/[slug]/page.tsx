@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { dbConnect } from "@/lib/db";
+import { getPublicSeoSettings } from "@/lib/siteBranding";
 import {
   absoluteUrl,
   buildBreadcrumbJsonLd,
@@ -11,7 +12,6 @@ import {
   truncate,
 } from "@/lib/seo";
 import Product from "@/models/Product";
-import SiteSetting from "@/models/SiteSetting";
 
 import ProductDetailClient from "./ProductDetailClient";
 
@@ -20,27 +20,6 @@ export const runtime = "nodejs";
 type PageProps = {
   params: Promise<{ slug: string }>;
 };
-
-type GlobalSeoSettings = {
-  globalSeoTitle?: string;
-  globalSeoDescription?: string;
-};
-
-async function getGlobalSeoSettings(): Promise<GlobalSeoSettings> {
-  await dbConnect();
-
-  const settings = (await SiteSetting.findOne({ key: "global" })
-    .select("globalSeoTitle globalSeoDescription")
-    .lean()) as unknown;
-
-  const root = settings as Record<string, unknown> | null;
-
-  return {
-    globalSeoTitle: typeof root?.globalSeoTitle === "string" ? root.globalSeoTitle : undefined,
-    globalSeoDescription:
-      typeof root?.globalSeoDescription === "string" ? root.globalSeoDescription : undefined,
-  };
-}
 
 async function getProductForSeo(slug: string) {
   await dbConnect();
@@ -57,9 +36,9 @@ async function getProductForSeo(slug: string) {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
 
-  const [settings, product] = await Promise.all([getGlobalSeoSettings(), getProductForSeo(slug)]);
+  const [settings, product] = await Promise.all([getPublicSeoSettings(), getProductForSeo(slug)]);
 
-  const siteName = settings.globalSeoTitle?.trim() || "Shop";
+  const siteName = settings.siteName?.trim() || "Shop";
   const canonical = absoluteUrl(`/product/${encodeURIComponent(slug)}`);
 
   const p = product as
@@ -70,10 +49,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       }
     | null;
 
-  const title = p?.title?.trim() ? `${p.title} | ${siteName}` : siteName;
+  const baseTitle = p?.title?.trim() || "";
+  const title = baseTitle ? baseTitle : siteName;
   const description = p?.description
     ? truncate(stripHtmlToText(p.description), 160)
-    : settings.globalSeoDescription?.trim() || "";
+    : settings.description?.trim() || "";
 
   const ogImages = (Array.isArray(p?.images) ? p?.images : [])
     .map(normalizeImageUrl)
@@ -82,24 +62,28 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     .map((url) => ({ url }));
 
   return {
-    title,
+    title: baseTitle ? title : { absolute: siteName },
     description,
     alternates: {
       canonical,
     },
     openGraph: {
-      title,
+      title: baseTitle ? `${title} | ${siteName}` : siteName,
       description,
       url: canonical,
       siteName,
       type: "website",
-      images: ogImages.length ? ogImages : undefined,
+      images: ogImages.length ? ogImages : settings.ogImageUrl ? [{ url: settings.ogImageUrl }] : undefined,
     },
     twitter: {
       card: "summary_large_image",
-      title,
+      title: baseTitle ? `${title} | ${siteName}` : siteName,
       description,
-      images: ogImages.length ? ogImages.map((i) => i.url) : undefined,
+      images: ogImages.length
+        ? ogImages.map((i) => i.url)
+        : settings.ogImageUrl
+          ? [settings.ogImageUrl]
+          : undefined,
     },
   };
 }

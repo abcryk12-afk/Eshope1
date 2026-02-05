@@ -7,6 +7,8 @@ import Providers from "@/app/providers";
 import Header from "@/components/layout/Header";
 import SiteFooter from "@/components/layout/SiteFooter";
 import { dbConnect } from "@/lib/db";
+import { absoluteUrl } from "@/lib/seo";
+import { getPublicSeoSettings } from "@/lib/siteBranding";
 import { DEFAULT_THEME, deriveThemeVars, type ThemeColors } from "@/lib/theme";
 import SiteSetting from "@/models/SiteSetting";
 
@@ -20,10 +22,58 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Shop",
-  description: "Modern eCommerce",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getPublicSeoSettings();
+  const canonical = absoluteUrl("/");
+
+  const siteName = settings.siteName?.trim() || "Shop";
+  const description = settings.description?.trim() || "";
+
+  const faviconV = settings.faviconAssetsVersion?.trim();
+  const iconsBase = faviconV ? `/branding/favicon/${encodeURIComponent(faviconV)}` : "";
+
+  const ico = iconsBase ? `${iconsBase}/favicon.ico` : "/favicon.ico";
+
+  const ogImageUrl = settings.ogImageUrl?.trim();
+
+  return {
+    title: {
+      default: siteName,
+      template: `%s | ${siteName}`,
+    },
+    description,
+    alternates: {
+      canonical,
+    },
+    openGraph: {
+      title: siteName,
+      description,
+      url: canonical,
+      siteName,
+      type: "website",
+      images: ogImageUrl ? [{ url: ogImageUrl }] : undefined,
+    },
+    twitter: {
+      card: ogImageUrl ? "summary_large_image" : "summary",
+      title: siteName,
+      description,
+      images: ogImageUrl ? [ogImageUrl] : undefined,
+    },
+    icons: iconsBase
+      ? {
+          icon: [
+            { url: ico, type: "image/x-icon" },
+            { url: `${iconsBase}/favicon-16x16.png`, sizes: "16x16", type: "image/png" },
+            { url: `${iconsBase}/favicon-32x32.png`, sizes: "32x32", type: "image/png" },
+          ],
+          apple: [{ url: `${iconsBase}/apple-touch-icon.png`, sizes: "180x180", type: "image/png" }],
+        }
+      : {
+          icon: [{ url: ico, type: "image/x-icon" }],
+        },
+    manifest: iconsBase ? `${iconsBase}/site.webmanifest` : undefined,
+  };
+}
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null;

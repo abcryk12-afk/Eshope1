@@ -1,17 +1,11 @@
 import type { Metadata } from "next";
 
 import StorefrontClient from "@/app/StorefrontClient";
-import { dbConnect } from "@/lib/db";
 import { absoluteUrl } from "@/lib/seo";
-import SiteSetting from "@/models/SiteSetting";
+import { getPublicSeoSettings } from "@/lib/siteBranding";
 
 type PageProps = {
   searchParams: Record<string, string | string[] | undefined> | Promise<Record<string, string | string[] | undefined>>;
-};
-
-type GlobalSeoSettings = {
-  globalSeoTitle?: string;
-  globalSeoDescription?: string;
 };
 
 function hasAnyQueryParams(sp: Record<string, string | string[] | undefined>) {
@@ -26,34 +20,18 @@ function hasAnyQueryParams(sp: Record<string, string | string[] | undefined>) {
   return false;
 }
 
-async function getGlobalSeoSettings(): Promise<GlobalSeoSettings> {
-  await dbConnect();
-
-  const settings = (await SiteSetting.findOne({ key: "global" })
-    .select("globalSeoTitle globalSeoDescription")
-    .lean()) as unknown;
-
-  const root = settings as Record<string, unknown> | null;
-
-  return {
-    globalSeoTitle: typeof root?.globalSeoTitle === "string" ? root.globalSeoTitle : undefined,
-    globalSeoDescription:
-      typeof root?.globalSeoDescription === "string" ? root.globalSeoDescription : undefined,
-  };
-}
-
 export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
   const resolvedSearchParams = await Promise.resolve(searchParams);
   const hasQuery = hasAnyQueryParams(resolvedSearchParams);
 
-  const settings = await getGlobalSeoSettings();
+  const settings = await getPublicSeoSettings();
 
-  const title = settings.globalSeoTitle?.trim() || "Shop";
-  const description = settings.globalSeoDescription?.trim() || "";
+  const title = settings.siteName?.trim() || "Shop";
+  const description = settings.description?.trim() || "";
   const canonical = absoluteUrl("/");
 
   return {
-    title,
+    title: { absolute: title },
     description,
     alternates: {
       canonical,

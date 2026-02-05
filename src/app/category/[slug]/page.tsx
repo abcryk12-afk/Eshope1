@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import StorefrontClient from "@/app/StorefrontClient";
 import { dbConnect } from "@/lib/db";
+import { getPublicSeoSettings } from "@/lib/siteBranding";
 import {
   absoluteUrl,
   buildBreadcrumbJsonLd,
@@ -11,7 +12,6 @@ import {
   truncate,
 } from "@/lib/seo";
 import Category from "@/models/Category";
-import SiteSetting from "@/models/SiteSetting";
 
 export const runtime = "nodejs";
 
@@ -20,11 +20,6 @@ type SearchParams = Record<string, string | string[] | undefined>;
 type PageProps = {
   params: Promise<{ slug: string }>;
   searchParams: SearchParams | Promise<SearchParams>;
-};
-
-type GlobalSeoSettings = {
-  globalSeoTitle?: string;
-  globalSeoDescription?: string;
 };
 
 function readString(v: string | string[] | undefined) {
@@ -38,22 +33,6 @@ function readNumber(v: string | string[] | undefined) {
   const n = Number(s);
   if (Number.isNaN(n)) return undefined;
   return n;
-}
-
-async function getGlobalSeoSettings(): Promise<GlobalSeoSettings> {
-  await dbConnect();
-
-  const settings = (await SiteSetting.findOne({ key: "global" })
-    .select("globalSeoTitle globalSeoDescription")
-    .lean()) as unknown;
-
-  const root = settings as Record<string, unknown> | null;
-
-  return {
-    globalSeoTitle: typeof root?.globalSeoTitle === "string" ? root.globalSeoTitle : undefined,
-    globalSeoDescription:
-      typeof root?.globalSeoDescription === "string" ? root.globalSeoDescription : undefined,
-  };
 }
 
 async function getCategoryBySlug(slug: string) {
@@ -104,18 +83,18 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
   const { slug } = await params;
   const sp = await Promise.resolve(searchParams);
 
-  const [settings, category] = await Promise.all([getGlobalSeoSettings(), getCategoryBySlug(slug)]);
+  const [settings, category] = await Promise.all([getPublicSeoSettings(), getCategoryBySlug(slug)]);
 
-  const siteName = settings.globalSeoTitle?.trim() || "Shop";
+  const siteName = settings.siteName?.trim() || "Shop";
   const cat = category as { name?: string; slug?: string } | null;
 
   const seoState = computeCategorySeoState(slug, sp);
 
   const titleBase = cat?.name?.trim() || "Category";
-  const title = `${titleBase} | ${siteName}`;
+  const title = titleBase;
 
   const description = truncate(
-    stripHtmlToText(settings.globalSeoDescription?.trim() || `Browse ${titleBase} products.`),
+    stripHtmlToText(settings.description?.trim() || `Browse ${titleBase} products.`),
     160
   );
 
@@ -130,16 +109,18 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
       follow: true,
     },
     openGraph: {
-      title,
+      title: `${title} | ${siteName}`,
       description,
       url: seoState.canonical,
       siteName,
       type: "website",
+      images: settings.ogImageUrl ? [{ url: settings.ogImageUrl }] : undefined,
     },
     twitter: {
       card: "summary",
       title,
       description,
+      images: settings.ogImageUrl ? [settings.ogImageUrl] : undefined,
     },
   };
 }

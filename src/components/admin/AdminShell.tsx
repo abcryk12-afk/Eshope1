@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import { BarChart3, Boxes, CreditCard, Folder, LayoutDashboard, LogOut, Palette, Settings, Star, Tag, Undo2, Users } from "lucide-react";
+import { BarChart3, Boxes, CreditCard, Folder, LayoutDashboard, LogOut, Palette, Settings, Star, Store, Tag, Undo2, Users } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import CurrencySwitcher from "@/components/layout/CurrencySwitcher";
@@ -34,6 +34,7 @@ const nav: NavItem[] = [
   { href: "/admin/cms", label: "CMS", icon: <LayoutDashboard className="h-4 w-4" /> },
   { href: "/admin/logs", label: "Logs", icon: <LayoutDashboard className="h-4 w-4" /> },
   { href: "/admin/settings/appearance", label: "Appearance", icon: <Palette className="h-4 w-4" /> },
+  { href: "/admin/settings/branding", label: "Branding", icon: <Store className="h-4 w-4" /> },
   { href: "/admin/settings/storefront", label: "Storefront", icon: <Settings className="h-4 w-4" /> },
   { href: "/admin/settings/payments", label: "Payments", icon: <CreditCard className="h-4 w-4" /> },
   { href: "/admin/cms/settings", label: "Settings", icon: <Settings className="h-4 w-4" /> },

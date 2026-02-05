@@ -166,6 +166,48 @@ const ReturnsSettingsSchema = new Schema(
   { _id: false }
  );
 
+ const BrandingSchema = new Schema(
+  {
+    storeName: { type: String, trim: true, maxlength: 80 },
+    headerBrandText: { type: String, trim: true, maxlength: 80 },
+    logoMode: { type: String, trim: true, enum: ["text", "image", "both"], default: "text" },
+    logoAlignment: { type: String, trim: true, enum: ["left", "center"], default: "left" },
+    hideTextWhenLogoActive: { type: Boolean, default: false },
+    logoMaxHeight: { type: Number, default: 28, min: 16, max: 96 },
+    logo: {
+      url: { type: String, trim: true },
+      width: { type: Number, min: 1 },
+      height: { type: Number, min: 1 },
+      alt: { type: String, trim: true, maxlength: 160 },
+      updatedAt: { type: Number, default: 0 },
+    },
+    brandTextStyle: {
+      weight: { type: Number, default: 600, min: 300, max: 900 },
+      italic: { type: Boolean, default: false },
+      letterSpacing: { type: String, trim: true, enum: ["tight", "normal", "wide"], default: "tight" },
+      color: {
+        type: String,
+        trim: true,
+        enum: ["foreground", "muted", "primary"],
+        default: "foreground",
+      },
+      gradientEnabled: { type: Boolean, default: false },
+      embossedEnabled: { type: Boolean, default: false },
+    },
+    seo: {
+      title: { type: String, trim: true, maxlength: 160 },
+      description: { type: String, trim: true, maxlength: 320 },
+      ogImageUrl: { type: String, trim: true },
+    },
+    favicon: {
+      sourceUrl: { type: String, trim: true },
+      assetsVersion: { type: String, trim: true },
+      updatedAt: { type: Number, default: 0 },
+    },
+  },
+  { _id: false }
+ );
+
 const SiteSettingSchema = new Schema(
   {
     key: { type: String, required: true, unique: true, trim: true, index: true },
@@ -174,6 +216,8 @@ const SiteSettingSchema = new Schema(
     footer: { type: FooterSchema, default: () => ({}) },
     globalSeoTitle: { type: String, trim: true, maxlength: 160 },
     globalSeoDescription: { type: String, trim: true, maxlength: 320 },
+    branding: { type: BrandingSchema, default: () => ({}) },
+    brandingUpdatedAt: { type: Number, default: 0 },
     whatsAppOrderTemplate: { type: String, trim: true, maxlength: 5000 },
     returns: { type: ReturnsSettingsSchema, default: () => ({}) },
     inventory: { type: InventorySettingsSchema, default: () => ({}) },
