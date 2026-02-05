@@ -8,6 +8,7 @@ import { useSession, signOut } from "next-auth/react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Menu, Search, ShoppingBag, User2, X } from "lucide-react";
 
+import { formatMoneyFromPkr } from "@/lib/currency";
 import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useStorefrontSettings } from "@/hooks/useStorefrontSettings";
@@ -22,6 +23,10 @@ type Suggestion = {
   title: string;
   slug: string;
   category: string;
+  image: string;
+  pricePkr: number;
+  compareAtPricePkr: number | null;
+  dealLabel: string | null;
 };
 
 type ProductsMeta = {
@@ -38,6 +43,8 @@ export default function Header() {
   const cartCount = useAppSelector((s) =>
     s.cart.items.reduce((acc, i) => acc + i.quantity, 0)
   );
+  const currency = useAppSelector((s) => s.currency.selected);
+  const pkrPerUsd = useAppSelector((s) => s.currency.pkrPerUsd);
 
   const { settings: storefrontSettings } = useStorefrontSettings();
   const branding = storefrontSettings?.branding;
@@ -162,7 +169,7 @@ export default function Header() {
       const data = (await res.json()) as { items: Suggestion[] };
 
       if (!cancelled) {
-        setSuggestions(data.items ?? []);
+        setSuggestions(Array.isArray(data.items) ? data.items : []);
       }
     }
 
@@ -261,11 +268,44 @@ export default function Header() {
                         <Link
                           key={s.slug}
                           href={`/product/${s.slug}`}
-                          className="block rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+                          className="block rounded-xl px-3 py-2 hover:bg-muted"
                         >
-                          <div className="flex items-center justify-between gap-3">
-                            <span className="truncate">{s.title}</span>
-                            <span className="shrink-0 text-xs text-muted-foreground">{s.category}</span>
+                          <div className="flex items-center gap-3">
+                            <span className="relative block h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-border bg-surface">
+                              {s.image?.trim() ? (
+                                <Image
+                                  src={s.image}
+                                  alt={s.title}
+                                  fill
+                                  className="object-cover"
+                                  unoptimized
+                                  sizes="40px"
+                                />
+                              ) : null}
+                            </span>
+
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="truncate text-sm font-medium text-foreground">{s.title}</span>
+                                <span className="shrink-0 text-sm font-semibold text-foreground">
+                                  {formatMoneyFromPkr(Number(s.pricePkr ?? 0), currency, pkrPerUsd)}
+                                </span>
+                              </div>
+                              <div className="mt-0.5 flex items-center justify-between gap-3">
+                                <span className="truncate text-xs text-muted-foreground">{s.category}</span>
+                                <span className="shrink-0 text-xs text-muted-foreground">
+                                  {typeof s.compareAtPricePkr === "number" && s.compareAtPricePkr > Number(s.pricePkr ?? 0) ? (
+                                    <span className="line-through">
+                                      {formatMoneyFromPkr(Number(s.compareAtPricePkr), currency, pkrPerUsd)}
+                                    </span>
+                                  ) : s.dealLabel ? (
+                                    <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-foreground">
+                                      {s.dealLabel}
+                                    </span>
+                                  ) : null}
+                                </span>
+                              </div>
+                            </div>
                           </div>
                         </Link>
                       ))}
@@ -291,6 +331,13 @@ export default function Header() {
           <div className="flex items-center gap-1">
             <LanguageSwitcher className="hidden md:flex" variant="compact" />
             <CurrencySwitcher className="hidden md:flex" variant="compact" />
+
+            <Link
+              href="/track-order"
+              className="hidden rounded-xl px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground md:inline-flex"
+            >
+              Track Order
+            </Link>
             {session?.user ? (
               <button
                 type="button"
@@ -374,6 +421,13 @@ export default function Header() {
               </div>
 
               <div className="mt-4 space-y-1">
+                <Link
+                  href="/track-order"
+                  className="block rounded-xl px-3 py-2 text-sm font-semibold text-foreground hover:bg-muted"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Track Order
+                </Link>
                 {(meta?.categories ?? []).slice(0, 12).map((c) => (
                   <Link
                     key={c.slug}

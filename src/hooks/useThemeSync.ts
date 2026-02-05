@@ -39,6 +39,7 @@ function readThemeFromStorage(raw: string | null) {
     ? {
         primary: String(parsed.colors.primary ?? DEFAULT_THEME.primary),
         secondary: String(parsed.colors.secondary ?? DEFAULT_THEME.secondary),
+        accent: String(parsed.colors.accent ?? DEFAULT_THEME.accent),
         background: String(parsed.colors.background ?? DEFAULT_THEME.background),
         surface: String(parsed.colors.surface ?? parsed.colors.background ?? DEFAULT_THEME.surface),
         header: String(parsed.colors.header ?? parsed.colors.background ?? DEFAULT_THEME.header),
@@ -137,6 +138,7 @@ export function useThemeSync() {
         ? {
             primary: String(msg.colors.primary ?? DEFAULT_THEME.primary),
             secondary: String(msg.colors.secondary ?? DEFAULT_THEME.secondary),
+            accent: String(msg.colors.accent ?? DEFAULT_THEME.accent),
             background: String(msg.colors.background ?? DEFAULT_THEME.background),
             surface: String(msg.colors.surface ?? msg.colors.background ?? DEFAULT_THEME.surface),
             header: String(msg.colors.header ?? msg.colors.background ?? DEFAULT_THEME.header),
@@ -177,6 +179,7 @@ export function useThemeSync() {
           ? {
               primary: String(json.theme.colors.primary ?? DEFAULT_THEME.primary),
               secondary: String(json.theme.colors.secondary ?? DEFAULT_THEME.secondary),
+              accent: String(json.theme.colors.accent ?? DEFAULT_THEME.accent),
               background: String(json.theme.colors.background ?? DEFAULT_THEME.background),
               surface: String(json.theme.colors.surface ?? json.theme.colors.background ?? DEFAULT_THEME.surface),
               header: String(json.theme.colors.header ?? json.theme.colors.background ?? DEFAULT_THEME.header),

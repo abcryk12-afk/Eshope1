@@ -7,9 +7,9 @@ import Providers from "@/app/providers";
 import Header from "@/components/layout/Header";
 import SiteFooter from "@/components/layout/SiteFooter";
 import { dbConnect } from "@/lib/db";
-import { absoluteUrl } from "@/lib/seo";
+import { absoluteUrl, buildOrganizationJsonLd, buildWebsiteJsonLd, safeJsonLdStringify } from "@/lib/seo";
 import { getPublicSeoSettings } from "@/lib/siteBranding";
-import { DEFAULT_THEME, deriveThemeVars, type ThemeColors } from "@/lib/theme";
+import { DEFAULT_THEME, deriveThemeCssText, type ThemeColors } from "@/lib/theme";
 import SiteSetting from "@/models/SiteSetting";
 
 const geistSans = Geist({
@@ -90,6 +90,7 @@ async function getInitialThemeCss() {
     const parsed: ThemeColors = {
       primary: typeof colors?.primary === "string" ? colors.primary : DEFAULT_THEME.primary,
       secondary: typeof colors?.secondary === "string" ? colors.secondary : DEFAULT_THEME.secondary,
+      accent: typeof colors?.accent === "string" ? colors.accent : DEFAULT_THEME.accent,
       background: typeof colors?.background === "string" ? colors.background : DEFAULT_THEME.background,
       surface:
         typeof colors?.surface === "string"
@@ -106,18 +107,9 @@ async function getInitialThemeCss() {
       text: typeof colors?.text === "string" ? colors.text : DEFAULT_THEME.text,
     };
 
-    const vars = deriveThemeVars(parsed);
-    const cssVars = Object.entries(vars)
-      .map(([k, v]) => `${k}:${v}`)
-      .join(";");
-
-    return `:root{${cssVars}}`;
+    return deriveThemeCssText(parsed);
   } catch {
-    const vars = deriveThemeVars(DEFAULT_THEME);
-    const cssVars = Object.entries(vars)
-      .map(([k, v]) => `${k}:${v}`)
-      .join(";");
-    return `:root{${cssVars}}`;
+    return deriveThemeCssText(DEFAULT_THEME);
   }
 }
 
@@ -129,6 +121,9 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const themeCss = await getInitialThemeCss();
+  const seo = await getPublicSeoSettings();
+  const orgJsonLd = buildOrganizationJsonLd({ name: seo.siteName || "Shop", logoUrl: seo.logoUrl || undefined });
+  const websiteJsonLd = buildWebsiteJsonLd({ siteName: seo.siteName || "Shop", description: seo.description || undefined });
 
   const cookieStore = await cookies();
   const rawLang = cookieStore.get("shop.lang")?.value ?? "";
@@ -141,6 +136,14 @@ export default async function RootLayout({
         <style
           id="theme-vars"
           dangerouslySetInnerHTML={{ __html: themeCss }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: safeJsonLdStringify(orgJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: safeJsonLdStringify(websiteJsonLd) }}
         />
       </head>
       <body

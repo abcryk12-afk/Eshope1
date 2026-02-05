@@ -130,7 +130,7 @@ export default function QuickCheckoutBar() {
                   </Button>
                 </Link>
                 <Link href="/checkout" className="w-full sm:w-auto" onClick={() => setOpen(false)}>
-                  <Button type="button" className="w-full sm:w-auto">Checkout Now</Button>
+                  <Button type="button" variant="accent" className="w-full sm:w-auto">Checkout Now</Button>
                 </Link>
               </div>
             </div>
@@ -166,7 +166,7 @@ export default function QuickCheckoutBar() {
                 </Button>
               </Link>
               <Link href="/checkout" className="flex-1 sm:flex-none">
-                <Button type="button" className="w-full sm:w-auto">Checkout Now</Button>
+                <Button type="button" variant="accent" className="w-full sm:w-auto">Checkout Now</Button>
               </Link>
             </div>
           </div>

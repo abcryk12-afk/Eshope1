@@ -225,8 +225,8 @@ export default function AccountOrderDetailClient({ orderId }: Props) {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">Order</h1>
-            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Not found.</p>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Order</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Not found.</p>
           </div>
           <Link href="/account/orders">
             <Button variant="secondary">Back</Button>
@@ -395,9 +395,9 @@ export default function AccountOrderDetailClient({ orderId }: Props) {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Order</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">{order.id}</h1>
-          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Order</p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-foreground">{order.id}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             {fmtDate(order.createdAt)}
           </p>
         </div>
@@ -409,25 +409,25 @@ export default function AccountOrderDetailClient({ orderId }: Props) {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-4">
           {showReceiptSection ? (
-            <div className="rounded-3xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
-              <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Manual payment receipt</h2>
-              <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Status: {paymentStatusLabel}</p>
+            <div className="rounded-3xl border border-border bg-surface p-4">
+              <h2 className="text-sm font-semibold text-foreground">Manual payment receipt</h2>
+              <p className="mt-2 text-sm text-muted-foreground">Status: {paymentStatusLabel}</p>
 
               {paymentStatus === "Rejected" && rejectReason ? (
-                <p className="mt-2 text-sm text-red-600 dark:text-red-400">Rejected: {rejectReason}</p>
+                <p className="mt-2 text-sm text-destructive">Rejected: {rejectReason}</p>
               ) : null}
 
               {receiptUrl ? (
                 <div className="mt-4 space-y-2">
                   {receiptUploadedAt ? (
-                    <p className="text-xs text-zinc-500">Uploaded: {fmtDate(receiptUploadedAt)}</p>
+                    <p className="text-xs text-muted-foreground">Uploaded: {fmtDate(receiptUploadedAt)}</p>
                   ) : null}
 
-                  <div className="rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950">
+                  <div className="rounded-2xl border border-border bg-background p-3">
                     {receiptUrl.toLowerCase().endsWith(".pdf") ? (
-                      <p className="text-sm text-zinc-700 dark:text-zinc-300">PDF receipt uploaded.</p>
+                      <p className="text-sm text-foreground-secondary">PDF receipt uploaded.</p>
                     ) : (
-                      <div className="relative max-h-72 w-full overflow-hidden rounded-xl bg-zinc-50 dark:bg-zinc-900">
+                      <div className="relative max-h-72 w-full overflow-hidden rounded-xl bg-muted">
                         <Image
                           src={receiptUrl}
                           alt="Payment receipt"
@@ -445,7 +445,7 @@ export default function AccountOrderDetailClient({ orderId }: Props) {
                   </a>
                 </div>
               ) : (
-                <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">No receipt uploaded yet.</p>
+                <p className="mt-3 text-sm text-muted-foreground">No receipt uploaded yet.</p>
               )}
 
               {canUploadReceipt ? (
@@ -454,7 +454,7 @@ export default function AccountOrderDetailClient({ orderId }: Props) {
                     type="file"
                     accept="image/jpeg,image/png,application/pdf"
                     onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
-                    className="block w-full text-sm text-zinc-700 dark:text-zinc-300"
+                    className="block w-full text-sm text-foreground-secondary"
                   />
                   <Button type="button" onClick={() => void uploadReceipt()} disabled={receiptUploading}>
                     {receiptUploading ? "Uploading..." : receiptUrl ? "Re-upload receipt" : "Upload Payment Receipt"}
@@ -465,13 +465,13 @@ export default function AccountOrderDetailClient({ orderId }: Props) {
           ) : null}
 
           {canTrack ? (
-            <div className="rounded-3xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
-              <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Track Your Order</h2>
-              <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+            <div className="rounded-3xl border border-border bg-surface p-4">
+              <h2 className="text-sm font-semibold text-foreground">Track Your Order</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
                 Your order has been shipped. Use the tracking link below.
               </p>
               {order.trackingAddedAt ? (
-                <p className="mt-1 text-xs text-zinc-500">Added: {fmtDate(order.trackingAddedAt)}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Added: {fmtDate(order.trackingAddedAt)}</p>
               ) : null}
               <div className="mt-4">
                 <a href={trackingUrl} target="_blank" rel="noreferrer noopener">
@@ -481,18 +481,18 @@ export default function AccountOrderDetailClient({ orderId }: Props) {
             </div>
           ) : null}
 
-          <div className="rounded-3xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
-            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Items</h2>
+          <div className="rounded-3xl border border-border bg-surface p-4">
+            <h2 className="text-sm font-semibold text-foreground">Items</h2>
 
             {order.orderStatus === "Delivered" && returnsWindowDays ? (
-              <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+              <p className="mt-2 text-sm text-muted-foreground">
                 Returns window: {returnsWindowDays} days after delivery.
               </p>
             ) : null}
 
             <div className="mt-4 overflow-x-auto">
               <table className="w-full text-left text-sm">
-                <thead className="text-xs uppercase tracking-wide text-zinc-500">
+                <thead className="text-xs uppercase tracking-wide text-muted-foreground">
                   <tr>
                     <th className="py-2">Product</th>
                     <th className="py-2">Qty</th>
@@ -512,11 +512,11 @@ export default function AccountOrderDetailClient({ orderId }: Props) {
                         const existingStatus = ret?.requestStatus;
 
                         return (
-                          <tr className="border-t border-zinc-200 dark:border-zinc-800">
-                            <td className="py-3 font-medium text-zinc-900 dark:text-zinc-50">{it.title}</td>
-                            <td className="py-3 text-zinc-600 dark:text-zinc-400">{it.quantity}</td>
-                            <td className="py-3 text-right text-zinc-600 dark:text-zinc-400">{money(it.unitPrice, cur, rate)}</td>
-                            <td className="py-3 text-right font-semibold text-zinc-900 dark:text-zinc-50">
+                          <tr className="border-t border-border">
+                            <td className="py-3 font-medium text-foreground">{it.title}</td>
+                            <td className="py-3 text-muted-foreground">{it.quantity}</td>
+                            <td className="py-3 text-right text-muted-foreground">{money(it.unitPrice, cur, rate)}</td>
+                            <td className="py-3 text-right font-semibold text-foreground">
                               {money(it.unitPrice * it.quantity, cur, rate)}
                             </td>
                             <td className="py-3 text-right">
@@ -537,11 +537,11 @@ export default function AccountOrderDetailClient({ orderId }: Props) {
                             </td>
                             <td className="py-3 text-right">
                               {order.orderStatus !== "Delivered" ? (
-                                <span className="text-xs text-zinc-500">—</span>
+                                <span className="text-xs text-muted-foreground">—</span>
                               ) : returnsLoading ? (
-                                <span className="text-xs text-zinc-500">Loading…</span>
+                                <span className="text-xs text-muted-foreground">Loading…</span>
                               ) : existingStatus ? (
-                                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                                <span className="text-xs font-semibold text-foreground-secondary">
                                   {existingStatus}
                                 </span>
                               ) : canRequest ? (
@@ -554,7 +554,7 @@ export default function AccountOrderDetailClient({ orderId }: Props) {
                                   Request Return
                                 </Button>
                               ) : (
-                                <span className="text-xs text-zinc-500" title={ret?.ineligibleReason ?? ""}>
+                                <span className="text-xs text-muted-foreground" title={ret?.ineligibleReason ?? ""}>
                                   Not eligible
                                 </span>
                               )}
@@ -564,10 +564,10 @@ export default function AccountOrderDetailClient({ orderId }: Props) {
                       })()}
 
                       {reviewForProductId === it.productId ? (
-                        <tr className="border-t border-zinc-200 dark:border-zinc-800">
+                        <tr className="border-t border-border">
                           <td colSpan={6} className="py-4">
-                            <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
-                              <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Rate this product</p>
+                            <div className="rounded-2xl border border-border bg-background p-4">
+                              <p className="text-sm font-semibold text-foreground">Rate this product</p>
 
                               <div className="mt-3 flex items-center justify-between gap-3">
                                 <StarRatingInput value={reviewRating} onChange={setReviewRating} disabled={reviewSaving} />
@@ -584,7 +584,7 @@ export default function AccountOrderDetailClient({ orderId }: Props) {
                                 value={reviewComment}
                                 onChange={(e) => setReviewComment(e.target.value)}
                                 rows={3}
-                                className="mt-3 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+                                className="mt-3 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground"
                                 placeholder="Write an optional review..."
                               />
 
@@ -610,16 +610,16 @@ export default function AccountOrderDetailClient({ orderId }: Props) {
             </div>
 
             {!canRate ? (
-              <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+              <p className="mt-3 text-sm text-muted-foreground">
                 You can review products after the order is delivered.
               </p>
             ) : null}
           </div>
 
-          <div className="rounded-3xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
-            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Shipping</h2>
-            <div className="mt-3 text-sm text-zinc-700 dark:text-zinc-300">
-              <div className="font-semibold text-zinc-900 dark:text-zinc-50">{order.shippingAddress.fullName}</div>
+          <div className="rounded-3xl border border-border bg-surface p-4">
+            <h2 className="text-sm font-semibold text-foreground">Shipping</h2>
+            <div className="mt-3 text-sm text-foreground-secondary">
+              <div className="font-semibold text-foreground">{order.shippingAddress.fullName}</div>
               <div>{order.shippingAddress.phone}</div>
               <div>{order.shippingAddress.addressLine1}</div>
               {order.shippingAddress.addressLine2 ? <div>{order.shippingAddress.addressLine2}</div> : null}
@@ -632,43 +632,43 @@ export default function AccountOrderDetailClient({ orderId }: Props) {
         </div>
 
         <div className="space-y-4">
-          <div className="rounded-3xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
-            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Status</h2>
-            <div className="mt-3 space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
+          <div className="rounded-3xl border border-border bg-surface p-4">
+            <h2 className="text-sm font-semibold text-foreground">Status</h2>
+            <div className="mt-3 space-y-2 text-sm text-muted-foreground">
               <div className="flex items-center justify-between">
                 <span>Order status</span>
-                <span className="font-semibold text-zinc-900 dark:text-zinc-50">{order.orderStatus}</span>
+                <span className="font-semibold text-foreground">{order.orderStatus}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span>Payment</span>
-                <span className="font-semibold text-zinc-900 dark:text-zinc-50">{order.isPaid ? "Paid" : "Unpaid"}</span>
+                <span className="font-semibold text-foreground">{order.isPaid ? "Paid" : "Unpaid"}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span>Method</span>
-                <span className="font-semibold text-zinc-900 dark:text-zinc-50">{order.paymentMethod}</span>
+                <span className="font-semibold text-foreground">{order.paymentMethod}</span>
               </div>
             </div>
           </div>
 
-          <div className="rounded-3xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
-            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Totals</h2>
+          <div className="rounded-3xl border border-border bg-surface p-4">
+            <h2 className="text-sm font-semibold text-foreground">Totals</h2>
 
             {totals ? (
-              <div className="mt-3 space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
+              <div className="mt-3 space-y-2 text-sm text-muted-foreground">
                 <div className="flex items-center justify-between">
                   <span>Subtotal</span>
-                  <span className="font-semibold text-zinc-900 dark:text-zinc-50">{money(totals.itemsSubtotal, cur, rate)}</span>
+                  <span className="font-semibold text-foreground">{money(totals.itemsSubtotal, cur, rate)}</span>
                 </div>
                 {order.couponCode && Number(totals.couponDiscountAmount ?? 0) > 0 ? (
                   <div className="flex items-center justify-between">
                     <span>Coupon ({order.couponCode})</span>
-                    <span className="font-semibold text-zinc-900 dark:text-zinc-50">-{money(Number(totals.couponDiscountAmount ?? 0), cur, rate)}</span>
+                    <span className="font-semibold text-foreground">-{money(Number(totals.couponDiscountAmount ?? 0), cur, rate)}</span>
                   </div>
                 ) : null}
                 {order.promotionName && Number(totals.promotionDiscountAmount ?? 0) > 0 ? (
                   <div className="flex items-center justify-between">
                     <span>Promo ({order.promotionName})</span>
-                    <span className="font-semibold text-zinc-900 dark:text-zinc-50">-{money(Number(totals.promotionDiscountAmount ?? 0), cur, rate)}</span>
+                    <span className="font-semibold text-foreground">-{money(Number(totals.promotionDiscountAmount ?? 0), cur, rate)}</span>
                   </div>
                 ) : null}
                 {Number(totals.discountAmount ?? 0) > 0 &&
@@ -676,20 +676,20 @@ export default function AccountOrderDetailClient({ orderId }: Props) {
                 Number(totals.promotionDiscountAmount ?? 0) <= 0 ? (
                   <div className="flex items-center justify-between">
                     <span>{order.couponCode ? `Discount (${order.couponCode})` : "Discount"}</span>
-                    <span className="font-semibold text-zinc-900 dark:text-zinc-50">-{money(totals.discountAmount, cur, rate)}</span>
+                    <span className="font-semibold text-foreground">-{money(totals.discountAmount, cur, rate)}</span>
                   </div>
                 ) : null}
                 <div className="flex items-center justify-between">
                   <span>Shipping</span>
-                  <span className="font-semibold text-zinc-900 dark:text-zinc-50">{money(totals.shippingAmount, cur, rate)}</span>
+                  <span className="font-semibold text-foreground">{money(totals.shippingAmount, cur, rate)}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span>Tax</span>
-                  <span className="font-semibold text-zinc-900 dark:text-zinc-50">{money(totals.taxAmount, cur, rate)}</span>
+                  <span className="font-semibold text-foreground">{money(totals.taxAmount, cur, rate)}</span>
                 </div>
-                <div className="mt-2 flex items-center justify-between border-t border-zinc-200 pt-3 dark:border-zinc-800">
-                  <span className="text-zinc-900 dark:text-zinc-50 font-semibold">Total</span>
-                  <span className="text-zinc-900 dark:text-zinc-50 font-semibold">{money(totals.totalAmount, cur, rate)}</span>
+                <div className="mt-2 flex items-center justify-between border-t border-border pt-3">
+                  <span className="text-foreground font-semibold">Total</span>
+                  <span className="text-foreground font-semibold">{money(totals.totalAmount, cur, rate)}</span>
                 </div>
               </div>
             ) : null}
@@ -698,12 +698,12 @@ export default function AccountOrderDetailClient({ orderId }: Props) {
       </div>
 
       {returnModalOpen && returnForKey ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-lg rounded-3xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4">
+          <div className="w-full max-w-lg rounded-3xl border border-border bg-surface p-6 shadow-xl">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Return request</p>
-                <h3 className="mt-1 text-lg font-semibold text-zinc-900 dark:text-zinc-50">Request a return</h3>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Return request</p>
+                <h3 className="mt-1 text-lg font-semibold text-foreground">Request a return</h3>
               </div>
               <Button
                 type="button"
@@ -721,11 +721,11 @@ export default function AccountOrderDetailClient({ orderId }: Props) {
 
             <div className="mt-4 space-y-3">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Reason</label>
+                <label className="text-sm font-medium text-foreground">Reason</label>
                 <select
                   value={returnReason}
                   onChange={(e) => setReturnReason(e.target.value as typeof returnReason)}
-                  className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+                  className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground"
                 >
                   <option value="Damaged product">Damaged product</option>
                   <option value="Wrong item received">Wrong item received</option>
@@ -736,27 +736,27 @@ export default function AccountOrderDetailClient({ orderId }: Props) {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Comment (optional)</label>
+                <label className="text-sm font-medium text-foreground">Comment (optional)</label>
                 <textarea
                   value={returnComment}
                   onChange={(e) => setReturnComment(e.target.value)}
                   rows={4}
-                  className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground"
                   placeholder="Add any helpful details..."
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Images (optional)</label>
+                <label className="text-sm font-medium text-foreground">Images (optional)</label>
                 <input
                   type="file"
                   accept="image/*"
                   multiple
                   onChange={(e) => setReturnImages(Array.from(e.target.files ?? []).slice(0, 5))}
-                  className="block w-full text-sm text-zinc-700 dark:text-zinc-300"
+                  className="block w-full text-sm text-foreground-secondary"
                 />
                 {returnImages.length ? (
-                  <p className="text-xs text-zinc-500">Selected: {returnImages.length} image(s)</p>
+                  <p className="text-xs text-muted-foreground">Selected: {returnImages.length} image(s)</p>
                 ) : null}
               </div>
             </div>

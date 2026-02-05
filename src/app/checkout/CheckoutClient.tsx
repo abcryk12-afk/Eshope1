@@ -429,15 +429,15 @@ export default function CheckoutClient() {
 
   if (payloadItems.length === 0) {
     return (
-      <div className="min-h-screen bg-zinc-50 px-4 py-10 dark:bg-black">
-        <div className="mx-auto w-full max-w-3xl rounded-3xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+      <div className="min-h-screen bg-background px-4 py-10">
+        <div className="mx-auto w-full max-w-3xl rounded-3xl border border-border bg-surface p-6">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
             Checkout
           </h1>
-          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Your cart is empty.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Your cart is empty.</p>
           <Link
             href="/"
-            className="mt-6 inline-flex text-sm font-semibold text-zinc-900 hover:underline dark:text-zinc-50"
+            className="mt-6 inline-flex text-sm font-semibold text-foreground hover:underline"
           >
             Browse products
           </Link>
@@ -448,7 +448,7 @@ export default function CheckoutClient() {
 
   if (loadingQuote) {
     return (
-      <div className="min-h-screen bg-zinc-50 px-4 py-10 dark:bg-black">
+      <div className="min-h-screen bg-background px-4 py-10">
         <div className="mx-auto w-full max-w-6xl">
           <Skeleton className="h-9 w-44" />
           <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_380px]">
@@ -461,13 +461,13 @@ export default function CheckoutClient() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 px-4 py-10 dark:bg-black">
+    <div className="min-h-screen bg-background px-4 py-10">
       <div className="mx-auto w-full max-w-6xl">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
             Checkout
           </h1>
-          <Link href="/" className="text-sm font-semibold text-zinc-900 hover:underline dark:text-zinc-50">
+          <Link href="/" className="text-sm font-semibold text-foreground hover:underline">
             Continue shopping
           </Link>
         </div>
@@ -479,13 +479,13 @@ export default function CheckoutClient() {
             className={cn(
               "rounded-full border px-3 py-1 font-semibold",
               step === "shipping"
-                ? "border-zinc-900 bg-zinc-50 text-zinc-900 dark:border-zinc-50 dark:bg-zinc-900 dark:text-zinc-50"
-                : "border-zinc-200 bg-white text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300"
+                ? "border-foreground bg-muted text-foreground"
+                : "border-border bg-surface text-muted-foreground"
             )}
           >
             1. Shipping
           </button>
-          <span className="text-zinc-400">→</span>
+          <span className="text-muted-foreground">→</span>
           <button
             type="button"
             onClick={() => {
@@ -498,8 +498,8 @@ export default function CheckoutClient() {
             className={cn(
               "rounded-full border px-3 py-1 font-semibold",
               step === "payment"
-                ? "border-zinc-900 bg-zinc-50 text-zinc-900 dark:border-zinc-50 dark:bg-zinc-900 dark:text-zinc-50"
-                : "border-zinc-200 bg-white text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300",
+                ? "border-foreground bg-muted text-foreground"
+                : "border-border bg-surface text-muted-foreground",
               step === "shipping" && !shippingOk && "opacity-60"
             )}
             disabled={step === "shipping" && !shippingOk}
@@ -509,8 +509,8 @@ export default function CheckoutClient() {
         </div>
 
         <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_380px]">
-          <div className="rounded-3xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
-            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+          <div className="rounded-3xl border border-border bg-surface p-5">
+            <h2 className="text-sm font-semibold text-foreground">
               {step === "shipping" ? "Shipping" : "Payment"}
             </h2>
 
@@ -518,7 +518,7 @@ export default function CheckoutClient() {
               <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                 {isGuest ? (
                   <div className="space-y-2 md:col-span-2">
-                    <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Email</label>
+                    <label className="text-sm font-medium text-foreground">Email</label>
                     <Input
                       type="email"
                       value={guestEmail}
@@ -527,76 +527,76 @@ export default function CheckoutClient() {
                       autoComplete="email"
                     />
                     {guestEmailTouched && guestEmail.trim() && !guestEmailOk ? (
-                      <p className="text-sm text-red-600 dark:text-red-400">Enter a valid email.</p>
+                      <p className="text-sm text-destructive">Enter a valid email.</p>
                     ) : null}
                     {!guestEmail.trim() ? (
-                      <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                      <p className="text-sm text-muted-foreground">
                         We’ll send order updates to this email.
                       </p>
                     ) : null}
                   </div>
                 ) : (
                   <div className="space-y-2 md:col-span-2">
-                    <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Email</label>
+                    <label className="text-sm font-medium text-foreground">Email</label>
                     <Input value={session?.user?.email ?? ""} disabled />
                   </div>
                 )}
 
                 <div className="space-y-2 md:col-span-2">
-                  <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Full name</label>
+                  <label className="text-sm font-medium text-foreground">Full name</label>
                   <Input value={shipping.fullName} onChange={(e) => setShipping((s) => ({ ...s, fullName: e.target.value }))} />
                 </div>
 
                 <div className="space-y-2 md:col-span-2">
-                  <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Phone</label>
+                  <label className="text-sm font-medium text-foreground">Phone</label>
                   <Input value={shipping.phone} onChange={(e) => setShipping((s) => ({ ...s, phone: e.target.value }))} />
                 </div>
 
                 <div className="space-y-2 md:col-span-2">
-                  <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Address line 1</label>
+                  <label className="text-sm font-medium text-foreground">Address line 1</label>
                   <Input value={shipping.addressLine1} onChange={(e) => setShipping((s) => ({ ...s, addressLine1: e.target.value }))} />
                 </div>
 
                 <div className="space-y-2 md:col-span-2">
-                  <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Address line 2</label>
+                  <label className="text-sm font-medium text-foreground">Address line 2</label>
                   <Input value={shipping.addressLine2 ?? ""} onChange={(e) => setShipping((s) => ({ ...s, addressLine2: e.target.value }))} />
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">City</label>
+                  <label className="text-sm font-medium text-foreground">City</label>
                   <Input value={shipping.city} onChange={(e) => setShipping((s) => ({ ...s, city: e.target.value }))} />
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">State</label>
+                  <label className="text-sm font-medium text-foreground">State</label>
                   <Input value={shipping.state} onChange={(e) => setShipping((s) => ({ ...s, state: e.target.value }))} />
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Postal code</label>
+                  <label className="text-sm font-medium text-foreground">Postal code</label>
                   <Input value={shipping.postalCode} onChange={(e) => setShipping((s) => ({ ...s, postalCode: e.target.value }))} />
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Country</label>
+                  <label className="text-sm font-medium text-foreground">Country</label>
                   <Input value={shipping.country} onChange={(e) => setShipping((s) => ({ ...s, country: e.target.value }))} />
                 </div>
               </div>
             ) : (
-              <div className="mt-4 rounded-2xl border border-zinc-200 bg-white p-4 text-sm dark:border-zinc-800 dark:bg-zinc-950">
+              <div className="mt-4 rounded-2xl border border-border bg-background p-4 text-sm">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="font-semibold text-zinc-900 dark:text-zinc-50">Shipping to</p>
-                    <p className="mt-1 text-zinc-700 dark:text-zinc-300">{shipping.fullName}</p>
-                    <p className="mt-1 text-zinc-600 dark:text-zinc-400">{shipping.phone}</p>
-                    <p className="mt-2 text-zinc-600 dark:text-zinc-400">
+                    <p className="font-semibold text-foreground">Shipping to</p>
+                    <p className="mt-1 text-foreground-secondary">{shipping.fullName}</p>
+                    <p className="mt-1 text-muted-foreground">{shipping.phone}</p>
+                    <p className="mt-2 text-muted-foreground">
                       {shipping.addressLine1}
                       {shipping.addressLine2 ? `, ${shipping.addressLine2}` : ""}
                     </p>
-                    <p className="text-zinc-600 dark:text-zinc-400">
+                    <p className="text-muted-foreground">
                       {shipping.city}, {shipping.state} {shipping.postalCode}
                     </p>
-                    <p className="text-zinc-600 dark:text-zinc-400">{shipping.country}</p>
+                    <p className="text-muted-foreground">{shipping.country}</p>
                   </div>
                   <Button type="button" variant="secondary" size="sm" onClick={() => setStep("shipping")}>
                     Edit
@@ -607,7 +607,7 @@ export default function CheckoutClient() {
 
             {step === "payment" ? (
               <div className="mt-6">
-                <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Payment method</h2>
+                <h2 className="text-sm font-semibold text-foreground">Payment method</h2>
 
               <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
               {codAllowed ? (
@@ -618,13 +618,13 @@ export default function CheckoutClient() {
                   className={cn(
                     "rounded-2xl border p-4 text-left",
                     paymentMethod === "cod"
-                      ? "border-zinc-900 bg-zinc-50 dark:border-zinc-50 dark:bg-zinc-900"
-                      : "border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950",
+                      ? "border-foreground bg-muted"
+                      : "border-border bg-surface",
                     (!codAllowed || loadingPayments) && "opacity-50"
                   )}
                 >
-                  <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Cash on delivery</p>
-                  <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Pay when you receive the order.</p>
+                  <p className="text-sm font-semibold text-foreground">Cash on delivery</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Pay when you receive the order.</p>
                 </button>
               ) : null}
 
@@ -635,13 +635,13 @@ export default function CheckoutClient() {
                   className={cn(
                     "rounded-2xl border p-4 text-left",
                     paymentMethod === "manual"
-                      ? "border-zinc-900 bg-zinc-50 dark:border-zinc-50 dark:bg-zinc-900"
-                      : "border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950",
+                      ? "border-foreground bg-muted"
+                      : "border-border bg-surface",
                     (!manualAllowed || loadingPayments) && "opacity-50"
                   )}
                 >
-                  <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Manual payment</p>
-                  <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Mark as unpaid, confirm later.</p>
+                  <p className="text-sm font-semibold text-foreground">Manual payment</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Mark as unpaid, confirm later.</p>
                 </button>
 
                 <button
@@ -651,32 +651,32 @@ export default function CheckoutClient() {
                   className={cn(
                     "rounded-2xl border p-4 text-left",
                     paymentMethod === "online"
-                      ? "border-zinc-900 bg-zinc-50 dark:border-zinc-50 dark:bg-zinc-900"
-                      : "border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950",
+                      ? "border-foreground bg-muted"
+                      : "border-border bg-surface",
                     (!onlineAllowed || loadingPayments) && "opacity-50"
                   )}
                 >
-                  <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Online payment</p>
-                  <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Pay now to confirm your order.</p>
+                  <p className="text-sm font-semibold text-foreground">Online payment</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Pay now to confirm your order.</p>
                 </button>
               </div>
 
               {loadingPayments ? (
-                <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">Loading payment options...</p>
+                <p className="mt-3 text-sm text-muted-foreground">Loading payment options...</p>
               ) : null}
 
               {!loadingPayments && paymentMethod === "cod" ? (
-                <div className="mt-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-300">
+                <div className="mt-3 rounded-2xl border border-border bg-muted p-4 text-sm text-foreground-secondary">
                   Pay in cash when your order arrives.
                 </div>
               ) : null}
 
               {!loadingPayments && paymentMethod === "manual" ? (
-                <div className="mt-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900/30">
+                <div className="mt-3 rounded-2xl border border-border bg-muted p-4">
                   {paymentSettings?.manual?.instructions ? (
-                    <p className="text-sm text-zinc-700 dark:text-zinc-300">{paymentSettings.manual.instructions}</p>
+                    <p className="text-sm text-foreground-secondary">{paymentSettings.manual.instructions}</p>
                   ) : (
-                    <p className="text-sm text-zinc-700 dark:text-zinc-300">
+                    <p className="text-sm text-foreground-secondary">
                       After placing the order, transfer the total amount to our bank account and share the transaction reference.
                     </p>
                   )}
@@ -686,14 +686,14 @@ export default function CheckoutClient() {
                       {paymentSettings.manual.accounts.map((a, idx) => (
                         <div
                           key={`${a.label ?? a.bankName ?? "acc"}:${idx}`}
-                          className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950"
+                          className="rounded-2xl border border-border bg-surface p-4"
                         >
-                          <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{a.label || "Bank account"}</div>
+                          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{a.label || "Bank account"}</div>
                           <div className="mt-2 space-y-1">
-                            {a.bankName ? <div className="font-semibold text-zinc-900 dark:text-zinc-50">{a.bankName}</div> : null}
-                            {a.accountTitle ? <div className="text-zinc-700 dark:text-zinc-300">{a.accountTitle}</div> : null}
-                            {a.accountNumber ? <div className="text-zinc-700 dark:text-zinc-300">{a.accountNumber}</div> : null}
-                            {a.iban ? <div className="text-zinc-700 dark:text-zinc-300">{a.iban}</div> : null}
+                            {a.bankName ? <div className="font-semibold text-foreground">{a.bankName}</div> : null}
+                            {a.accountTitle ? <div className="text-foreground-secondary">{a.accountTitle}</div> : null}
+                            {a.accountNumber ? <div className="text-foreground-secondary">{a.accountNumber}</div> : null}
+                            {a.iban ? <div className="text-foreground-secondary">{a.iban}</div> : null}
                           </div>
                         </div>
                       ))}
@@ -703,14 +703,14 @@ export default function CheckoutClient() {
               ) : null}
 
               {!loadingPayments && paymentMethod === "online" ? (
-                <div className="mt-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900/30">
-                  <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                <div className="mt-3 rounded-2xl border border-border bg-muted p-4">
+                  <p className="text-sm font-semibold text-foreground">
                     {paymentSettings?.online?.provider ? `Online payment (${paymentSettings.online.provider})` : "Online payment"}
                   </p>
                   {paymentSettings?.online?.instructions ? (
-                    <p className="mt-2 text-sm text-zinc-700 dark:text-zinc-300">{paymentSettings.online.instructions}</p>
+                    <p className="mt-2 text-sm text-foreground-secondary">{paymentSettings.online.instructions}</p>
                   ) : (
-                    <p className="mt-2 text-sm text-zinc-700 dark:text-zinc-300">
+                    <p className="mt-2 text-sm text-foreground-secondary">
                       Online payments are not configured yet. You can still place the order and pay later.
                     </p>
                   )}
@@ -720,7 +720,7 @@ export default function CheckoutClient() {
             ) : null}
 
             <div className="mt-6">
-              <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Items</h2>
+              <h2 className="text-sm font-semibold text-foreground">Items</h2>
 
               {quote?.items?.length ? (
                 <div className="mt-4 space-y-3">
@@ -736,11 +736,11 @@ export default function CheckoutClient() {
                         className={cn(
                           "flex gap-3 rounded-2xl border p-3",
                           i.isAvailable
-                            ? "border-zinc-200 dark:border-zinc-800"
-                            : "border-red-300 bg-red-50 dark:border-red-900 dark:bg-red-950"
+                            ? "border-border"
+                            : "border-destructive/40 bg-destructive/10"
                         )}
                       >
-                        <div className="relative h-16 w-16 overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-900">
+                        <div className="relative h-16 w-16 overflow-hidden rounded-xl bg-muted">
                           {i.image ? (
                             <Image
                               src={i.image}
@@ -757,46 +757,46 @@ export default function CheckoutClient() {
                             <div className="min-w-0">
                               <Link
                                 href={`/product/${i.slug}`}
-                                className="line-clamp-2 text-sm font-semibold text-zinc-900 hover:underline dark:text-zinc-50"
+                                className="line-clamp-2 text-sm font-semibold text-foreground hover:underline"
                               >
                                 {i.title}
                               </Link>
 
                               <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-                                <span className="text-zinc-500">
+                                <span className="text-muted-foreground">
                                   {formatMoneyFromPkr(i.unitPrice, currency.selected, currency.pkrPerUsd)}
                                 </span>
                                 {typeof i.originalUnitPrice === "number" && i.originalUnitPrice > i.unitPrice ? (
-                                  <span className="text-zinc-400 line-through">
+                                  <span className="text-muted-foreground line-through">
                                     {formatMoneyFromPkr(i.originalUnitPrice, currency.selected, currency.pkrPerUsd)}
                                   </span>
                                 ) : null}
-                                <span className="text-zinc-500">· {i.availableStock} in stock</span>
+                                <span className="text-muted-foreground">· {i.availableStock} in stock</span>
                               </div>
 
                               {savedTotal > 0 ? (
-                                <p className="mt-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                                <p className="mt-1 text-xs font-medium text-success">
                                   You saved {formatMoneyFromPkr(savedTotal, currency.selected, currency.pkrPerUsd)}
                                 </p>
                               ) : null}
 
                               {!i.isAvailable ? (
-                                <p className="mt-1 text-xs font-medium text-red-700 dark:text-red-300">
+                                <p className="mt-1 text-xs font-medium text-destructive">
                                   {i.message ?? "Not available"}
                                 </p>
                               ) : null}
                             </div>
 
-                            <p className="shrink-0 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                            <p className="shrink-0 text-sm font-semibold text-foreground">
                               {formatMoneyFromPkr(i.lineTotal, currency.selected, currency.pkrPerUsd)}
                             </p>
                           </div>
 
                           <div className="mt-3 flex items-center justify-between">
-                            <div className="inline-flex items-center rounded-xl border border-zinc-200 p-1 dark:border-zinc-800">
+                            <div className="inline-flex items-center rounded-xl border border-border p-1">
                               <button
                                 type="button"
-                                className="inline-flex h-8 w-8 items-center justify-center rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900"
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted"
                                 onClick={() =>
                                   dispatch(
                                     setCartItemQuantity({
@@ -810,12 +810,12 @@ export default function CheckoutClient() {
                               >
                                 -
                               </button>
-                              <span className="w-10 text-center text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                              <span className="w-10 text-center text-sm font-medium text-foreground">
                                 {i.quantity}
                               </span>
                               <button
                                 type="button"
-                                className="inline-flex h-8 w-8 items-center justify-center rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900"
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted"
                                 onClick={() =>
                                   dispatch(
                                     setCartItemQuantity({
@@ -841,7 +841,7 @@ export default function CheckoutClient() {
                                   })
                                 )
                               }
-                              className="text-sm font-medium text-zinc-600 hover:underline dark:text-zinc-400"
+                              className="text-sm font-medium text-muted-foreground hover:underline"
                             >
                               Remove
                             </button>
@@ -852,17 +852,17 @@ export default function CheckoutClient() {
                   })}
                 </div>
               ) : (
-                <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">Your cart is empty.</p>
+                <p className="mt-3 text-sm text-muted-foreground">Your cart is empty.</p>
               )}
             </div>
           </div>
 
-          <aside className="h-fit rounded-3xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
-            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Summary</h2>
+          <aside className="h-fit rounded-3xl border border-border bg-surface p-5">
+            <h2 className="text-sm font-semibold text-foreground">Summary</h2>
 
             <div className="mt-4 space-y-3">
               <div>
-                <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Coupon</label>
+                <label className="text-sm font-medium text-foreground">Coupon</label>
                 <div className="mt-2 flex gap-2">
                   <Input
                     value={couponInput}
@@ -871,6 +871,7 @@ export default function CheckoutClient() {
                   />
                   <Button
                     type="button"
+                    variant="secondary"
                     onClick={applyCoupon}
                     disabled={!couponInput.trim() && !couponCode.trim()}
                   >
@@ -878,7 +879,7 @@ export default function CheckoutClient() {
                   </Button>
                 </div>
                 {quote?.coupon && !quote.coupon.ok ? (
-                  <p className="mt-2 text-sm text-red-600 dark:text-red-400">
+                  <p className="mt-2 text-sm text-destructive">
                     {quote.coupon.message ?? "Invalid coupon"}
                   </p>
                 ) : null}
@@ -886,16 +887,16 @@ export default function CheckoutClient() {
 
               <div className="space-y-2 text-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-zinc-600 dark:text-zinc-400">Subtotal</span>
-                  <span className="font-semibold text-zinc-900 dark:text-zinc-50">
+                  <span className="text-muted-foreground">Subtotal</span>
+                  <span className="font-semibold text-foreground">
                     {formatMoneyFromPkr(quote?.itemsSubtotal ?? 0, currency.selected, currency.pkrPerUsd)}
                   </span>
                 </div>
 
                 {quote?.coupon?.ok && (quote?.couponDiscountAmount ?? 0) > 0 ? (
                   <div className="flex items-center justify-between">
-                    <span className="text-zinc-600 dark:text-zinc-400">Coupon ({quote.coupon.code})</span>
-                    <span className="font-semibold text-zinc-900 dark:text-zinc-50">
+                    <span className="text-muted-foreground">Coupon ({quote.coupon.code})</span>
+                    <span className="font-semibold text-foreground">
                       -{formatMoneyFromPkr(quote.couponDiscountAmount ?? 0, currency.selected, currency.pkrPerUsd)}
                     </span>
                   </div>
@@ -903,8 +904,8 @@ export default function CheckoutClient() {
 
                 {quote?.promotion && (quote?.promotionDiscountAmount ?? 0) > 0 ? (
                   <div className="flex items-center justify-between">
-                    <span className="text-zinc-600 dark:text-zinc-400">Promo ({quote.promotion.name})</span>
-                    <span className="font-semibold text-zinc-900 dark:text-zinc-50">
+                    <span className="text-muted-foreground">Promo ({quote.promotion.name})</span>
+                    <span className="font-semibold text-foreground">
                       -{formatMoneyFromPkr(quote.promotionDiscountAmount ?? 0, currency.selected, currency.pkrPerUsd)}
                     </span>
                   </div>
@@ -914,18 +915,18 @@ export default function CheckoutClient() {
                 !(quote?.promotion && (quote?.promotionDiscountAmount ?? 0) > 0) &&
                 (quote?.discountAmount ?? 0) > 0 ? (
                   <div className="flex items-center justify-between">
-                    <span className="text-zinc-600 dark:text-zinc-400">
+                    <span className="text-muted-foreground">
                       {quote?.coupon?.ok ? `Discount (${quote.coupon.code})` : "Discount"}
                     </span>
-                    <span className="font-semibold text-zinc-900 dark:text-zinc-50">
+                    <span className="font-semibold text-foreground">
                       -{formatMoneyFromPkr(quote?.discountAmount ?? 0, currency.selected, currency.pkrPerUsd)}
                     </span>
                   </div>
                 ) : null}
 
                 <div className="flex items-center justify-between">
-                  <span className="text-zinc-600 dark:text-zinc-400">Shipping</span>
-                  <span className="font-semibold text-zinc-900 dark:text-zinc-50">
+                  <span className="text-muted-foreground">Shipping</span>
+                  <span className="font-semibold text-foreground">
                     {Number(quote?.shippingAmount ?? 0) <= 0
                       ? "Free"
                       : formatMoneyFromPkr(quote?.shippingAmount ?? 0, currency.selected, currency.pkrPerUsd)}
@@ -933,34 +934,34 @@ export default function CheckoutClient() {
                 </div>
 
                 {quote?.shippingIsFree ? (
-                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-medium text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">
+                  <div className="rounded-2xl border border-success/30 bg-success/10 p-3 text-xs font-medium text-success">
                     Free Delivery Applied
                   </div>
                 ) : (quote?.shippingRemainingForFree ?? 0) > 0 ? (
-                  <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-300">
+                  <div className="rounded-2xl border border-border bg-muted p-3 text-xs text-foreground-secondary">
                     Spend {formatMoneyFromPkr(quote?.shippingRemainingForFree ?? 0, currency.selected, currency.pkrPerUsd)} more for free delivery
                   </div>
                 ) : null}
 
                 {quote?.deliveryEta?.text ? (
-                  <div className="text-xs text-zinc-500">{quote.deliveryEta.text}</div>
+                  <div className="text-xs text-muted-foreground">{quote.deliveryEta.text}</div>
                 ) : null}
 
                 {refreshingQuote ? (
-                  <div className="text-xs text-zinc-500">Updating delivery…</div>
+                  <div className="text-xs text-muted-foreground">Updating delivery…</div>
                 ) : null}
 
                 <div className="flex items-center justify-between">
-                  <span className="text-zinc-600 dark:text-zinc-400">Tax</span>
-                  <span className="font-semibold text-zinc-900 dark:text-zinc-50">
+                  <span className="text-muted-foreground">Tax</span>
+                  <span className="font-semibold text-foreground">
                     {formatMoneyFromPkr(quote?.taxAmount ?? 0, currency.selected, currency.pkrPerUsd)}
                   </span>
                 </div>
 
-                <div className="border-t border-zinc-200 pt-3 dark:border-zinc-800">
+                <div className="border-t border-border pt-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-zinc-600 dark:text-zinc-400">Total</span>
-                    <span className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+                    <span className="text-muted-foreground">Total</span>
+                    <span className="text-lg font-semibold text-foreground">
                       {formatMoneyFromPkr(quote?.totalAmount ?? 0, currency.selected, currency.pkrPerUsd)}
                     </span>
                   </div>
@@ -968,17 +969,17 @@ export default function CheckoutClient() {
               </div>
 
               {step === "shipping" ? (
-                <Button type="button" className="w-full" disabled={!shippingOk || placing} onClick={continueToPayment}>
+                <Button type="button" variant="accent" className="w-full" disabled={!shippingOk || placing} onClick={continueToPayment}>
                   Continue to payment
                 </Button>
               ) : (
-                <Button type="button" className="w-full" disabled={!canPlace || placing} onClick={placeOrder}>
+                <Button type="button" variant="accent" className="w-full" disabled={!canPlace || placing} onClick={placeOrder}>
                   {placing ? "Placing order..." : "Place order"}
                 </Button>
               )}
 
               {quote?.items?.some((i) => !i.isAvailable) ? (
-                <p className="text-sm text-red-600 dark:text-red-400">
+                <p className="text-sm text-destructive">
                   Fix unavailable items before placing the order.
                 </p>
               ) : null}

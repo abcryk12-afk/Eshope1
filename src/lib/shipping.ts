@@ -95,12 +95,18 @@ export type BrandingSettings = {
   updatedAt: number;
 };
 
+export type WhatsAppStorefrontSettings = {
+  salesPhone: string;
+  productTemplate: string;
+};
+
 export type StorefrontSettings = {
   inventory: { lowStockThreshold: number };
   shipping: NormalizedShippingSettings;
   storefrontLayout: StorefrontLayoutSettings;
   cartUx: CartUxSettings;
   branding: BrandingSettings;
+  whatsApp: WhatsAppStorefrontSettings;
 };
 
 export type ShippingEta = {
@@ -286,6 +292,9 @@ export function normalizeStorefrontSettings(doc: unknown): StorefrontSettings {
 
   const brandingUpdatedAt = typeof root.brandingUpdatedAt === "number" ? root.brandingUpdatedAt : 0;
 
+  const whatsAppSalesPhone = readString(root.whatsAppSalesPhone, "").slice(0, 40);
+  const whatsAppProductTemplate = readString(root.whatsAppProductTemplate, "").slice(0, 5000);
+
   return {
     inventory: { lowStockThreshold },
     shipping,
@@ -336,6 +345,10 @@ export function normalizeStorefrontSettings(doc: unknown): StorefrontSettings {
         updatedAt: faviconUpdatedAt,
       },
       updatedAt: brandingUpdatedAt,
+    },
+    whatsApp: {
+      salesPhone: whatsAppSalesPhone,
+      productTemplate: whatsAppProductTemplate,
     },
   };
 }

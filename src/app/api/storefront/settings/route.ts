@@ -11,7 +11,9 @@ export async function GET() {
   await dbConnect();
 
   const doc = (await SiteSetting.findOne({ key: "global" })
-    .select("inventory shipping storefrontLayout cartUx branding brandingUpdatedAt")
+    .select(
+      "inventory shipping storefrontLayout cartUx branding brandingUpdatedAt whatsAppSalesPhone whatsAppProductTemplate"
+    )
     .lean()) as unknown;
   const settings = normalizeStorefrontSettings(doc);
 

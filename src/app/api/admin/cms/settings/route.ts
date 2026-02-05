@@ -71,6 +71,8 @@ const BodySchema = z.object({
   footer: z.union([FooterSchema, z.null()]).optional(),
   globalSeoTitle: z.string().trim().max(160).optional(),
   globalSeoDescription: z.string().trim().max(320).optional(),
+  whatsAppSalesPhone: z.string().trim().max(40).optional(),
+  whatsAppProductTemplate: z.string().trim().max(5000).optional(),
   whatsAppOrderTemplate: z.string().trim().max(5000).optional(),
   returnsWindowDays: z.number().int().min(1).max(60).optional(),
   inventoryLowStockThreshold: z.number().int().min(0).max(1000).optional(),
@@ -116,6 +118,9 @@ const WHATSAPP_ALLOWED_PLACEHOLDERS = new Set([
 ]);
 
 const WHATSAPP_REQUIRED_PLACEHOLDERS = new Set(["customerName", "orderId", "total", "paymentMethod"]);
+
+const WHATSAPP_PRODUCT_ALLOWED_PLACEHOLDERS = new Set(["storeName", "productName", "productUrl"]);
+const WHATSAPP_PRODUCT_REQUIRED_PLACEHOLDERS = new Set(["productName"]);
 
 function extractPlaceholders(template: string) {
   const found = new Set<string>();
@@ -191,6 +196,14 @@ export async function GET() {
       footer: (doc as unknown as { footer?: unknown }).footer ?? {},
       globalSeoTitle: doc?.globalSeoTitle ?? "",
       globalSeoDescription: doc?.globalSeoDescription ?? "",
+      whatsAppSalesPhone:
+        typeof (doc as unknown as { whatsAppSalesPhone?: unknown }).whatsAppSalesPhone === "string"
+          ? String((doc as unknown as { whatsAppSalesPhone?: string }).whatsAppSalesPhone)
+          : "",
+      whatsAppProductTemplate:
+        typeof (doc as unknown as { whatsAppProductTemplate?: unknown }).whatsAppProductTemplate === "string"
+          ? String((doc as unknown as { whatsAppProductTemplate?: string }).whatsAppProductTemplate)
+          : "",
       whatsAppOrderTemplate:
         typeof (doc as unknown as { whatsAppOrderTemplate?: unknown }).whatsAppOrderTemplate === "string"
           ? String((doc as unknown as { whatsAppOrderTemplate?: string }).whatsAppOrderTemplate)
@@ -243,6 +256,31 @@ export async function PUT(req: NextRequest) {
     }
   }
 
+  const waProductTemplate = String(parsed.data.whatsAppProductTemplate ?? "");
+  if (waProductTemplate.trim()) {
+    const found = extractPlaceholders(waProductTemplate);
+    const unknown = Array.from(found).filter((k) => !WHATSAPP_PRODUCT_ALLOWED_PLACEHOLDERS.has(k));
+
+    if (unknown.length) {
+      return NextResponse.json(
+        {
+          message: `Unknown WhatsApp product placeholders: ${unknown.join(", ")}`,
+        },
+        { status: 400 }
+      );
+    }
+
+    const missing = Array.from(WHATSAPP_PRODUCT_REQUIRED_PLACEHOLDERS).filter((k) => !found.has(k));
+    if (missing.length) {
+      return NextResponse.json(
+        {
+          message: `WhatsApp product template must include: ${missing.map((k) => `{{${k}}}`).join(", ")}`,
+        },
+        { status: 400 }
+      );
+    }
+  }
+
   await dbConnect();
 
   const nextReturnsWindowDays =
@@ -273,6 +311,16 @@ export async function PUT(req: NextRequest) {
   delete setPayload.shippingCityRules;
 
   const unsetPayload: Record<string, unknown> = {};
+  if (!String(parsed.data.whatsAppSalesPhone ?? "").trim()) {
+    delete setPayload.whatsAppSalesPhone;
+    unsetPayload.whatsAppSalesPhone = 1;
+  }
+
+  if (!String(parsed.data.whatsAppProductTemplate ?? "").trim()) {
+    delete setPayload.whatsAppProductTemplate;
+    unsetPayload.whatsAppProductTemplate = 1;
+  }
+
   if (!String(parsed.data.whatsAppOrderTemplate ?? "").trim()) {
     delete setPayload.whatsAppOrderTemplate;
     unsetPayload.whatsAppOrderTemplate = 1;
@@ -381,6 +429,14 @@ export async function PUT(req: NextRequest) {
       footer: (doc as unknown as { footer?: unknown }).footer ?? {},
       globalSeoTitle: doc?.globalSeoTitle ?? "",
       globalSeoDescription: doc?.globalSeoDescription ?? "",
+      whatsAppSalesPhone:
+        typeof (doc as unknown as { whatsAppSalesPhone?: unknown }).whatsAppSalesPhone === "string"
+          ? String((doc as unknown as { whatsAppSalesPhone?: string }).whatsAppSalesPhone)
+          : "",
+      whatsAppProductTemplate:
+        typeof (doc as unknown as { whatsAppProductTemplate?: unknown }).whatsAppProductTemplate === "string"
+          ? String((doc as unknown as { whatsAppProductTemplate?: string }).whatsAppProductTemplate)
+          : "",
       whatsAppOrderTemplate:
         typeof (doc as unknown as { whatsAppOrderTemplate?: unknown }).whatsAppOrderTemplate === "string"
           ? String((doc as unknown as { whatsAppOrderTemplate?: string }).whatsAppOrderTemplate)

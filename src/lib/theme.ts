@@ -1,8 +1,9 @@
-export type ThemePresetId = "default" | "daraz" | "amazon";
+export type ThemePresetId = "default" | "marketplace" | "sales" | "premium" | "daraz" | "amazon";
 
 export type ThemeColors = {
   primary: string;
   secondary: string;
+  accent: string;
   background: string;
   surface: string;
   header: string;
@@ -12,6 +13,7 @@ export type ThemeColors = {
 export const DEFAULT_THEME: ThemeColors = {
   primary: "#18181b",
   secondary: "#f4f4f5",
+  accent: "#ff6a00",
   background: "#ffffff",
   surface: "#ffffff",
   header: "#ffffff",
@@ -20,9 +22,37 @@ export const DEFAULT_THEME: ThemeColors = {
 
 export const PRESET_THEMES: Record<ThemePresetId, ThemeColors> = {
   default: DEFAULT_THEME,
+  marketplace: {
+    primary: "#1d4ed8",
+    secondary: "#eff6ff",
+    accent: "#f97316",
+    background: "#ffffff",
+    surface: "#ffffff",
+    header: "#ffffff",
+    text: "#0f172a",
+  },
+  sales: {
+    primary: "#b91c1c",
+    secondary: "#fff1f2",
+    accent: "#ef4444",
+    background: "#ffffff",
+    surface: "#ffffff",
+    header: "#ffffff",
+    text: "#111827",
+  },
+  premium: {
+    primary: "#0b0f19",
+    secondary: "#f5f5f4",
+    accent: "#d4af37",
+    background: "#ffffff",
+    surface: "#ffffff",
+    header: "#ffffff",
+    text: "#0b0f19",
+  },
   daraz: {
     primary: "#1a7f37",
     secondary: "#f0fdf4",
+    accent: "#22c55e",
     background: "#ffffff",
     surface: "#ffffff",
     header: "#ffffff",
@@ -31,6 +61,7 @@ export const PRESET_THEMES: Record<ThemePresetId, ThemeColors> = {
   amazon: {
     primary: "#232f3e",
     secondary: "#ff9900",
+    accent: "#ff9900",
     background: "#ffffff",
     surface: "#ffffff",
     header: "#ffffff",
@@ -50,6 +81,12 @@ function hexToRgb(hex: string) {
   const b = Number.parseInt(v.slice(4, 6), 16);
   if ([r, g, b].some((x) => Number.isNaN(x))) return null;
   return { r, g, b };
+}
+
+function rgbaFromHex(hex: string, alpha: number) {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return `rgba(0, 0, 0, ${clamp(alpha, 0, 1)})`;
+  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${clamp(alpha, 0, 1)})`;
 }
 
 function rgbToHex(r: number, g: number, b: number) {
@@ -95,22 +132,42 @@ function computeSecondaryFg(secondary: string) {
   return yiq >= 160 ? "#0f172a" : "#ffffff";
 }
 
+function computeAccentFg(accent: string) {
+  return computePrimaryFg(accent);
+}
+
+function computeSubtleBorder(background: string, text: string) {
+  return mix(background, text, 0.08);
+}
+
+function computeSecondaryText(background: string, text: string) {
+  return mix(text, background, 0.28);
+}
+
 export function deriveThemeVars(theme: ThemeColors) {
   const primaryHover = computeHover(theme.primary, theme.background);
   const secondaryHover = computeHover(theme.secondary, theme.background);
+  const accentHover = computeHover(theme.accent, theme.background);
   const border = computeBorder(theme.background, theme.text);
+  const borderMuted = computeSubtleBorder(theme.background, theme.text);
   const muted = computeMuted(theme.background, theme.text);
   const mutedFg = computeMutedFg(theme.background, theme.text);
-  const ring = `rgba(24, 24, 27, 0.18)`;
+  const secondaryText = computeSecondaryText(theme.background, theme.text);
+  const ring = rgbaFromHex(theme.primary, 0.22);
+
+  const destructive = "#ef4444";
+  const destructiveFg = computePrimaryFg(destructive);
 
   return {
     "--theme-background": theme.background,
     "--theme-surface": theme.surface,
     "--theme-header": theme.header,
     "--theme-foreground": theme.text,
+    "--theme-foreground-secondary": secondaryText,
     "--theme-muted": muted,
     "--theme-muted-foreground": mutedFg,
     "--theme-border": border,
+    "--theme-border-muted": borderMuted,
 
     "--theme-primary": theme.primary,
     "--theme-primary-hover": primaryHover,
@@ -120,19 +177,44 @@ export function deriveThemeVars(theme: ThemeColors) {
     "--theme-secondary-hover": secondaryHover,
     "--theme-secondary-foreground": computeSecondaryFg(theme.secondary),
 
+    "--theme-accent": theme.accent,
+    "--theme-accent-hover": accentHover,
+    "--theme-accent-foreground": computeAccentFg(theme.accent),
+
+    "--theme-success": "#16a34a",
+    "--theme-warning": "#f59e0b",
+
+    "--theme-destructive": destructive,
+    "--theme-destructive-foreground": destructiveFg,
+
     "--theme-ring": ring,
   } as const;
 }
 
-function deriveDarkTheme(theme: ThemeColors): ThemeColors {
+export function deriveDarkTheme(theme: ThemeColors): ThemeColors {
   return {
     primary: theme.primary,
     secondary: theme.secondary,
+    accent: theme.accent,
     background: "#0a0a0a",
     surface: "#0a0a0a",
     header: "#0a0a0a",
     text: "#ededed",
   };
+}
+
+export function deriveThemeCssText(theme: ThemeColors) {
+  const light = deriveThemeVars(theme);
+  const dark = deriveThemeVars(deriveDarkTheme(theme));
+
+  const lightCss = Object.entries(light)
+    .map(([k, v]) => `${k}:${v}`)
+    .join(";");
+  const darkCss = Object.entries(dark)
+    .map(([k, v]) => `${k}:${v}`)
+    .join(";");
+
+  return `:root{${lightCss}}@media (prefers-color-scheme: dark){:root{${darkCss}}}`;
 }
 
 export function applyThemeToDocument(theme: ThemeColors) {

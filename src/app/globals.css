@@ -5,9 +5,11 @@
   --theme-surface: #ffffff;
   --theme-header: #ffffff;
   --theme-foreground: #171717;
+  --theme-foreground-secondary: #3f3f46;
   --theme-muted: #f4f4f5;
   --theme-muted-foreground: #52525b;
   --theme-border: #e4e4e7;
+  --theme-border-muted: #ededee;
 
   --radius-none: 0px;
   --radius-sm: 0.5rem;
@@ -19,6 +21,9 @@
   --theme-destructive: #ef4444;
   --theme-destructive-foreground: #ffffff;
 
+  --theme-success: #16a34a;
+  --theme-warning: #f59e0b;
+
   --theme-primary: #18181b;
   --theme-primary-hover: #27272a;
   --theme-primary-foreground: #ffffff;
@@ -27,32 +32,69 @@
   --theme-secondary-hover: #e4e4e7;
   --theme-secondary-foreground: #18181b;
 
+  --theme-accent: #ff6a00;
+  --theme-accent-hover: #ff7a1a;
+  --theme-accent-foreground: #ffffff;
+
   --theme-ring: rgba(24, 24, 27, 0.18);
 
-  --background: var(--theme-background);
-  --foreground: var(--theme-foreground);
+  --color-brand-primary: var(--theme-primary);
+  --color-brand-secondary: var(--theme-secondary);
+  --color-brand-accent: var(--theme-accent);
+
+  --color-text-primary: var(--theme-foreground);
+  --color-text-secondary: var(--theme-foreground-secondary);
+  --color-text-muted: var(--theme-muted-foreground);
+
+  --color-bg-page: var(--theme-background);
+  --color-bg-surface: var(--theme-surface);
+  --color-bg-header: var(--theme-header);
+  --color-bg-muted: var(--theme-muted);
+
+  --color-border-default: var(--theme-border);
+  --color-border-muted: var(--theme-border-muted);
+
+  --color-success: var(--theme-success);
+  --color-warning: var(--theme-warning);
+  --color-error: var(--theme-destructive);
+
+  --color-on-primary: var(--theme-primary-foreground);
+  --color-on-secondary: var(--theme-secondary-foreground);
+  --color-on-accent: var(--theme-accent-foreground);
+  --color-on-error: var(--theme-destructive-foreground);
+
+  --color-ring: var(--theme-ring);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-surface: var(--theme-surface);
-  --color-header: var(--theme-header);
-  --color-muted: var(--theme-muted);
-  --color-muted-foreground: var(--theme-muted-foreground);
-  --color-border: var(--theme-border);
+  --color-background: var(--color-bg-page);
+  --color-foreground: var(--color-text-primary);
+  --color-foreground-secondary: var(--color-text-secondary);
+  --color-surface: var(--color-bg-surface);
+  --color-header: var(--color-bg-header);
+  --color-muted: var(--color-bg-muted);
+  --color-muted-foreground: var(--color-text-muted);
+  --color-border: var(--color-border-default);
+  --color-border-muted: var(--theme-border-muted);
   --color-ring: var(--theme-ring);
 
-  --color-destructive: var(--theme-destructive);
-  --color-destructive-foreground: var(--theme-destructive-foreground);
+  --color-destructive: var(--color-error);
+  --color-destructive-foreground: var(--color-on-error);
 
-  --color-primary: var(--theme-primary);
+  --color-primary: var(--color-brand-primary);
   --color-primary-hover: var(--theme-primary-hover);
-  --color-primary-foreground: var(--theme-primary-foreground);
+  --color-primary-foreground: var(--color-on-primary);
 
-  --color-secondary: var(--theme-secondary);
+  --color-secondary: var(--color-brand-secondary);
   --color-secondary-hover: var(--theme-secondary-hover);
-  --color-secondary-foreground: var(--theme-secondary-foreground);
+  --color-secondary-foreground: var(--color-on-secondary);
+
+  --color-accent: var(--color-brand-accent);
+  --color-accent-hover: var(--theme-accent-hover);
+  --color-accent-foreground: var(--color-on-accent);
+
+  --color-success: var(--theme-success);
+  --color-warning: var(--theme-warning);
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
@@ -64,9 +106,11 @@
     --theme-surface: #0a0a0a;
     --theme-header: #0a0a0a;
     --theme-foreground: #ededed;
+    --theme-foreground-secondary: #cbd5e1;
     --theme-muted: #18181b;
     --theme-muted-foreground: #a1a1aa;
     --theme-border: #27272a;
+    --theme-border-muted: #1f1f23;
 
     --theme-destructive: #ef4444;
     --theme-destructive-foreground: #ffffff;
@@ -79,15 +123,16 @@
     --theme-secondary-hover: #27272a;
     --theme-secondary-foreground: #fafafa;
 
-    --theme-ring: rgba(250, 250, 250, 0.18);
+    --theme-accent: #ff6a00;
+    --theme-accent-hover: #ff7a1a;
+    --theme-accent-foreground: #ffffff;
 
-    --background: var(--theme-background);
-    --foreground: var(--theme-foreground);
+    --theme-ring: rgba(250, 250, 250, 0.18);
   }
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-bg-page);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
 }

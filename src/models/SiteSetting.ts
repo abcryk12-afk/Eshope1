@@ -218,6 +218,8 @@ const SiteSettingSchema = new Schema(
     globalSeoDescription: { type: String, trim: true, maxlength: 320 },
     branding: { type: BrandingSchema, default: () => ({}) },
     brandingUpdatedAt: { type: Number, default: 0 },
+    whatsAppSalesPhone: { type: String, trim: true, maxlength: 40 },
+    whatsAppProductTemplate: { type: String, trim: true, maxlength: 5000 },
     whatsAppOrderTemplate: { type: String, trim: true, maxlength: 5000 },
     returns: { type: ReturnsSettingsSchema, default: () => ({}) },
     inventory: { type: InventorySettingsSchema, default: () => ({}) },
@@ -242,6 +244,7 @@ const SiteSettingSchema = new Schema(
       colors: {
         primary: { type: String, trim: true },
         secondary: { type: String, trim: true },
+        accent: { type: String, trim: true },
         background: { type: String, trim: true },
         surface: { type: String, trim: true },
         header: { type: String, trim: true },

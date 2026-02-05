@@ -7,6 +7,8 @@ import CmsPage from "@/models/CmsPage";
 import Product from "@/models/Product";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   await dbConnect();
@@ -17,9 +19,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     CmsPage.find({ isPublished: true }).select("slug updatedAt").sort({ updatedAt: -1 }).lean(),
   ]);
 
+  const latestUpdatedAt = Math.max(
+    0,
+    ...products
+      .map((p) => new Date((p as unknown as { updatedAt?: string | Date }).updatedAt ?? 0).getTime())
+      .filter((t) => Number.isFinite(t)),
+    ...categories
+      .map((c) => new Date((c as unknown as { updatedAt?: string | Date }).updatedAt ?? 0).getTime())
+      .filter((t) => Number.isFinite(t)),
+    ...pages
+      .map((p) => new Date((p as unknown as { updatedAt?: string | Date }).updatedAt ?? 0).getTime())
+      .filter((t) => Number.isFinite(t))
+  );
+
   const items: MetadataRoute.Sitemap = [
     {
       url: absoluteUrl("/"),
+      lastModified: latestUpdatedAt > 0 ? new Date(latestUpdatedAt) : undefined,
       changeFrequency: "daily",
       priority: 1,
     },

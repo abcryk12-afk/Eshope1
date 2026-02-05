@@ -182,11 +182,11 @@ export default function AccountAddressesClient({ initialTab }: { initialTab?: Ad
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
+      <div className="rounded-3xl border border-border bg-surface p-6">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">Addresses</h1>
-            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Manage shipping and billing addresses.</p>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Addresses</h1>
+            <p className="mt-2 text-sm text-muted-foreground">Manage shipping and billing addresses.</p>
           </div>
           <Button onClick={openCreate} disabled={saving}>Add address</Button>
         </div>
@@ -198,8 +198,8 @@ export default function AccountAddressesClient({ initialTab }: { initialTab?: Ad
             className={cn(
               "rounded-full border px-3 py-1 text-sm font-semibold",
               tab === "shipping"
-                ? "border-zinc-900 bg-zinc-50 text-zinc-900 dark:border-zinc-50 dark:bg-zinc-900 dark:text-zinc-50"
-                : "border-zinc-200 bg-white text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300"
+                ? "border-primary bg-muted text-foreground"
+                : "border-border bg-background text-foreground-secondary"
             )}
           >
             Shipping
@@ -210,8 +210,8 @@ export default function AccountAddressesClient({ initialTab }: { initialTab?: Ad
             className={cn(
               "rounded-full border px-3 py-1 text-sm font-semibold",
               tab === "billing"
-                ? "border-zinc-900 bg-zinc-50 text-zinc-900 dark:border-zinc-50 dark:bg-zinc-900 dark:text-zinc-50"
-                : "border-zinc-200 bg-white text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300"
+                ? "border-primary bg-muted text-foreground"
+                : "border-border bg-background text-foreground-secondary"
             )}
           >
             Billing
@@ -220,19 +220,19 @@ export default function AccountAddressesClient({ initialTab }: { initialTab?: Ad
       </div>
 
       {formOpen ? (
-        <div className="rounded-3xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
-          <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+        <div className="rounded-3xl border border-border bg-surface p-6">
+          <h2 className="text-sm font-semibold text-foreground">
             {editingId ? "Edit address" : "Add address"}
           </h2>
 
           <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
             <Input value={form.label} onChange={(e) => setForm((s) => ({ ...s, label: e.target.value }))} placeholder="Label (optional)" />
-            <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <input
                 type="checkbox"
                 checked={form.isDefault}
                 onChange={(e) => setForm((s) => ({ ...s, isDefault: e.target.checked }))}
-                className="h-4 w-4 rounded border-zinc-300"
+                className="h-4 w-4 rounded border-border"
               />
               Set as default
             </div>
@@ -253,8 +253,8 @@ export default function AccountAddressesClient({ initialTab }: { initialTab?: Ad
         </div>
       ) : null}
 
-      <div className="rounded-3xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
-        <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">{tab === "shipping" ? "Shipping" : "Billing"} addresses</h2>
+      <div className="rounded-3xl border border-border bg-surface p-6">
+        <h2 className="text-sm font-semibold text-foreground">{tab === "shipping" ? "Shipping" : "Billing"} addresses</h2>
 
         {loading ? (
           <div className="mt-4 space-y-3">
@@ -263,26 +263,26 @@ export default function AccountAddressesClient({ initialTab }: { initialTab?: Ad
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">No addresses yet.</p>
+          <p className="mt-3 text-sm text-muted-foreground">No addresses yet.</p>
         ) : (
           <div className="mt-4 space-y-3">
             {filtered.map((a) => (
-              <div key={a.id} className="rounded-3xl border border-zinc-200 p-4 dark:border-zinc-800">
+              <div key={a.id} className="rounded-3xl border border-border p-4">
                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">{a.label || a.fullName}</p>
+                      <p className="text-sm font-semibold text-foreground">{a.label || a.fullName}</p>
                       {a.isDefault ? (
-                        <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200">
+                        <span className="rounded-full bg-success/10 px-2 py-1 text-xs font-semibold text-success">
                           Default
                         </span>
                       ) : null}
                     </div>
-                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{a.phone}</p>
-                    <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                    <p className="mt-1 text-sm text-muted-foreground">{a.phone}</p>
+                    <p className="mt-2 text-sm text-muted-foreground">
                       {a.addressLine1}{a.addressLine2 ? `, ${a.addressLine2}` : ""}
                     </p>
-                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                    <p className="text-sm text-muted-foreground">
                       {a.city}, {a.province}, {a.country} {a.postalCode}
                     </p>
                   </div>

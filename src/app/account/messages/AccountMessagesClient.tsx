@@ -70,15 +70,15 @@ export default function AccountMessagesClient() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">Message Center</h1>
-        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">All system updates in one place.</p>
+      <div className="rounded-3xl border border-border bg-surface p-6">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Message Center</h1>
+        <p className="mt-2 text-sm text-muted-foreground">All system updates in one place.</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[360px_1fr]">
-        <div className="rounded-3xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="rounded-3xl border border-border bg-surface p-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Inbox</h2>
+            <h2 className="text-sm font-semibold text-foreground">Inbox</h2>
             <Button size="sm" variant="secondary" onClick={() => void load()} disabled={loading}>Refresh</Button>
           </div>
 
@@ -89,7 +89,7 @@ export default function AccountMessagesClient() {
               ))}
             </div>
           ) : items.length === 0 ? (
-            <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-400">No messages.</p>
+            <p className="mt-4 text-sm text-muted-foreground">No messages.</p>
           ) : (
             <div className="mt-4 space-y-2">
               {items.map((m) => {
@@ -102,23 +102,23 @@ export default function AccountMessagesClient() {
                     className={cn(
                       "w-full rounded-2xl border p-3 text-left",
                       active
-                        ? "border-zinc-900 bg-zinc-50 dark:border-zinc-50 dark:bg-zinc-900"
-                        : "border-zinc-200 bg-white hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:bg-zinc-900"
+                        ? "border-primary bg-muted"
+                        : "border-border bg-background hover:bg-muted"
                     )}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className={cn("text-sm font-semibold truncate", m.isRead ? "text-zinc-700 dark:text-zinc-200" : "text-zinc-900 dark:text-zinc-50")}>
+                        <p className={cn("text-sm font-semibold truncate", m.isRead ? "text-foreground-secondary" : "text-foreground")}>
                           {m.title}
                         </p>
-                        <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400 line-clamp-2">{m.preview}</p>
+                        <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{m.preview}</p>
                       </div>
                       {!m.isRead ? (
-                        <span className="mt-1 inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                        <span className="mt-1 inline-flex h-2 w-2 rounded-full bg-success" />
                       ) : null}
                     </div>
                     {m.createdAt ? (
-                      <p className="mt-2 text-xs text-zinc-500">{fmtDate(m.createdAt)}</p>
+                      <p className="mt-2 text-xs text-muted-foreground">{fmtDate(m.createdAt)}</p>
                     ) : null}
                   </button>
                 );
@@ -127,20 +127,20 @@ export default function AccountMessagesClient() {
           )}
         </div>
 
-        <div className="rounded-3xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="rounded-3xl border border-border bg-surface p-6">
           {!selected ? (
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">Select a message.</p>
+            <p className="text-sm text-muted-foreground">Select a message.</p>
           ) : (
             <div className="space-y-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{selected.type}</p>
-                <h2 className="mt-1 text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">{selected.title}</h2>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{selected.type}</p>
+                <h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">{selected.title}</h2>
                 {selected.createdAt ? (
-                  <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{fmtDate(selected.createdAt)}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{fmtDate(selected.createdAt)}</p>
                 ) : null}
               </div>
 
-              <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300">
+              <div className="rounded-2xl border border-border bg-background p-4 text-sm text-foreground-secondary">
                 <pre className="whitespace-pre-wrap font-sans">{selected.body}</pre>
               </div>
 

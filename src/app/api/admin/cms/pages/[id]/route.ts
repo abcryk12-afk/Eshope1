@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { authOptions } from "@/lib/auth";
 import { dbConnect } from "@/lib/db";
+import { pingSitemapIfEnabled } from "@/lib/sitemapPing";
 import { slugify } from "@/lib/slug";
 import CmsPage from "@/models/CmsPage";
 
@@ -111,6 +112,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ message: "Not found" }, { status: 404 });
   }
 
+  void pingSitemapIfEnabled();
+
   return NextResponse.json({
     page: {
       id: String(page._id),
@@ -138,6 +141,8 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   if (!res) {
     return NextResponse.json({ message: "Not found" }, { status: 404 });
   }
+
+  void pingSitemapIfEnabled();
 
   return NextResponse.json({ ok: true });
 }

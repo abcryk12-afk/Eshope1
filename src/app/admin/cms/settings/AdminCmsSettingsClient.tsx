@@ -50,6 +50,8 @@ type Settings = {
   footer: FooterSettings | null;
   globalSeoTitle: string;
   globalSeoDescription: string;
+  whatsAppSalesPhone: string;
+  whatsAppProductTemplate: string;
   whatsAppOrderTemplate: string;
   returnsWindowDays: number;
   inventoryLowStockThreshold: number;
@@ -177,6 +179,14 @@ export default function AdminCmsSettingsClient() {
     const json = (await res.json()) as ApiResponse;
     setSettings(json.settings);
     toast.success("Saved");
+
+    try {
+      const bc = new BroadcastChannel("storefront-settings");
+      bc.postMessage({ type: "updated", at: Date.now() });
+      bc.close();
+    } catch {
+    }
+
     setSaving(false);
   }
 
@@ -1111,7 +1121,7 @@ export default function AdminCmsSettingsClient() {
                 size="sm"
                 disabled={saving}
                 onClick={() => {
-                  const next = { ...settings, whatsAppOrderTemplate: "" };
+                  const next = { ...settings, whatsAppSalesPhone: "", whatsAppProductTemplate: "", whatsAppOrderTemplate: "" };
                   setSettings(next);
                   void save(next);
                 }}
@@ -1119,6 +1129,43 @@ export default function AdminCmsSettingsClient() {
                 Reset to Default
               </Button>
             </div>
+
+            <div className="mt-3 space-y-2">
+              <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Sales WhatsApp number</p>
+              <Input
+                value={settings.whatsAppSalesPhone}
+                onChange={(e) => setSettings((s) => (s ? { ...s, whatsAppSalesPhone: e.target.value } : s))}
+                placeholder="e.g. +92 300 1234567"
+              />
+              <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                This is used for the storefront floating WhatsApp button.
+              </p>
+            </div>
+
+            <div className="mt-4">
+              <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Product inquiry template</p>
+              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                Use placeholders:
+                {" "}
+                <span className="font-mono">
+                  {"{{storeName}}"}, {"{{productName}}"}, {"{{productUrl}}"}.
+                </span>
+              </p>
+              <div className="mt-2">
+                <textarea
+                  value={settings.whatsAppProductTemplate}
+                  onChange={(e) => setSettings((s) => (s ? { ...s, whatsAppProductTemplate: e.target.value } : s))}
+                  rows={6}
+                  className={cn(
+                    "w-full rounded-2xl border border-zinc-200 bg-white p-3 text-sm text-zinc-900",
+                    "focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/10",
+                    "dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50 dark:focus-visible:ring-zinc-50/10"
+                  )}
+                  placeholder="I want to buy {{productName}}"
+                />
+              </div>
+            </div>
+
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
               Edit the message template. Leaving it blank uses the default template. Use placeholders:
               {" "}

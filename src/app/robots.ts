@@ -3,9 +3,18 @@ import type { MetadataRoute } from "next";
 import { getSiteOrigin } from "@/lib/seo";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default function robots(): MetadataRoute.Robots {
   const origin = getSiteOrigin();
+  let host = origin;
+
+  try {
+    host = new URL(origin).hostname;
+  } catch {
+    host = origin.replace(/^https?:\/\//, "").replace(/\/$/, "");
+  }
 
   return {
     rules: [
@@ -26,6 +35,6 @@ export default function robots(): MetadataRoute.Robots {
       },
     ],
     sitemap: `${origin}/sitemap.xml`,
-    host: origin,
+    host,
   };
 }

@@ -47,6 +47,47 @@ export function safeJsonLdStringify(data: unknown): string {
   return JSON.stringify(data).replace(/</g, "\\u003c");
 }
 
+export function getBaseCurrencyCode(): string {
+  const raw =
+    process.env.NEXT_PUBLIC_BASE_CURRENCY ??
+    process.env.BASE_CURRENCY ??
+    process.env.NEXT_PUBLIC_CURRENCY ??
+    "PKR";
+
+  const v = String(raw || "").trim().toUpperCase();
+  return /^[A-Z]{3}$/.test(v) ? v : "PKR";
+}
+
+export function buildWebsiteJsonLd(args: { siteName: string; description?: string }) {
+  const origin = getSiteOrigin();
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: args.siteName,
+    url: origin,
+    description: args.description || undefined,
+    potentialAction: {
+      "@type": "SearchAction",
+      target: `${origin}/?q={search_term_string}`,
+      "query-input": "required name=search_term_string",
+    },
+  };
+}
+
+export function buildOrganizationJsonLd(args: { name: string; logoUrl?: string }) {
+  const origin = getSiteOrigin();
+  const logo = args.logoUrl ? normalizeImageUrl(args.logoUrl) : "";
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: args.name,
+    url: origin,
+    logo: logo || undefined,
+  };
+}
+
 type ProductForJsonLd = {
   _id: string;
   title: string;
@@ -71,7 +112,8 @@ function computeOffer(product: ProductForJsonLd) {
     ...variants.map((v) => (typeof v.price === "number" ? v.price : undefined)),
   ].filter((x): x is number => typeof x === "number" && Number.isFinite(x) && x >= 0);
 
-  const price = prices.length ? Math.min(...prices) : 0;
+  const lowPrice = prices.length ? Math.min(...prices) : 0;
+  const highPrice = prices.length ? Math.max(...prices) : lowPrice;
 
   const hasVariantStock = variants.some((v) => typeof v.stock === "number" && v.stock > 0);
   const hasStock =
@@ -83,7 +125,7 @@ function computeOffer(product: ProductForJsonLd) {
 
   const availability = hasStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock";
 
-  return { price, availability };
+  return { lowPrice, highPrice, availability, offerCount: Math.max(1, variants.length || 1) };
 }
 
 export function buildProductJsonLd(product: ProductForJsonLd) {
@@ -100,6 +142,7 @@ export function buildProductJsonLd(product: ProductForJsonLd) {
   const descText = truncate(stripHtmlToText(product.description ?? ""), 5000);
 
   const offer = computeOffer(product);
+  const currency = getBaseCurrencyCode();
 
   const jsonLd: Record<string, unknown> = {
     "@context": "https://schema.org",
@@ -110,14 +153,26 @@ export function buildProductJsonLd(product: ProductForJsonLd) {
     sku: (product.variants?.[0]?.sku || product.slug || product._id) ?? undefined,
     url,
     brand: product.brand || product.storeName ? { "@type": "Brand", name: product.brand || product.storeName } : undefined,
-    offers: {
-      "@type": "Offer",
-      url,
-      priceCurrency: "PKR",
-      price: offer.price,
-      availability: offer.availability,
-      itemCondition: "https://schema.org/NewCondition",
-    },
+    offers:
+      offer.lowPrice !== offer.highPrice
+        ? {
+            "@type": "AggregateOffer",
+            url,
+            priceCurrency: currency,
+            lowPrice: offer.lowPrice,
+            highPrice: offer.highPrice,
+            offerCount: offer.offerCount,
+            availability: offer.availability,
+            itemCondition: "https://schema.org/NewCondition",
+          }
+        : {
+            "@type": "Offer",
+            url,
+            priceCurrency: currency,
+            price: offer.lowPrice,
+            availability: offer.availability,
+            itemCondition: "https://schema.org/NewCondition",
+          },
   };
 
   if (typeof product.ratingCount === "number" && product.ratingCount > 0) {

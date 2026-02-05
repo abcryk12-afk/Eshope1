@@ -161,9 +161,9 @@ export default function OrderReceiptClient({ orderId, email }: Props) {
 
   if (!isSignedIn && !email?.trim()) {
     return (
-      <div className="rounded-3xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">Order receipt</h1>
-        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+      <div className="rounded-3xl border border-border bg-surface p-6">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Order receipt</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
           This receipt link requires the email used during checkout.
         </p>
         <div className="mt-6">
@@ -187,9 +187,9 @@ export default function OrderReceiptClient({ orderId, email }: Props) {
 
   if (!order) {
     return (
-      <div className="rounded-3xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">Order receipt</h1>
-        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Not found.</p>
+      <div className="rounded-3xl border border-border bg-surface p-6">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Order receipt</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Not found.</p>
         <div className="mt-6">
           <Link href="/">
             <Button variant="secondary">Continue shopping</Button>
@@ -268,37 +268,37 @@ export default function OrderReceiptClient({ orderId, email }: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
+      <div className="rounded-3xl border border-border bg-surface p-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
               Order confirmed
             </h1>
-            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-              Order number: <span className="font-semibold text-zinc-900 dark:text-zinc-50">{order.id}</span>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Order number: <span className="font-semibold text-foreground">{order.id}</span>
             </p>
-            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Order date: {fmtDate(order.createdAt)}</p>
+            <p className="mt-1 text-sm text-muted-foreground">Order date: {fmtDate(order.createdAt)}</p>
           </div>
 
-          <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm dark:border-zinc-800 dark:bg-zinc-950">
+          <div className="rounded-2xl border border-border bg-background p-4 text-sm">
             <div className="flex items-center justify-between gap-4">
-              <span className="text-zinc-600 dark:text-zinc-400">Order status</span>
-              <span className="font-semibold text-zinc-900 dark:text-zinc-50">{order.orderStatus}</span>
+              <span className="text-muted-foreground">Order status</span>
+              <span className="font-semibold text-foreground">{order.orderStatus}</span>
             </div>
             <div className="mt-2 flex items-center justify-between gap-4">
-              <span className="text-zinc-600 dark:text-zinc-400">Payment status</span>
-              <span className="font-semibold text-zinc-900 dark:text-zinc-50">{paymentStatus}</span>
+              <span className="text-muted-foreground">Payment status</span>
+              <span className="font-semibold text-foreground">{paymentStatus}</span>
             </div>
             <div className="mt-2 flex items-center justify-between gap-4">
-              <span className="text-zinc-600 dark:text-zinc-400">Payment method</span>
-              <span className="font-semibold text-zinc-900 dark:text-zinc-50">{methodLabel}</span>
+              <span className="text-muted-foreground">Payment method</span>
+              <span className="font-semibold text-foreground">{methodLabel}</span>
             </div>
           </div>
         </div>
       </div>
 
       {method === "cod" ? (
-        <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-6 text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-100">
+        <div className="rounded-3xl border border-success/30 bg-success/10 p-6 text-foreground">
           <h2 className="text-sm font-semibold">Pay on delivery</h2>
           <p className="mt-2 text-sm opacity-90">
             Please keep cash ready. Our rider will contact you before delivery.
@@ -307,23 +307,23 @@ export default function OrderReceiptClient({ orderId, email }: Props) {
       ) : null}
 
       {method === "manual" ? (
-        <div className="rounded-3xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
-          <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Upload payment receipt</h2>
-          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Status: {paymentStatusLabel}</p>
+        <div className="rounded-3xl border border-border bg-surface p-6">
+          <h2 className="text-sm font-semibold text-foreground">Upload payment receipt</h2>
+          <p className="mt-2 text-sm text-muted-foreground">Status: {paymentStatusLabel}</p>
 
           {paymentStatus === "Rejected" && rejectReason ? (
-            <p className="mt-2 text-sm text-red-600 dark:text-red-400">Rejected: {rejectReason}</p>
+            <p className="mt-2 text-sm text-destructive">Rejected: {rejectReason}</p>
           ) : null}
 
           {receiptUrl ? (
             <div className="mt-4 space-y-2">
               {receiptUploadedAt ? (
-                <p className="text-xs text-zinc-500">Uploaded: {fmtDate(receiptUploadedAt)}</p>
+                <p className="text-xs text-muted-foreground">Uploaded: {fmtDate(receiptUploadedAt)}</p>
               ) : null}
 
-              <div className="rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950">
+              <div className="rounded-2xl border border-border bg-background p-3">
                 {receiptUrl.toLowerCase().endsWith(".pdf") ? (
-                  <p className="text-sm text-zinc-700 dark:text-zinc-300">PDF receipt uploaded.</p>
+                  <p className="text-sm text-foreground-secondary">PDF receipt uploaded.</p>
                 ) : (
                   <Image
                     src={receiptUrl}
@@ -341,7 +341,7 @@ export default function OrderReceiptClient({ orderId, email }: Props) {
               </a>
             </div>
           ) : (
-            <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">No receipt uploaded yet.</p>
+            <p className="mt-3 text-sm text-muted-foreground">No receipt uploaded yet.</p>
           )}
 
           {canUploadReceipt ? (
@@ -350,7 +350,7 @@ export default function OrderReceiptClient({ orderId, email }: Props) {
                 type="file"
                 accept="image/jpeg,image/png,application/pdf"
                 onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
-                className="block w-full text-sm text-zinc-700 dark:text-zinc-300"
+                className="block w-full text-sm text-foreground-secondary"
               />
               <Button type="button" onClick={() => void uploadReceipt()} disabled={receiptUploading}>
                 {receiptUploading ? "Uploading..." : receiptUrl ? "Re-upload receipt" : "Upload Payment Receipt"}
@@ -361,7 +361,7 @@ export default function OrderReceiptClient({ orderId, email }: Props) {
       ) : null}
 
       {method === "manual" ? (
-        <div className="rounded-3xl border border-amber-200 bg-amber-50 p-6 text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100">
+        <div className="rounded-3xl border border-warning/30 bg-warning/10 p-6 text-foreground">
           <h2 className="text-sm font-semibold">Bank transfer instructions</h2>
           {paymentSettings?.manual?.instructions ? (
             <p className="mt-2 text-sm opacity-90">{paymentSettings.manual.instructions}</p>
@@ -376,7 +376,7 @@ export default function OrderReceiptClient({ orderId, email }: Props) {
               {paymentSettings.manual.accounts.map((a, idx) => (
                 <div
                   key={`${a.label ?? a.bankName ?? "acc"}:${idx}`}
-                  className="rounded-2xl border border-amber-200/70 bg-white p-4 dark:border-amber-900/40 dark:bg-amber-950/20"
+                  className="rounded-2xl border border-border bg-surface p-4"
                 >
                   <div className="text-xs font-semibold uppercase tracking-wide opacity-70">{a.label || "Bank account"}</div>
                   <div className="mt-2 space-y-1">
@@ -393,7 +393,7 @@ export default function OrderReceiptClient({ orderId, email }: Props) {
       ) : null}
 
       {method === "online" ? (
-        <div className="rounded-3xl border border-sky-200 bg-sky-50 p-6 text-sky-950 dark:border-sky-900/50 dark:bg-sky-950/30 dark:text-sky-100">
+        <div className="rounded-3xl border border-primary/25 bg-primary/10 p-6 text-foreground">
           <h2 className="text-sm font-semibold">Complete your payment</h2>
           {paymentSettings?.online?.provider ? (
             <p className="mt-2 text-sm opacity-90">Provider: {paymentSettings.online.provider}</p>
@@ -405,6 +405,7 @@ export default function OrderReceiptClient({ orderId, email }: Props) {
           )}
           <div className="mt-4">
             <Button
+              variant="accent"
               onClick={() =>
                 toast.info(
                   paymentSettings?.online?.enabled
@@ -422,12 +423,12 @@ export default function OrderReceiptClient({ orderId, email }: Props) {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-4">
-          <div className="rounded-3xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
-            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Items</h2>
+          <div className="rounded-3xl border border-border bg-surface p-6">
+            <h2 className="text-sm font-semibold text-foreground">Items</h2>
 
             <div className="mt-4 overflow-x-auto">
               <table className="w-full text-left text-sm">
-                <thead className="text-xs uppercase tracking-wide text-zinc-500">
+                <thead className="text-xs uppercase tracking-wide text-muted-foreground">
                   <tr>
                     <th className="py-2">Product</th>
                     <th className="py-2">Qty</th>
@@ -437,10 +438,10 @@ export default function OrderReceiptClient({ orderId, email }: Props) {
                 </thead>
                 <tbody>
                   {order.items.map((it, idx) => (
-                    <tr key={idx} className="border-t border-zinc-200 dark:border-zinc-800">
+                    <tr key={idx} className="border-t border-border">
                       <td className="py-3">
                         <div className="flex items-center gap-3">
-                          <div className="relative h-10 w-10 overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-900">
+                          <div className="relative h-10 w-10 overflow-hidden rounded-xl bg-muted">
                             {it.image ? (
                               <Image
                                 src={it.image}
@@ -453,15 +454,15 @@ export default function OrderReceiptClient({ orderId, email }: Props) {
                           </div>
                           <Link
                             href={it.slug ? `/product/${it.slug}` : "#"}
-                            className="font-medium text-zinc-900 hover:underline dark:text-zinc-50"
+                            className="font-medium text-foreground hover:underline"
                           >
                             {it.title}
                           </Link>
                         </div>
                       </td>
-                      <td className="py-3 text-zinc-600 dark:text-zinc-400">{it.quantity}</td>
-                      <td className="py-3 text-right text-zinc-600 dark:text-zinc-400">{money(it.unitPrice, cur, rate)}</td>
-                      <td className="py-3 text-right font-semibold text-zinc-900 dark:text-zinc-50">
+                      <td className="py-3 text-muted-foreground">{it.quantity}</td>
+                      <td className="py-3 text-right text-muted-foreground">{money(it.unitPrice, cur, rate)}</td>
+                      <td className="py-3 text-right font-semibold text-foreground">
                         {money(it.unitPrice * it.quantity, cur, rate)}
                       </td>
                     </tr>
@@ -471,10 +472,10 @@ export default function OrderReceiptClient({ orderId, email }: Props) {
             </div>
           </div>
 
-          <div className="rounded-3xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
-            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Shipping</h2>
-            <div className="mt-3 text-sm text-zinc-700 dark:text-zinc-300">
-              <div className="font-semibold text-zinc-900 dark:text-zinc-50">{order.shippingAddress.fullName}</div>
+          <div className="rounded-3xl border border-border bg-surface p-6">
+            <h2 className="text-sm font-semibold text-foreground">Shipping</h2>
+            <div className="mt-3 text-sm text-foreground-secondary">
+              <div className="font-semibold text-foreground">{order.shippingAddress.fullName}</div>
               <div>{order.shippingAddress.phone}</div>
               <div>{order.shippingAddress.addressLine1}</div>
               {order.shippingAddress.addressLine2 ? <div>{order.shippingAddress.addressLine2}</div> : null}
@@ -487,41 +488,41 @@ export default function OrderReceiptClient({ orderId, email }: Props) {
         </div>
 
         <div className="space-y-4">
-          <div className="rounded-3xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
-            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Status</h2>
-            <div className="mt-3 space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
+          <div className="rounded-3xl border border-border bg-surface p-6">
+            <h2 className="text-sm font-semibold text-foreground">Status</h2>
+            <div className="mt-3 space-y-2 text-sm text-muted-foreground">
               <div className="flex items-center justify-between">
                 <span>Order status</span>
-                <span className="font-semibold text-zinc-900 dark:text-zinc-50">{order.orderStatus}</span>
+                <span className="font-semibold text-foreground">{order.orderStatus}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span>Payment</span>
-                <span className="font-semibold text-zinc-900 dark:text-zinc-50">{order.isPaid ? "Paid" : "Unpaid"}</span>
+                <span className="font-semibold text-foreground">{order.isPaid ? "Paid" : "Unpaid"}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span>Method</span>
-                <span className="font-semibold text-zinc-900 dark:text-zinc-50">{order.paymentMethod}</span>
+                <span className="font-semibold text-foreground">{order.paymentMethod}</span>
               </div>
             </div>
           </div>
 
-          <div className="rounded-3xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
-            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Totals</h2>
-            <div className="mt-3 space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
+          <div className="rounded-3xl border border-border bg-surface p-6">
+            <h2 className="text-sm font-semibold text-foreground">Totals</h2>
+            <div className="mt-3 space-y-2 text-sm text-muted-foreground">
               <div className="flex items-center justify-between">
                 <span>Subtotal</span>
-                <span className="font-semibold text-zinc-900 dark:text-zinc-50">{money(order.itemsSubtotal, cur, rate)}</span>
+                <span className="font-semibold text-foreground">{money(order.itemsSubtotal, cur, rate)}</span>
               </div>
               {order.couponCode && Number(order.couponDiscountAmount ?? 0) > 0 ? (
                 <div className="flex items-center justify-between">
                   <span>Coupon ({order.couponCode})</span>
-                  <span className="font-semibold text-zinc-900 dark:text-zinc-50">-{money(Number(order.couponDiscountAmount ?? 0), cur, rate)}</span>
+                  <span className="font-semibold text-foreground">-{money(Number(order.couponDiscountAmount ?? 0), cur, rate)}</span>
                 </div>
               ) : null}
               {order.promotionName && Number(order.promotionDiscountAmount ?? 0) > 0 ? (
                 <div className="flex items-center justify-between">
                   <span>Promo ({order.promotionName})</span>
-                  <span className="font-semibold text-zinc-900 dark:text-zinc-50">-{money(Number(order.promotionDiscountAmount ?? 0), cur, rate)}</span>
+                  <span className="font-semibold text-foreground">-{money(Number(order.promotionDiscountAmount ?? 0), cur, rate)}</span>
                 </div>
               ) : null}
               {Number(order.discountAmount ?? 0) > 0 &&
@@ -529,20 +530,20 @@ export default function OrderReceiptClient({ orderId, email }: Props) {
               Number(order.promotionDiscountAmount ?? 0) <= 0 ? (
                 <div className="flex items-center justify-between">
                   <span>{order.couponCode ? `Discount (${order.couponCode})` : "Discount"}</span>
-                  <span className="font-semibold text-zinc-900 dark:text-zinc-50">-{money(order.discountAmount, cur, rate)}</span>
+                  <span className="font-semibold text-foreground">-{money(order.discountAmount, cur, rate)}</span>
                 </div>
               ) : null}
               <div className="flex items-center justify-between">
                 <span>Shipping</span>
-                <span className="font-semibold text-zinc-900 dark:text-zinc-50">{money(order.shippingAmount, cur, rate)}</span>
+                <span className="font-semibold text-foreground">{money(order.shippingAmount, cur, rate)}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span>Tax</span>
-                <span className="font-semibold text-zinc-900 dark:text-zinc-50">{money(order.taxAmount, cur, rate)}</span>
+                <span className="font-semibold text-foreground">{money(order.taxAmount, cur, rate)}</span>
               </div>
-              <div className="mt-2 flex items-center justify-between border-t border-zinc-200 pt-3 dark:border-zinc-800">
-                <span className="text-zinc-900 dark:text-zinc-50 font-semibold">Total</span>
-                <span className="text-zinc-900 dark:text-zinc-50 font-semibold">{money(order.totalAmount, cur, rate)}</span>
+              <div className="mt-2 flex items-center justify-between border-t border-border pt-3">
+                <span className="text-foreground font-semibold">Total</span>
+                <span className="text-foreground font-semibold">{money(order.totalAmount, cur, rate)}</span>
               </div>
             </div>
           </div>

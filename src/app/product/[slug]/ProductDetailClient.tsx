@@ -9,12 +9,15 @@ import { toast } from "sonner";
 
 import { formatMoneyFromPkr } from "@/lib/currency";
 import { formatCompactNumber } from "@/lib/numberFormat";
-import { formatEtaText, type StorefrontSettings } from "@/lib/shipping";
+import { formatEtaText } from "@/lib/shipping";
+import { useWhatsAppContext } from "@/components/layout/WhatsAppContext";
 import { cn } from "@/lib/utils";
 import Skeleton from "@/components/ui/Skeleton";
 import { StarRatingDisplay } from "@/components/ui/StarRating";
 import ProductCard from "@/components/product/ProductCard";
 import ProductGrid from "@/components/product/ProductGrid";
+import ZoomableProductImage from "@/components/product/ZoomableProductImage";
+import { useStorefrontSettings } from "@/hooks/useStorefrontSettings";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { addToCart } from "@/store/slices/cartSlice";
 import { toggleWishlist } from "@/store/slices/wishlistSlice";
@@ -279,6 +282,9 @@ export default function ProductDetailClient({ slug }: Props) {
   const wishlistIds = useAppSelector((s) => s.wishlist.productIds);
   const currency = useAppSelector((s) => s.currency);
 
+  const { settings: storefrontSettings } = useStorefrontSettings();
+  const { setProduct: setWhatsAppProduct, clearProduct: clearWhatsAppProduct } = useWhatsAppContext();
+
   const [loading, setLoading] = useState(true);
   const [product, setProduct] = useState<Product | null>(null);
 
@@ -293,35 +299,18 @@ export default function ProductDetailClient({ slug }: Props) {
 
   const [safeDescription, setSafeDescription] = useState("");
 
-  const [storefrontSettings, setStorefrontSettings] = useState<StorefrontSettings | null>(null);
-
   useEffect(() => {
     setSafeDescription(sanitizeHtml(product?.description ?? ""));
   }, [product?.description]);
 
   useEffect(() => {
-    let cancelled = false;
-    const controller = new AbortController();
-
-    async function loadSettings() {
-      const res = await fetch("/api/storefront/settings", { cache: "no-store", signal: controller.signal }).catch(
-        () => null
-      );
-
-      if (cancelled) return;
-      if (!res || !res.ok) return;
-
-      const json = (await res.json().catch(() => null)) as { settings?: StorefrontSettings } | null;
-      if (!cancelled && json?.settings) setStorefrontSettings(json.settings);
-    }
-
-    loadSettings();
-
+    if (!product) return;
+    const productUrl = typeof window !== "undefined" ? window.location.href : "";
+    setWhatsAppProduct({ productName: product.title, productUrl });
     return () => {
-      cancelled = true;
-      controller.abort();
+      clearWhatsAppProduct();
     };
-  }, []);
+  }, [product, setWhatsAppProduct, clearWhatsAppProduct]);
 
   useEffect(() => {
     let cancelled = false;
@@ -540,6 +529,11 @@ export default function ProductDetailClient({ slug }: Props) {
     toast.success("Added to cart");
   }
 
+  function buyNow() {
+    add();
+    router.push("/checkout");
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-zinc-50 px-4 py-10 dark:bg-black">
@@ -579,7 +573,7 @@ export default function ProductDetailClient({ slug }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 px-4 py-10 dark:bg-black">
+    <div className="min-h-screen bg-zinc-50 px-4 py-10 pb-32 dark:bg-black md:pb-10">
       <div className="mx-auto w-full max-w-5xl">
         <div className="flex items-center justify-between">
           <Link href="/" className="text-sm font-semibold text-zinc-900 hover:underline dark:text-zinc-50">
@@ -628,13 +622,7 @@ export default function ProductDetailClient({ slug }: Props) {
               aria-label="Product images"
             >
               {mainImage ? (
-                <Image
-                  src={mainImage}
-                  alt={product.title}
-                  fill
-                  className="object-cover"
-                  unoptimized
-                />
+                <ZoomableProductImage src={mainImage} alt={product.title} className="absolute inset-0" />
               ) : null}
 
               {canSlideImages ? (
@@ -872,6 +860,43 @@ export default function ProductDetailClient({ slug }: Props) {
             </div>
           </div>
         ) : null}
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-surface/95 backdrop-blur md:hidden">
+        <div className="mx-auto flex w-full max-w-5xl items-center gap-3 px-4 py-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-medium text-muted-foreground">Total</p>
+            <p className="truncate text-sm font-semibold text-foreground">
+              {formatMoneyFromPkr(unitPrice, currency.selected, currency.pkrPerUsd)}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={add}
+            disabled={!canAdd}
+            className={cn(
+              "h-11 rounded-2xl border border-border bg-surface px-4 text-sm font-semibold text-foreground",
+              "hover:bg-muted",
+              !canAdd && "pointer-events-none opacity-50"
+            )}
+          >
+            Add
+          </button>
+
+          <button
+            type="button"
+            onClick={buyNow}
+            disabled={!canAdd}
+            className={cn(
+              "h-11 rounded-2xl bg-accent px-5 text-sm font-semibold text-accent-foreground",
+              "hover:bg-accent-hover",
+              !canAdd && "pointer-events-none opacity-50"
+            )}
+          >
+            Buy now
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { authOptions } from "@/lib/auth";
 import { dbConnect } from "@/lib/db";
+import { pingSitemapIfEnabled } from "@/lib/sitemapPing";
 import { slugify } from "@/lib/slug";
 import Category from "@/models/Category";
 import Product from "@/models/Product";
@@ -98,6 +99,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     { $set: { category: doc.name, categorySlug: doc.slug } }
   );
 
+  void pingSitemapIfEnabled();
+
   return NextResponse.json({ category: doc });
 }
 
@@ -129,6 +132,8 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   if (!doc) {
     return NextResponse.json({ message: "Not found" }, { status: 404 });
   }
+
+  void pingSitemapIfEnabled();
 
   return NextResponse.json({ ok: true });
 }

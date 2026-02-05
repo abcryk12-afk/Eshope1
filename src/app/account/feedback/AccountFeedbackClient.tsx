@@ -112,13 +112,13 @@ export default function AccountFeedbackClient() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">Feedback</h1>
-        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Verified-buyer reviews from delivered orders.</p>
+      <div className="rounded-3xl border border-border bg-surface p-6">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Feedback</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Verified-buyer reviews from delivered orders.</p>
       </div>
 
-      <div className="rounded-3xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
-        <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Eligible for feedback</h2>
+      <div className="rounded-3xl border border-border bg-surface p-6">
+        <h2 className="text-sm font-semibold text-foreground">Eligible for feedback</h2>
 
         {loading ? (
           <div className="mt-4 space-y-2">
@@ -127,7 +127,7 @@ export default function AccountFeedbackClient() {
             ))}
           </div>
         ) : eligible.length === 0 ? (
-          <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">No eligible products right now.</p>
+          <p className="mt-3 text-sm text-muted-foreground">No eligible products right now.</p>
         ) : (
           <div className="mt-4 space-y-3">
             {eligible.map((it) => {
@@ -135,25 +135,25 @@ export default function AccountFeedbackClient() {
               const opened = key === openKey;
 
               return (
-                <div key={key} className="rounded-3xl border border-zinc-200 p-4 dark:border-zinc-800">
+                <div key={key} className="rounded-3xl border border-border p-4">
                   <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                     <div className="flex min-w-0 gap-3">
                       {it.image ? (
-                        <div className="relative h-14 w-14 overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800">
+                        <div className="relative h-14 w-14 overflow-hidden rounded-2xl border border-border">
                           <Image src={it.image} alt={it.title} fill className="object-cover" sizes="56px" />
                         </div>
                       ) : null}
 
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50 truncate">{it.title}</p>
-                        <p className="mt-1 text-xs text-zinc-500">Order #{it.orderId.slice(-6)}</p>
+                        <p className="text-sm font-semibold text-foreground truncate">{it.title}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">Order #{it.orderId.slice(-6)}</p>
                         <div className="mt-2 flex items-center gap-2">
                           {it.slug ? (
-                            <Link href={`/product/${encodeURIComponent(it.slug)}`} className="text-xs font-semibold text-zinc-900 hover:underline dark:text-zinc-50">
+                            <Link href={`/product/${encodeURIComponent(it.slug)}`} className="text-xs font-semibold text-foreground hover:underline">
                               View product
                             </Link>
                           ) : null}
-                          <Link href={`/account/orders/${encodeURIComponent(it.orderId)}`} className="text-xs font-semibold text-zinc-900 hover:underline dark:text-zinc-50">
+                          <Link href={`/account/orders/${encodeURIComponent(it.orderId)}`} className="text-xs font-semibold text-foreground hover:underline">
                             View order
                           </Link>
                         </div>
@@ -170,7 +170,7 @@ export default function AccountFeedbackClient() {
                   </div>
 
                   {opened ? (
-                    <div className="mt-4 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+                    <div className="mt-4 rounded-2xl border border-border bg-background p-4">
                       <div className="flex items-center justify-between gap-3">
                         <StarRatingInput value={rating} onChange={setRating} disabled={saving} />
                         <Button onClick={() => void submit()} disabled={saving}>
@@ -182,7 +182,7 @@ export default function AccountFeedbackClient() {
                         value={comment}
                         onChange={(e) => setComment(e.target.value)}
                         rows={3}
-                        className="mt-3 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+                        className="mt-3 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground"
                         placeholder="Write an optional review..."
                       />
                     </div>
@@ -194,8 +194,8 @@ export default function AccountFeedbackClient() {
         )}
       </div>
 
-      <div className="rounded-3xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
-        <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Submitted feedback</h2>
+      <div className="rounded-3xl border border-border bg-surface p-6">
+        <h2 className="text-sm font-semibold text-foreground">Submitted feedback</h2>
 
         {loading ? (
           <div className="mt-4 space-y-2">
@@ -204,27 +204,27 @@ export default function AccountFeedbackClient() {
             ))}
           </div>
         ) : submitted.length === 0 ? (
-          <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">No reviews yet.</p>
+          <p className="mt-3 text-sm text-muted-foreground">No reviews yet.</p>
         ) : (
           <div className="mt-4 space-y-3">
             {submitted.map((r) => (
-              <div key={r.id} className="rounded-3xl border border-zinc-200 p-4 dark:border-zinc-800">
+              <div key={r.id} className="rounded-3xl border border-border p-4">
                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                   <div className="flex min-w-0 gap-3">
                     {r.productImage ? (
-                      <div className="relative h-14 w-14 overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800">
+                      <div className="relative h-14 w-14 overflow-hidden rounded-2xl border border-border">
                         <Image src={r.productImage} alt={r.productTitle} fill className="object-cover" sizes="56px" />
                       </div>
                     ) : null}
 
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50 truncate">{r.productTitle}</p>
+                      <p className="text-sm font-semibold text-foreground truncate">{r.productTitle}</p>
                       <div className="mt-1 flex items-center gap-2">
                         <StarRatingDisplay value={r.rating} size="sm" />
-                        <span className="text-xs text-zinc-500">{r.status === "published" ? "Published" : "Hidden"}</span>
+                        <span className="text-xs text-muted-foreground">{r.status === "published" ? "Published" : "Hidden"}</span>
                       </div>
-                      {r.comment ? <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">{r.comment}</p> : null}
-                      {r.createdAt ? <p className="mt-2 text-xs text-zinc-500">{fmtDate(r.createdAt)}</p> : null}
+                      {r.comment ? <p className="mt-2 text-sm text-muted-foreground">{r.comment}</p> : null}
+                      {r.createdAt ? <p className="mt-2 text-xs text-muted-foreground">{fmtDate(r.createdAt)}</p> : null}
                     </div>
                   </div>
 

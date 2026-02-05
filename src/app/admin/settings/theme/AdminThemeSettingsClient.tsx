@@ -26,11 +26,20 @@ function normalizeTheme(json: unknown): ThemePayload {
   if (!isRecord(json) || !isRecord(json.theme)) return fallback;
   const t = json.theme;
 
-  const preset = (t.preset === "default" || t.preset === "daraz" || t.preset === "amazon") ? (t.preset as ThemePresetId) : "default";
+  const preset =
+    t.preset === "default" ||
+    t.preset === "marketplace" ||
+    t.preset === "sales" ||
+    t.preset === "premium" ||
+    t.preset === "daraz" ||
+    t.preset === "amazon"
+      ? (t.preset as ThemePresetId)
+      : "default";
   const colors = isRecord(t.colors)
     ? {
         primary: String(t.colors.primary ?? DEFAULT_THEME.primary),
         secondary: String(t.colors.secondary ?? DEFAULT_THEME.secondary),
+        accent: String(t.colors.accent ?? DEFAULT_THEME.accent),
         background: String(t.colors.background ?? DEFAULT_THEME.background),
         surface: String(t.colors.surface ?? t.colors.background ?? DEFAULT_THEME.surface),
         header: String(t.colors.header ?? t.colors.background ?? DEFAULT_THEME.header),
@@ -75,6 +84,13 @@ export default function AdminThemeSettingsClient() {
     originalRef.current = t.colors;
     applyThemeToDocument(t.colors);
 
+    try {
+      const bc = new BroadcastChannel("shop.theme");
+      bc.postMessage({ preset: t.preset, colors: t.colors, updatedAt: t.updatedAt });
+      bc.close();
+    } catch {
+    }
+
     setLoading(false);
   }, [dispatch]);
 
@@ -97,9 +113,10 @@ export default function AdminThemeSettingsClient() {
 
   const presets = useMemo(() => {
     return [
+      { id: "marketplace" as const, label: "Blue / Orange (Marketplace)" },
+      { id: "sales" as const, label: "Red / White (Sales)" },
+      { id: "premium" as const, label: "Black / Gold (Premium)" },
       { id: "default" as const, label: "Default" },
-      { id: "daraz" as const, label: "Daraz" },
-      { id: "amazon" as const, label: "Amazon" },
     ];
   }, []);
 
@@ -135,6 +152,13 @@ export default function AdminThemeSettingsClient() {
     originalRef.current = t.colors;
     applyThemeToDocument(t.colors);
 
+    try {
+      const bc = new BroadcastChannel("shop.theme");
+      bc.postMessage({ preset: t.preset, colors: t.colors, updatedAt: t.updatedAt });
+      bc.close();
+    } catch {
+    }
+
     toast.success("Theme saved");
     setSaving(false);
   }
@@ -155,9 +179,9 @@ export default function AdminThemeSettingsClient() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">Appearance</h1>
-          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Manage global colors. Changes apply across the site instantly.</p>
-          <p className="mt-1 text-xs text-zinc-500">Last saved: {updatedAt ? new Date(updatedAt).toLocaleString() : "Never"}</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Appearance</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Manage global colors. Changes apply across the site instantly.</p>
+          <p className="mt-1 text-xs text-muted-foreground">Last saved: {updatedAt ? new Date(updatedAt).toLocaleString() : "Never"}</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -167,6 +191,16 @@ export default function AdminThemeSettingsClient() {
           <Button variant="secondary" onClick={() => void load()} disabled={saving}>
             Refresh
           </Button>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setPreset("default");
+              setColors(DEFAULT_THEME);
+            }}
+            disabled={saving}
+          >
+            Reset
+          </Button>
           <Button onClick={() => void save()} disabled={saving}>
             {saving ? "Saving..." : "Save"}
           </Button>
@@ -175,8 +209,8 @@ export default function AdminThemeSettingsClient() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-4">
-          <div className="rounded-3xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
-            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Preset themes</h2>
+          <div className="rounded-3xl border border-border bg-surface p-4">
+            <h2 className="text-sm font-semibold text-foreground">Brand presets</h2>
             <div className="mt-3 flex flex-wrap gap-2">
               {presets.map((p) => (
                 <Button
@@ -192,54 +226,46 @@ export default function AdminThemeSettingsClient() {
             </div>
           </div>
 
-          <div className="rounded-3xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
-            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Colors</h2>
+          <div className="rounded-3xl border border-border bg-surface p-4">
+            <h2 className="text-sm font-semibold text-foreground">Manual colors</h2>
 
             <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Primary</label>
+                <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Primary</label>
                 <div className="mt-2 flex items-center gap-2">
-                  <input type="color" value={colors.primary} onChange={(e) => setColors((c) => ({ ...c, primary: e.target.value }))} className="h-11 w-14 rounded-xl border border-zinc-200 bg-white p-1 dark:border-zinc-800 dark:bg-zinc-950" />
+                  <input type="color" value={colors.primary} onChange={(e) => setColors((c) => ({ ...c, primary: e.target.value }))} className="h-11 w-14 rounded-xl border border-border bg-surface p-1" />
                   <Input value={colors.primary} onChange={(e) => setColors((c) => ({ ...c, primary: e.target.value }))} />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Secondary</label>
+                <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Accent</label>
                 <div className="mt-2 flex items-center gap-2">
-                  <input type="color" value={colors.secondary} onChange={(e) => setColors((c) => ({ ...c, secondary: e.target.value }))} className="h-11 w-14 rounded-xl border border-zinc-200 bg-white p-1 dark:border-zinc-800 dark:bg-zinc-950" />
+                  <input type="color" value={colors.accent} onChange={(e) => setColors((c) => ({ ...c, accent: e.target.value }))} className="h-11 w-14 rounded-xl border border-border bg-surface p-1" />
+                  <Input value={colors.accent} onChange={(e) => setColors((c) => ({ ...c, accent: e.target.value }))} />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Secondary</label>
+                <div className="mt-2 flex items-center gap-2">
+                  <input type="color" value={colors.secondary} onChange={(e) => setColors((c) => ({ ...c, secondary: e.target.value }))} className="h-11 w-14 rounded-xl border border-border bg-surface p-1" />
                   <Input value={colors.secondary} onChange={(e) => setColors((c) => ({ ...c, secondary: e.target.value }))} />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Background</label>
+                <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Background</label>
                 <div className="mt-2 flex items-center gap-2">
-                  <input type="color" value={colors.background} onChange={(e) => setColors((c) => ({ ...c, background: e.target.value }))} className="h-11 w-14 rounded-xl border border-zinc-200 bg-white p-1 dark:border-zinc-800 dark:bg-zinc-950" />
+                  <input type="color" value={colors.background} onChange={(e) => setColors((c) => ({ ...c, background: e.target.value }))} className="h-11 w-14 rounded-xl border border-border bg-surface p-1" />
                   <Input value={colors.background} onChange={(e) => setColors((c) => ({ ...c, background: e.target.value }))} />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Surface / Card</label>
+                <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Text</label>
                 <div className="mt-2 flex items-center gap-2">
-                  <input type="color" value={colors.surface} onChange={(e) => setColors((c) => ({ ...c, surface: e.target.value }))} className="h-11 w-14 rounded-xl border border-zinc-200 bg-white p-1 dark:border-zinc-800 dark:bg-zinc-950" />
-                  <Input value={colors.surface} onChange={(e) => setColors((c) => ({ ...c, surface: e.target.value }))} />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Header</label>
-                <div className="mt-2 flex items-center gap-2">
-                  <input type="color" value={colors.header} onChange={(e) => setColors((c) => ({ ...c, header: e.target.value }))} className="h-11 w-14 rounded-xl border border-zinc-200 bg-white p-1 dark:border-zinc-800 dark:bg-zinc-950" />
-                  <Input value={colors.header} onChange={(e) => setColors((c) => ({ ...c, header: e.target.value }))} />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Text</label>
-                <div className="mt-2 flex items-center gap-2">
-                  <input type="color" value={colors.text} onChange={(e) => setColors((c) => ({ ...c, text: e.target.value }))} className="h-11 w-14 rounded-xl border border-zinc-200 bg-white p-1 dark:border-zinc-800 dark:bg-zinc-950" />
+                  <input type="color" value={colors.text} onChange={(e) => setColors((c) => ({ ...c, text: e.target.value }))} className="h-11 w-14 rounded-xl border border-border bg-surface p-1" />
                   <Input value={colors.text} onChange={(e) => setColors((c) => ({ ...c, text: e.target.value }))} />
                 </div>
               </div>
@@ -248,19 +274,13 @@ export default function AdminThemeSettingsClient() {
         </div>
 
         <div className="space-y-4">
-          <div className="rounded-3xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
-            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Live preview</h2>
-            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-              Preview uses the real global CSS variables.
-            </p>
+          <div className="rounded-3xl border border-border bg-surface p-4">
+            <h2 className="text-sm font-semibold text-foreground">Live preview</h2>
+            <p className="mt-2 text-sm text-muted-foreground">Preview uses the real global CSS variables.</p>
 
-            <div className="mt-4 space-y-3 rounded-2xl border border-border bg-surface p-4">
-              <p className="text-sm font-semibold" style={{ color: "var(--theme-foreground)" }}>
-                Sample card
-              </p>
-              <p className="text-sm" style={{ color: "var(--theme-foreground)" }}>
-                This is how buttons, inputs, and accents will look.
-              </p>
+            <div className="mt-4 space-y-3 rounded-2xl border border-border bg-background p-4">
+              <p className="text-sm font-semibold text-foreground">Sample card</p>
+              <p className="text-sm text-muted-foreground">This is how buttons, inputs, and accents will look.</p>
               <Input placeholder="Search..." />
               <div className="flex items-center gap-2">
                 <Button size="sm">Primary</Button>
@@ -268,13 +288,13 @@ export default function AdminThemeSettingsClient() {
                   Secondary
                 </Button>
               </div>
-              <a href="#" className="text-sm underline" style={{ color: "var(--theme-primary)" }}>
+              <a href="#" className="text-sm underline text-primary">
                 Example link
               </a>
             </div>
           </div>
 
-          <div className="rounded-3xl border border-zinc-200 bg-white p-4 text-xs text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950">
+          <div className="rounded-3xl border border-border bg-surface p-4 text-xs text-muted-foreground">
             Tip: for full-site consistency, gradually replace hard-coded <code>bg-zinc-900</code> / <code>text-zinc-900</code> in custom buttons with <code>Button</code> or theme variables.
           </div>
         </div>

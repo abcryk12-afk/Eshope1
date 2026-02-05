@@ -71,11 +71,11 @@ export default function AccountOrdersClient() {
   }, []);
 
   return (
-    <div className="rounded-3xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
+    <div className="rounded-3xl border border-border bg-surface p-6">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">Orders</h2>
-          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Your recent orders and their status.</p>
+          <h2 className="text-lg font-semibold tracking-tight text-foreground">Orders</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Your recent orders and their status.</p>
         </div>
         <Link href="/">
           <Button variant="secondary">Shop</Button>
@@ -84,7 +84,7 @@ export default function AccountOrdersClient() {
 
       <div className="mt-4 overflow-x-auto">
         <table className="w-full text-left text-sm">
-          <thead className="text-xs uppercase tracking-wide text-zinc-500">
+          <thead className="text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
               <th className="py-2">Order</th>
               <th className="py-2">Status</th>
@@ -98,7 +98,7 @@ export default function AccountOrdersClient() {
           <tbody>
             {loading ? (
               Array.from({ length: 6 }).map((_, i) => (
-                <tr key={i} className="border-t border-zinc-200 dark:border-zinc-800">
+                <tr key={i} className="border-t border-border">
                   <td className="py-3"><Skeleton className="h-4 w-20" /></td>
                   <td className="py-3"><Skeleton className="h-4 w-24" /></td>
                   <td className="py-3"><Skeleton className="h-4 w-12" /></td>
@@ -110,19 +110,19 @@ export default function AccountOrdersClient() {
               ))
             ) : items.length === 0 ? (
               <tr>
-                <td colSpan={7} className="py-10 text-center text-sm text-zinc-600 dark:text-zinc-400">
+                <td colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
                   No orders yet.
                 </td>
               </tr>
             ) : (
               items.map((o) => (
-                <tr key={o.id} className="border-t border-zinc-200 dark:border-zinc-800">
-                  <td className="py-3 font-semibold text-zinc-900 dark:text-zinc-50">{o.id.slice(-6)}</td>
-                  <td className="py-3 text-zinc-600 dark:text-zinc-400">{o.orderStatus}</td>
-                  <td className="py-3 text-zinc-600 dark:text-zinc-400">{o.isPaid ? "Yes" : "No"}</td>
-                  <td className="py-3 text-zinc-600 dark:text-zinc-400">{o.itemsCount}</td>
-                  <td className="py-3 text-zinc-600 dark:text-zinc-400">{fmtDate(o.createdAt)}</td>
-                  <td className="py-3 text-right font-semibold text-zinc-900 dark:text-zinc-50">
+                <tr key={o.id} className="border-t border-border">
+                  <td className="py-3 font-semibold text-foreground">{o.id.slice(-6)}</td>
+                  <td className="py-3 text-muted-foreground">{o.orderStatus}</td>
+                  <td className="py-3 text-muted-foreground">{o.isPaid ? "Yes" : "No"}</td>
+                  <td className="py-3 text-muted-foreground">{o.itemsCount}</td>
+                  <td className="py-3 text-muted-foreground">{fmtDate(o.createdAt)}</td>
+                  <td className="py-3 text-right font-semibold text-foreground">
                     {money(o.totalAmount, o.currency ?? "PKR", o.pkrPerUsd)}
                   </td>
                   <td className="py-3 text-right">

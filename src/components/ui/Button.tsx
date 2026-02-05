@@ -3,7 +3,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "primary" | "secondary" | "ghost";
+  variant?: "primary" | "secondary" | "accent" | "destructive" | "ghost";
   size?: "sm" | "md" | "lg";
 };
 
@@ -24,6 +24,10 @@ export default function Button({
           "bg-primary text-primary-foreground hover:bg-primary-hover",
         variant === "secondary" &&
           "bg-secondary text-secondary-foreground hover:bg-secondary-hover",
+        variant === "accent" &&
+          "bg-accent text-accent-foreground hover:bg-accent-hover",
+        variant === "destructive" &&
+          "bg-destructive text-destructive-foreground hover:brightness-95",
         variant === "ghost" &&
           "bg-transparent text-foreground hover:bg-muted",
         size === "sm" && "h-9 px-3 text-sm",

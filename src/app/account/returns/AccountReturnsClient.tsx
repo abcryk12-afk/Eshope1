@@ -97,12 +97,12 @@ export default function AccountReturnsClient() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">Returns / Refunds</h1>
-        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Request and track returns. Refunds are processed after approval/completion.</p>
+      <div className="rounded-3xl border border-border bg-surface p-6">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Returns / Refunds</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Request and track returns. Refunds are processed after approval/completion.</p>
       </div>
 
-      <div className="rounded-3xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+      <div className="rounded-3xl border border-border bg-surface p-4">
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-2">
             <button
@@ -111,8 +111,8 @@ export default function AccountReturnsClient() {
               className={cn(
                 "rounded-full border px-3 py-1 text-sm font-semibold",
                 tab === "in_progress"
-                  ? "border-zinc-900 bg-zinc-50 text-zinc-900 dark:border-zinc-50 dark:bg-zinc-900 dark:text-zinc-50"
-                  : "border-zinc-200 bg-white text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300"
+                  ? "border-primary bg-muted text-foreground"
+                  : "border-border bg-background text-foreground-secondary"
               )}
             >
               In Progress
@@ -123,8 +123,8 @@ export default function AccountReturnsClient() {
               className={cn(
                 "rounded-full border px-3 py-1 text-sm font-semibold",
                 tab === "awaiting_returns"
-                  ? "border-zinc-900 bg-zinc-50 text-zinc-900 dark:border-zinc-50 dark:bg-zinc-900 dark:text-zinc-50"
-                  : "border-zinc-200 bg-white text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300"
+                  ? "border-primary bg-muted text-foreground"
+                  : "border-border bg-background text-foreground-secondary"
               )}
             >
               Awaiting Returns
@@ -149,29 +149,29 @@ export default function AccountReturnsClient() {
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="rounded-3xl border border-zinc-200 bg-white p-6 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400">
+        <div className="rounded-3xl border border-border bg-surface p-6 text-sm text-muted-foreground">
           No items.
         </div>
       ) : (
         <div className="space-y-3">
           {filtered.map((it) => (
-            <div key={it.id} className="rounded-3xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+            <div key={it.id} className="rounded-3xl border border-border bg-surface p-4">
               <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div className="flex min-w-0 gap-3">
                   {it.productImage ? (
-                    <div className="relative h-14 w-14 overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800">
+                    <div className="relative h-14 w-14 overflow-hidden rounded-2xl border border-border">
                       <Image src={it.productImage} alt={it.productTitle} fill className="object-cover" sizes="56px" />
                     </div>
                   ) : null}
 
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">{statusLabel(it.status)}</p>
-                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400 truncate">{it.productTitle}</p>
-                    <p className="mt-1 text-xs text-zinc-500">Order #{it.orderShort}{it.storeName ? ` · ${it.storeName}` : ""}</p>
-                    <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-400">Reason: {it.reason}</p>
-                    {it.comment ? <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">{it.comment}</p> : null}
-                    {it.createdAt ? <p className="mt-2 text-xs text-zinc-500">Requested: {fmtDate(it.createdAt)}</p> : null}
-                    {it.refundProcessedAt ? <p className="mt-1 text-xs text-zinc-500">Refund processed: {fmtDate(it.refundProcessedAt)}</p> : null}
+                    <p className="text-sm font-semibold text-foreground">{statusLabel(it.status)}</p>
+                    <p className="mt-1 text-sm text-muted-foreground truncate">{it.productTitle}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Order #{it.orderShort}{it.storeName ? ` · ${it.storeName}` : ""}</p>
+                    <p className="mt-2 text-xs text-muted-foreground">Reason: {it.reason}</p>
+                    {it.comment ? <p className="mt-1 text-xs text-muted-foreground">{it.comment}</p> : null}
+                    {it.createdAt ? <p className="mt-2 text-xs text-muted-foreground">Requested: {fmtDate(it.createdAt)}</p> : null}
+                    {it.refundProcessedAt ? <p className="mt-1 text-xs text-muted-foreground">Refund processed: {fmtDate(it.refundProcessedAt)}</p> : null}
                   </div>
                 </div>
 
@@ -192,16 +192,16 @@ export default function AccountReturnsClient() {
       )}
 
       {!loading && history.length ? (
-        <div className="rounded-3xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
-          <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">History</h2>
-          <p className="mt-1 text-xs text-zinc-500">Rejected and completed requests.</p>
+        <div className="rounded-3xl border border-border bg-surface p-4">
+          <h2 className="text-sm font-semibold text-foreground">History</h2>
+          <p className="mt-1 text-xs text-muted-foreground">Rejected and completed requests.</p>
 
           <div className="mt-3 space-y-2">
             {history.slice(0, 20).map((it) => (
-              <div key={it.id} className="flex items-center justify-between rounded-2xl border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800">
+              <div key={it.id} className="flex items-center justify-between rounded-2xl border border-border px-3 py-2 text-sm">
                 <div className="min-w-0">
-                  <p className="font-semibold text-zinc-900 dark:text-zinc-50 truncate">{it.productTitle}</p>
-                  <p className="text-xs text-zinc-500">Order #{it.orderShort} · {statusLabel(it.status)}</p>
+                  <p className="font-semibold text-foreground truncate">{it.productTitle}</p>
+                  <p className="text-xs text-muted-foreground">Order #{it.orderShort} · {statusLabel(it.status)}</p>
                 </div>
                 <Link href={`/account/orders/${encodeURIComponent(it.orderId)}`}>
                   <Button variant="secondary" size="sm">View</Button>

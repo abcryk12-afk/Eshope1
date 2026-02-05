@@ -117,7 +117,7 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
         <div className="absolute left-2 top-2 flex flex-col items-start gap-1.5">
           {showDiscountBadge && discountBadge ? (
             <span
-              className="bg-destructive px-2 py-1 text-[11px] font-extrabold tracking-tight text-destructive-foreground shadow-sm ring-1 ring-foreground/10"
+              className="bg-accent px-2 py-1 text-[11px] font-extrabold tracking-tight text-accent-foreground shadow-sm ring-1 ring-foreground/10"
               style={{ borderRadius: "var(--radius-pill)" }}
             >
               {discountBadge}

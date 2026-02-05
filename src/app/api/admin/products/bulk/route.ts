@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { authOptions } from "@/lib/auth";
 import { dbConnect } from "@/lib/db";
+import { pingSitemapIfEnabled } from "@/lib/sitemapPing";
 import Product from "@/models/Product";
 
 export const runtime = "nodejs";
@@ -46,11 +47,14 @@ export async function POST(req: NextRequest) {
 
   if (parsed.data.action === "delete") {
     const res = await Product.deleteMany({ _id: { $in: ids } });
+    void pingSitemapIfEnabled();
     return NextResponse.json({ ok: true, deleted: res.deletedCount ?? 0 });
   }
 
   const isActive = parsed.data.action === "activate";
   const res = await Product.updateMany({ _id: { $in: ids } }, { $set: { isActive } });
+
+  void pingSitemapIfEnabled();
 
   return NextResponse.json({ ok: true, modified: res.modifiedCount ?? 0 });
 }

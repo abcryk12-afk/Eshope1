@@ -95,11 +95,16 @@ export default function AccountSidebar({ user }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
-        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">My Account</p>
-        <p className="mt-2 text-sm font-semibold text-zinc-900 dark:text-zinc-50">{user.name || "Customer"}</p>
-        <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">{user.email}</p>
-        <p className={cn("mt-2 inline-flex rounded-full px-2 py-1 text-xs font-semibold", user.isBlocked ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-200" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200")}>
+      <div className="rounded-2xl border border-border bg-background p-4">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">My Account</p>
+        <p className="mt-2 text-sm font-semibold text-foreground">{user.name || "Customer"}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{user.email}</p>
+        <p
+          className={cn(
+            "mt-2 inline-flex rounded-full px-2 py-1 text-xs font-semibold",
+            user.isBlocked ? "bg-destructive/10 text-destructive" : "bg-success/10 text-success"
+          )}
+        >
           {user.isBlocked ? "Blocked" : "Active"}
         </p>
       </div>
@@ -114,11 +119,11 @@ export default function AccountSidebar({ user }: Props) {
               className={cn(
                 "flex items-center gap-3 rounded-2xl px-3 py-2 text-sm font-semibold",
                 active
-                  ? "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900"
-                  : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-900"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-foreground-secondary hover:bg-muted"
               )}
             >
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-zinc-200 bg-white text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50">
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-border bg-background text-foreground">
                 {it.icon}
               </span>
               <span className="min-w-0 truncate">{it.label}</span>
@@ -129,7 +134,7 @@ export default function AccountSidebar({ user }: Props) {
 
       <Link
         href="/"
-        className="block rounded-2xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50 dark:hover:bg-zinc-900"
+        className="block rounded-2xl border border-border bg-background px-3 py-2 text-sm font-semibold text-foreground hover:bg-muted"
       >
         Back to shop
       </Link>

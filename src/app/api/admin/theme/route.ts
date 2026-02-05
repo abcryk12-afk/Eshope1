@@ -13,6 +13,7 @@ const ADMIN_ROLE_SET = new Set(["staff", "admin", "super_admin"]);
 const ColorsSchema = z.object({
   primary: z.string().trim().min(4).max(32),
   secondary: z.string().trim().min(4).max(32),
+  accent: z.string().trim().min(4).max(32).optional(),
   background: z.string().trim().min(4).max(32),
   surface: z.string().trim().min(4).max(32),
   header: z.string().trim().min(4).max(32),
@@ -20,7 +21,7 @@ const ColorsSchema = z.object({
 });
 
 const BodySchema = z.object({
-  preset: z.enum(["default", "daraz", "amazon"]).default("default"),
+  preset: z.enum(["default", "marketplace", "sales", "premium", "daraz", "amazon"]).default("default"),
   colors: ColorsSchema,
 });
 
@@ -65,6 +66,7 @@ export async function GET() {
       colors: {
         primary: readString(colors?.primary, "#18181b"),
         secondary: readString(colors?.secondary, "#f4f4f5"),
+        accent: readString(colors?.accent, "#ff6a00"),
         background: readString(colors?.background, "#ffffff"),
         surface: readString(colors?.surface, readString(colors?.background, "#ffffff")),
         header: readString(colors?.header, readString(colors?.background, "#ffffff")),
@@ -95,7 +97,13 @@ export async function PUT(req: NextRequest) {
     {
       $set: {
         key: "global",
-        theme: { preset: parsed.data.preset, colors: parsed.data.colors },
+        theme: {
+          preset: parsed.data.preset,
+          colors: {
+            ...parsed.data.colors,
+            accent: String(parsed.data.colors.accent ?? "#ff6a00"),
+          },
+        },
         themeUpdatedAt: now,
       },
     },
@@ -113,6 +121,7 @@ export async function PUT(req: NextRequest) {
       colors: {
         primary: readString(colors?.primary, "#18181b"),
         secondary: readString(colors?.secondary, "#f4f4f5"),
+        accent: readString(colors?.accent, "#ff6a00"),
         background: readString(colors?.background, "#ffffff"),
         surface: readString(colors?.surface, readString(colors?.background, "#ffffff")),
         header: readString(colors?.header, readString(colors?.background, "#ffffff")),

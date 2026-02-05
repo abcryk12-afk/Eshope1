@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { authOptions } from "@/lib/auth";
 import { dbConnect } from "@/lib/db";
+import { pingSitemapIfEnabled } from "@/lib/sitemapPing";
 import { slugify } from "@/lib/slug";
 import Category from "@/models/Category";
 import Product from "@/models/Product";
@@ -137,6 +138,8 @@ export async function POST(req: NextRequest) {
     categorySlug: category.slug,
     slug,
   });
+
+  void pingSitemapIfEnabled();
 
   return NextResponse.json({ id: product._id.toString(), slug: product.slug }, { status: 201 });
 }

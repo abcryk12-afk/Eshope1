@@ -113,8 +113,8 @@ export default function CartClient() {
 
   return (
     <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_380px]">
-      <div className="rounded-3xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
-        <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Items</h2>
+      <div className="rounded-3xl border border-border bg-surface p-5">
+        <h2 className="text-sm font-semibold text-foreground">Items</h2>
 
         {quote?.items?.length ? (
           <div className="mt-4 space-y-3">
@@ -130,11 +130,11 @@ export default function CartClient() {
                   className={cn(
                     "flex gap-3 rounded-2xl border p-3",
                     i.isAvailable
-                      ? "border-zinc-200 dark:border-zinc-800"
-                      : "border-red-300 bg-red-50 dark:border-red-900 dark:bg-red-950"
+                      ? "border-border"
+                      : "border-destructive/40 bg-destructive/10"
                   )}
                 >
-                  <div className="relative h-16 w-16 overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-900">
+                  <div className="relative h-16 w-16 overflow-hidden rounded-xl bg-muted">
                     {i.image ? (
                       <Image
                         src={i.image}
@@ -151,42 +151,42 @@ export default function CartClient() {
                       <div className="min-w-0">
                         <Link
                           href={`/product/${i.slug}`}
-                          className="line-clamp-2 text-sm font-semibold text-zinc-900 hover:underline dark:text-zinc-50"
+                          className="line-clamp-2 text-sm font-semibold text-foreground hover:underline"
                         >
                           {i.title}
                         </Link>
                         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-                          <span className="text-zinc-500">
+                          <span className="text-muted-foreground">
                             {formatMoneyFromPkr(i.unitPrice, currency.selected, currency.pkrPerUsd)}
                           </span>
                           {typeof i.originalUnitPrice === "number" && i.originalUnitPrice > i.unitPrice ? (
-                            <span className="text-zinc-400 line-through">
+                            <span className="text-muted-foreground line-through">
                               {formatMoneyFromPkr(i.originalUnitPrice, currency.selected, currency.pkrPerUsd)}
                             </span>
                           ) : null}
                         </div>
                         {savedTotal > 0 ? (
-                          <p className="mt-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                          <p className="mt-1 text-xs font-medium text-success">
                             You saved {formatMoneyFromPkr(savedTotal, currency.selected, currency.pkrPerUsd)}
                           </p>
                         ) : null}
                         {!i.isAvailable ? (
-                          <p className="mt-1 text-xs font-medium text-red-700 dark:text-red-300">
+                          <p className="mt-1 text-xs font-medium text-destructive">
                             {i.message ?? "Not available"}
                           </p>
                         ) : null}
                       </div>
 
-                      <p className="shrink-0 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                      <p className="shrink-0 text-sm font-semibold text-foreground">
                         {formatMoneyFromPkr(i.lineTotal, currency.selected, currency.pkrPerUsd)}
                       </p>
                     </div>
 
                     <div className="mt-3 flex items-center justify-between">
-                      <div className="inline-flex items-center rounded-xl border border-zinc-200 p-1 dark:border-zinc-800">
+                      <div className="inline-flex items-center rounded-xl border border-border p-1">
                         <button
                           type="button"
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted"
                           onClick={() =>
                             dispatch(
                               setCartItemQuantity({
@@ -200,12 +200,12 @@ export default function CartClient() {
                         >
                           -
                         </button>
-                        <span className="w-10 text-center text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                        <span className="w-10 text-center text-sm font-medium text-foreground">
                           {i.quantity}
                         </span>
                         <button
                           type="button"
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg hover:bg-muted"
                           onClick={() =>
                             dispatch(
                               setCartItemQuantity({
@@ -231,7 +231,7 @@ export default function CartClient() {
                             })
                           )
                         }
-                        className="text-sm font-medium text-zinc-600 hover:underline dark:text-zinc-400"
+                        className="text-sm font-medium text-muted-foreground hover:underline"
                       >
                         Remove
                       </button>
@@ -242,24 +242,24 @@ export default function CartClient() {
             })}
           </div>
         ) : (
-          <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">Your cart is empty.</p>
+          <p className="mt-3 text-sm text-muted-foreground">Your cart is empty.</p>
         )}
       </div>
 
-      <aside className="h-fit rounded-3xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
-        <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Summary</h2>
+      <aside className="h-fit rounded-3xl border border-border bg-surface p-5">
+        <h2 className="text-sm font-semibold text-foreground">Summary</h2>
 
         <div className="mt-4 space-y-2 text-sm">
           <div className="flex items-center justify-between">
-            <span className="text-zinc-600 dark:text-zinc-400">Subtotal</span>
-            <span className="font-semibold text-zinc-900 dark:text-zinc-50">
+            <span className="text-muted-foreground">Subtotal</span>
+            <span className="font-semibold text-foreground">
               {formatMoneyFromPkr(quote?.itemsSubtotal ?? 0, currency.selected, currency.pkrPerUsd)}
             </span>
           </div>
 
           <div className="flex items-center justify-between">
-            <span className="text-zinc-600 dark:text-zinc-400">Shipping</span>
-            <span className="font-semibold text-zinc-900 dark:text-zinc-50">
+            <span className="text-muted-foreground">Shipping</span>
+            <span className="font-semibold text-foreground">
               {Number(quote?.shippingAmount ?? 0) <= 0
                 ? "Free"
                 : formatMoneyFromPkr(quote?.shippingAmount ?? 0, currency.selected, currency.pkrPerUsd)}
@@ -267,19 +267,19 @@ export default function CartClient() {
           </div>
 
           {quote?.shippingIsFree ? (
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-medium text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">
+            <div className="rounded-2xl border border-success/30 bg-success/10 p-3 text-xs font-medium text-success">
               Free Delivery Applied
             </div>
           ) : (quote?.shippingRemainingForFree ?? 0) > 0 ? (
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-300">
+            <div className="rounded-2xl border border-border bg-muted p-3 text-xs text-foreground-secondary">
               Spend {formatMoneyFromPkr(quote?.shippingRemainingForFree ?? 0, currency.selected, currency.pkrPerUsd)} more for free delivery
             </div>
           ) : null}
 
-          <div className="border-t border-zinc-200 pt-3 dark:border-zinc-800">
+          <div className="border-t border-border pt-3">
             <div className="flex items-center justify-between">
-              <span className="text-zinc-600 dark:text-zinc-400">Total</span>
-              <span className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+              <span className="text-muted-foreground">Total</span>
+              <span className="text-lg font-semibold text-foreground">
                 {formatMoneyFromPkr(quote?.totalAmount ?? 0, currency.selected, currency.pkrPerUsd)}
               </span>
             </div>
@@ -287,11 +287,11 @@ export default function CartClient() {
         </div>
 
         <Link href="/checkout" className={cn("mt-4 block", (!quote?.items?.length || quote.items.some((i) => !i.isAvailable)) && "pointer-events-none opacity-50")}>
-          <Button className="w-full">Go to checkout</Button>
+          <Button variant="accent" className="w-full">Go to checkout</Button>
         </Link>
 
         {quote?.items?.some((i) => !i.isAvailable) ? (
-          <p className="mt-3 text-sm text-red-600 dark:text-red-400">
+          <p className="mt-3 text-sm text-destructive">
             Fix unavailable items before checkout.
           </p>
         ) : null}

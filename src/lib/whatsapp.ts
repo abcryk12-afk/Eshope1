@@ -15,6 +15,19 @@ export const DEFAULT_WHATSAPP_ORDER_TEMPLATE = [
   "Please reply YES to confirm your order.",
 ].join("\n");
 
+export const DEFAULT_WHATSAPP_PRODUCT_TEMPLATE = [
+  "Hello {{storeName}},",
+  "",
+  "I want to buy {{productName}}.",
+  "{{productUrl}}",
+].join("\n");
+
+export const DEFAULT_WHATSAPP_STORE_TEMPLATE = [
+  "Hello {{storeName}},",
+  "",
+  "I need help with my order.",
+].join("\n");
+
 type ItemBrief = {
   title: string;
   quantity: number;
@@ -30,6 +43,18 @@ type BuildOrderMessageArgs = {
   currency?: CurrencyCode;
   pkrPerUsd?: number;
   paymentMethod?: string;
+  template?: string;
+};
+
+type BuildProductMessageArgs = {
+  storeName: string;
+  productName: string;
+  productUrl?: string;
+  template?: string;
+};
+
+type BuildStoreMessageArgs = {
+  storeName: string;
   template?: string;
 };
 
@@ -101,6 +126,56 @@ function renderTemplate(template: string, values: Record<string, string>) {
   }
 
   return out;
+}
+
+export function buildWhatsAppProductMessage(args: BuildProductMessageArgs) {
+  const customTemplate = String(args.template ?? "").trim();
+  const template = customTemplate ? customTemplate : DEFAULT_WHATSAPP_PRODUCT_TEMPLATE;
+
+  const storeName = String(args.storeName ?? "").trim() || "Shop";
+  const productName = String(args.productName ?? "").trim();
+  const productUrl = String(args.productUrl ?? "").trim();
+
+  const values: Record<string, string> = {
+    storeName,
+    productName,
+    productUrl,
+  };
+
+  return normalizeNewlines(renderTemplate(template, values));
+}
+
+export function buildWhatsAppProductUrl(args: BuildProductMessageArgs & { salesPhone: string; defaultCountryCallingCode?: string }) {
+  const phone = normalizeWhatsAppPhone(args.salesPhone, { defaultCountryCallingCode: args.defaultCountryCallingCode });
+  if (!phone) return null;
+
+  const text = buildWhatsAppProductMessage(args);
+  if (!text.trim()) return null;
+
+  return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+}
+
+export function buildWhatsAppStoreMessage(args: BuildStoreMessageArgs) {
+  const customTemplate = String(args.template ?? "").trim();
+  const template = customTemplate ? customTemplate : DEFAULT_WHATSAPP_STORE_TEMPLATE;
+
+  const storeName = String(args.storeName ?? "").trim() || "Shop";
+
+  const values: Record<string, string> = {
+    storeName,
+  };
+
+  return normalizeNewlines(renderTemplate(template, values));
+}
+
+export function buildWhatsAppStoreUrl(args: BuildStoreMessageArgs & { salesPhone: string; defaultCountryCallingCode?: string }) {
+  const phone = normalizeWhatsAppPhone(args.salesPhone, { defaultCountryCallingCode: args.defaultCountryCallingCode });
+  if (!phone) return null;
+
+  const text = buildWhatsAppStoreMessage(args);
+  if (!text.trim()) return null;
+
+  return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
 }
 
 export function buildWhatsAppOrderMessage(args: BuildOrderMessageArgs) {

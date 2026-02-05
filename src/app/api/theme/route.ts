@@ -29,6 +29,7 @@ export async function GET() {
       colors: {
         primary: readString(colors?.primary, "#18181b"),
         secondary: readString(colors?.secondary, "#f4f4f5"),
+        accent: readString(colors?.accent, "#ff6a00"),
         background: readString(colors?.background, "#ffffff"),
         surface: readString(colors?.surface, readString(colors?.background, "#ffffff")),
         header: readString(colors?.header, readString(colors?.background, "#ffffff")),

@@ -6,6 +6,7 @@ export type PublicSeoSettings = {
   siteName: string;
   description: string;
   ogImageUrl: string;
+  logoUrl: string;
   faviconAssetsVersion: string;
 };
 
@@ -29,6 +30,7 @@ export async function getPublicSeoSettings(): Promise<PublicSeoSettings> {
   const branding = root && isRecord(root.branding) ? root.branding : null;
   const brandingSeo = branding && isRecord(branding.seo) ? branding.seo : null;
   const favicon = branding && isRecord(branding.favicon) ? branding.favicon : null;
+  const logo = branding && isRecord(branding.logo) ? branding.logo : null;
 
   const storeName = readString(branding?.storeName) || readString(root?.globalSeoTitle) || "Shop";
   const seoTitle = readString(brandingSeo?.title) || readString(root?.globalSeoTitle) || storeName;
@@ -37,12 +39,16 @@ export async function getPublicSeoSettings(): Promise<PublicSeoSettings> {
   const ogImageRaw = readString(brandingSeo?.ogImageUrl) || readString(branding && isRecord(branding.logo) ? branding.logo.url : "");
   const ogImageUrl = ogImageRaw ? normalizeImageUrl(ogImageRaw) : "";
 
+  const logoRaw = readString(logo?.url);
+  const logoUrl = logoRaw ? normalizeImageUrl(logoRaw) : "";
+
   const faviconAssetsVersion = readString(favicon?.assetsVersion);
 
   return {
     siteName: seoTitle,
     description,
     ogImageUrl,
+    logoUrl,
     faviconAssetsVersion,
   };
 }

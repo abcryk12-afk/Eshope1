@@ -19,10 +19,10 @@ export default async function AccountLayout({ children }: { children: React.Reac
   const isBlocked = Boolean((user as unknown as { isBlocked?: boolean })?.isBlocked);
 
   return (
-    <div className="min-h-screen bg-zinc-50 px-4 py-10 dark:bg-black">
+    <div className="min-h-screen bg-background px-4 py-10">
       <div className="mx-auto w-full max-w-6xl">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[260px_1fr]">
-          <aside className="h-fit rounded-3xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+          <aside className="h-fit rounded-3xl border border-border bg-surface p-4">
             <AccountSidebar user={{ name, email, isBlocked }} />
           </aside>
           <main className="min-w-0 space-y-6">{children}</main>

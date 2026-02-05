@@ -5,6 +5,7 @@ import type { SortOrder } from "mongoose";
 
 import { authOptions } from "@/lib/auth";
 import { dbConnect } from "@/lib/db";
+import { pingSitemapIfEnabled } from "@/lib/sitemapPing";
 import { slugify } from "@/lib/slug";
 import CmsPage from "@/models/CmsPage";
 
@@ -133,6 +134,8 @@ export async function POST(req: NextRequest) {
     seoTitle: parsed.data.seoTitle,
     seoDescription: parsed.data.seoDescription,
   });
+
+  void pingSitemapIfEnabled();
 
   return NextResponse.json({ id: page._id.toString(), slug: page.slug }, { status: 201 });
 }

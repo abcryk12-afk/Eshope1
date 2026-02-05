@@ -6,6 +6,8 @@ import { Toaster } from "sonner";
 
 import { store } from "@/store/store";
 import QuickCheckoutBar from "@/components/layout/QuickCheckoutBar";
+import FloatingWhatsAppButton from "@/components/layout/FloatingWhatsAppButton";
+import { WhatsAppContextProvider } from "@/components/layout/WhatsAppContext";
 import { useAuthSync } from "@/hooks/useAuthSync";
 import { useCurrencySync } from "@/hooks/useCurrencySync";
 import { useLanguageSync } from "@/hooks/useLanguageSync";
@@ -33,9 +35,12 @@ export default function Providers({ children }: ProvidersProps) {
     <SessionProvider>
       <ReduxProvider store={store}>
         <StoreEffects />
-        {children}
-        <QuickCheckoutBar />
-        <Toaster richColors position="top-right" closeButton />
+        <WhatsAppContextProvider>
+          {children}
+          <FloatingWhatsAppButton />
+          <QuickCheckoutBar />
+          <Toaster richColors position="top-right" closeButton />
+        </WhatsAppContextProvider>
       </ReduxProvider>
     </SessionProvider>
   );
