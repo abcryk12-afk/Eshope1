@@ -13,10 +13,30 @@ const ADMIN_ROLE_SET = new Set(["staff", "admin", "super_admin"]);
 const BannerSchema = z.object({
   title: z.string().trim().max(120).optional(),
   subtitle: z.string().trim().max(200).optional(),
-  image: z.string().trim().optional(),
+  image: z.string().trim().optional().default(""),
   href: z.string().trim().optional(),
   isActive: z.boolean().optional().default(true),
 });
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null;
+}
+
+function normalizeBanners(raw: unknown) {
+  const arr = Array.isArray(raw) ? raw : [];
+  return arr
+    .filter((b) => isRecord(b))
+    .map((b) => {
+      const r = b as Record<string, unknown>;
+      return {
+        title: typeof r.title === "string" ? r.title.trim() : "",
+        subtitle: typeof r.subtitle === "string" ? r.subtitle.trim() : "",
+        image: typeof r.image === "string" ? r.image.trim() : "",
+        href: typeof r.href === "string" ? r.href.trim() : "",
+        isActive: typeof r.isActive === "boolean" ? r.isActive : true,
+      };
+    });
+}
 
 const LocalizedTextSchema = z.record(z.string().trim().max(24), z.string().trim().max(500)).optional().default({});
 
@@ -166,7 +186,7 @@ export async function GET() {
 
   return NextResponse.json({
     settings: {
-      homeBanners: Array.isArray(doc?.homeBanners) ? doc?.homeBanners : [],
+      homeBanners: normalizeBanners((doc as unknown as { homeBanners?: unknown }).homeBanners),
       footerText: doc?.footerText ?? "",
       footer: (doc as unknown as { footer?: unknown }).footer ?? {},
       globalSeoTitle: doc?.globalSeoTitle ?? "",
@@ -356,7 +376,7 @@ export async function PUT(req: NextRequest) {
 
   return NextResponse.json({
     settings: {
-      homeBanners: Array.isArray(doc?.homeBanners) ? doc?.homeBanners : [],
+      homeBanners: normalizeBanners((doc as unknown as { homeBanners?: unknown }).homeBanners),
       footerText: doc?.footerText ?? "",
       footer: (doc as unknown as { footer?: unknown }).footer ?? {},
       globalSeoTitle: doc?.globalSeoTitle ?? "",

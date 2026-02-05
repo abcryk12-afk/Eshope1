@@ -19,6 +19,9 @@ function clampInt(n: unknown, min: number, max: number, fallback: number) {
 export default function ProductGrid({ children, className }: ProductGridProps) {
   const { settings } = useStorefrontSettings();
 
+  const gap = settings?.storefrontLayout?.grid?.gap ?? "normal";
+  const gapClass = gap === "compact" ? "gap-2 sm:gap-3" : gap === "spacious" ? "gap-4 sm:gap-6" : "gap-3 sm:gap-4";
+
   const cols = useMemo(() => {
     const grid = settings?.storefrontLayout?.grid;
 
@@ -74,7 +77,7 @@ export default function ProductGrid({ children, className }: ProductGridProps) {
 
   return (
     <div
-      className={cn("grid gap-4", className)}
+      className={cn("grid", gapClass, className)}
       style={{
         gridTemplateColumns: `repeat(${activeCols}, minmax(0, 1fr))`,
       }}

@@ -1,9 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Plus, RefreshCw, Trash2, Upload } from "lucide-react";
 
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
@@ -79,10 +80,52 @@ function hasMissing(value: LocalizedText | undefined, lang: FooterLang) {
   return !readLocalized(value, lang).trim();
 }
 
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null;
+}
+
+function readMessage(json: unknown) {
+  if (!isRecord(json)) return null;
+  const msg = json.message;
+  return typeof msg === "string" ? msg : null;
+}
+
+function isSafeImageSrc(src: string) {
+  const v = String(src || "").trim();
+  if (!v) return false;
+  if (v.startsWith("/")) return true;
+  if (v.startsWith("http://")) return true;
+  if (v.startsWith("https://")) return true;
+  return false;
+}
+
+async function uploadBannerImage(file: File) {
+  const form = new FormData();
+  form.append("files", file);
+
+  const res = await fetch("/api/upload", { method: "POST", body: form });
+  const json = (await res.json().catch(() => null)) as unknown;
+
+  if (!res.ok) {
+    throw new Error(readMessage(json) ?? "Upload failed");
+  }
+
+  if (!isRecord(json) || !Array.isArray(json.urls) || json.urls.some((u) => typeof u !== "string")) {
+    throw new Error("Invalid upload response");
+  }
+
+  const first = String((json.urls as string[])[0] ?? "").trim();
+  if (!first) throw new Error("Upload failed");
+  return first;
+}
+
 export default function AdminCmsSettingsClient() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<Settings | null>(null);
+
+  const [bannerUploading, setBannerUploading] = useState<Record<number, boolean>>({});
+  const bannerFileInputsRef = useRef<Record<number, HTMLInputElement | null>>({});
 
   const [footerLang, setFooterLang] = useState<FooterLang>("en");
 
@@ -258,18 +301,96 @@ export default function AdminCmsSettingsClient() {
                         }
                         placeholder="Subtitle"
                       />
-                      <Input
-                        value={b.image ?? ""}
-                        onChange={(e) =>
-                          setSettings((s) => {
-                            if (!s) return s;
-                            const next = [...s.homeBanners];
-                            next[idx] = { ...next[idx], image: e.target.value };
-                            return { ...s, homeBanners: next };
-                          })
-                        }
-                        placeholder="Image URL"
-                      />
+
+                      <div className="md:col-span-2">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Image</p>
+
+                        <div className="mt-2 grid grid-cols-1 gap-3 md:grid-cols-[1fr_280px]">
+                          <div>
+                            <input
+                              ref={(el) => {
+                                bannerFileInputsRef.current[idx] = el;
+                              }}
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0] ?? null;
+                                e.target.value = "";
+                                if (!file) return;
+
+                                setBannerUploading((m) => ({ ...m, [idx]: true }));
+                                try {
+                                  const url = await uploadBannerImage(file);
+                                  setSettings((s) => {
+                                    if (!s) return s;
+                                    const next = [...s.homeBanners];
+                                    next[idx] = { ...next[idx], image: url };
+                                    return { ...s, homeBanners: next };
+                                  });
+                                  toast.success("Uploaded");
+                                } catch (err) {
+                                  const msg = err instanceof Error ? err.message : "Upload failed";
+                                  toast.error(msg);
+                                } finally {
+                                  setBannerUploading((m) => ({ ...m, [idx]: false }));
+                                }
+                              }}
+                            />
+
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                disabled={Boolean(bannerUploading[idx])}
+                                onClick={() => bannerFileInputsRef.current[idx]?.click()}
+                              >
+                                <Upload className="mr-2 h-4 w-4" />
+                                {bannerUploading[idx] ? "Uploading..." : "Upload"}
+                              </Button>
+
+                              <Input
+                                value={b.image ?? ""}
+                                onChange={(e) =>
+                                  setSettings((s) => {
+                                    if (!s) return s;
+                                    const next = [...s.homeBanners];
+                                    next[idx] = { ...next[idx], image: e.target.value };
+                                    return { ...s, homeBanners: next };
+                                  })
+                                }
+                                placeholder="Paste image URL (optional)"
+                              />
+                            </div>
+
+                            <div className="mt-2 space-y-1 text-xs text-zinc-600 dark:text-zinc-400">
+                              <p>Desktop recommended: 1200×400 (~3:1)</p>
+                              <p>Mobile recommended: 750×500 (~3:2)</p>
+                              <p>Image will auto-crop responsively.</p>
+                            </div>
+                          </div>
+
+                          <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900">
+                            <div className="relative aspect-3/2 md:aspect-3/1 w-full">
+                              {isSafeImageSrc(b.image ?? "") ? (
+                                <Image
+                                  src={String(b.image)}
+                                  alt={b.title?.trim() ? String(b.title) : "Banner"}
+                                  fill
+                                  className="object-cover"
+                                  unoptimized
+                                />
+                              ) : (
+                                <div className="flex h-full w-full items-center justify-center px-4 text-center text-xs text-zinc-600 dark:text-zinc-400">
+                                  No image selected
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
                       <Input
                         value={b.href ?? ""}
                         onChange={(e) =>
@@ -287,7 +408,7 @@ export default function AdminCmsSettingsClient() {
                     <label className="mt-3 flex items-center gap-3 text-sm text-zinc-700 dark:text-zinc-300">
                       <input
                         type="checkbox"
-                        checked={Boolean(b.isActive)}
+                        checked={b.isActive ?? true}
                         onChange={(e) =>
                           setSettings((s) => {
                             if (!s) return s;

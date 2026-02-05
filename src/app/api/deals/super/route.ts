@@ -100,8 +100,15 @@ export async function GET(req: Request) {
 
       if (!deal?.type || deal.value == null) return null;
 
+      const title = String(p.title ?? "").trim();
+      const slug = String(p.slug ?? "").trim();
+      if (!title || !slug) return null;
+
       const original = Number(p.basePrice ?? 0);
+      if (!Number.isFinite(original) || original <= 0) return null;
+
       const dealPrice = computeDealPrice({ original, type: deal.type, value: Number(deal.value) });
+      if (!Number.isFinite(dealPrice) || dealPrice <= 0) return null;
 
       const label =
         deal.type === "percent"
@@ -113,11 +120,20 @@ export async function GET(req: Request) {
           ? p.compareAtPrice
           : original;
 
+      const images = Array.isArray(p.images)
+        ? (p.images as unknown[])
+            .filter((x) => typeof x === "string")
+            .map((x) => String(x).trim())
+            .filter(Boolean)
+        : [];
+
+      if (images.length === 0) return null;
+
       return {
         _id: id,
-        title: String(p.title ?? ""),
-        slug: String(p.slug ?? ""),
-        images: Array.isArray(p.images) ? (p.images as unknown[]).filter((x) => typeof x === "string") : [],
+        title,
+        slug,
+        images,
         basePrice: dealPrice,
         compareAtPrice: compareAt,
         ratingAvg: Number(p.ratingAvg ?? 0),

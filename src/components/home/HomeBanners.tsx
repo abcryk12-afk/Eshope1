@@ -47,38 +47,37 @@ export default function HomeBanners({ banners, loading }: HomeBannersProps) {
     );
   }
 
-  if (!banners.length) return null;
+  const safe = banners
+    .filter((b) => typeof b?.image === "string" && Boolean(b.image.trim()))
+    .slice(0, 3);
+
+  if (!safe.length) return null;
 
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-      {banners.slice(0, 3).map((b) => {
+      {safe.map((b) => {
         const content = (
           <div className="group overflow-hidden rounded-3xl border border-border bg-surface">
-            <div className="relative aspect-16/10 w-full bg-muted">
-              {b.image ? (
-                <Image
-                  src={b.image}
-                  alt={b.title || "Banner"}
-                  fill
-                  className="object-cover transition duration-500 group-hover:scale-[1.03]"
-                  unoptimized
-                />
-              ) : null}
-              <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-black/45 via-black/10 to-transparent" />
+            <div className="relative aspect-3/2 md:aspect-3/1 w-full bg-muted">
+              <Image
+                src={b.image}
+                alt={b.title || "Banner"}
+                fill
+                className="object-cover transition duration-500 group-hover:scale-[1.03]"
+                unoptimized
+              />
+            </div>
 
-              <div className="absolute inset-x-0 bottom-0 p-4">
+            {(b.title || b.subtitle) ? (
+              <div className="p-4">
                 {b.title ? (
-                  <p className="text-base font-semibold tracking-tight text-white">
-                    {b.title}
-                  </p>
+                  <p className="text-base font-semibold tracking-tight text-foreground">{b.title}</p>
                 ) : null}
                 {b.subtitle ? (
-                  <p className="mt-1 line-clamp-2 text-sm text-white/85">
-                    {b.subtitle}
-                  </p>
+                  <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{b.subtitle}</p>
                 ) : null}
               </div>
-            </div>
+            ) : null}
           </div>
         );
 

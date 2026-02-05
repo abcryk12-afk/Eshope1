@@ -20,14 +20,16 @@ export default function QuickCheckoutBar() {
   const lastAddedAt = useAppSelector((s) => s.cart.lastAddedAt);
   const lastAdded = useAppSelector((s) => s.cart.lastAdded);
   const cartCount = useAppSelector((s) => s.cart.items.reduce((acc, i) => acc + i.quantity, 0));
+  const hasCart = cartCount > 0;
 
   const [open, setOpen] = useState(false);
   const hideTimerRef = useRef<number | null>(null);
 
   const shouldShow = useMemo(() => {
     if (!enabled) return false;
+    if (!hasCart) return false;
     return lastAddedAt > 0;
-  }, [enabled, lastAddedAt]);
+  }, [enabled, lastAddedAt, hasCart]);
 
   useEffect(() => {
     if (!shouldShow) return;
@@ -69,72 +71,106 @@ export default function QuickCheckoutBar() {
   if (!enabled) return null;
   if (pathname?.startsWith("/checkout")) return null;
   if (pathname?.startsWith("/cart")) return null;
+  if (!hasCart) return null;
 
   return (
     <div
       className={cn(
         "fixed inset-x-0 bottom-0 z-50 px-4 pb-4",
-        open ? "pointer-events-auto" : "pointer-events-none"
+        open || hasCart ? "pointer-events-auto" : "pointer-events-none"
       )}
-      aria-hidden={!open}
+      aria-hidden={!(open || hasCart)}
     >
       <div
         className={cn(
           "mx-auto w-full max-w-3xl",
           "rounded-3xl border border-border bg-surface shadow-2xl",
           "transition duration-200",
-          open ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"
+          open || hasCart ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"
         )}
         role="status"
       >
-        <div className="flex items-start gap-3 p-4">
-          {lastAdded?.image ? (
-            <div className="relative mt-0.5 h-10 w-10 overflow-hidden rounded-2xl bg-muted">
-              <Image
-                src={lastAdded.image}
-                alt={lastAdded.title || "Added item"}
-                fill
-                className="object-cover"
-                unoptimized
-              />
+        {open ? (
+          <div className="flex items-start gap-3 p-4">
+            {lastAdded?.image ? (
+              <div className="relative mt-0.5 h-10 w-10 overflow-hidden rounded-2xl bg-muted">
+                <Image
+                  src={lastAdded.image}
+                  alt={lastAdded.title || "Added item"}
+                  fill
+                  className="object-cover"
+                  unoptimized
+                />
+              </div>
+            ) : (
+              <CheckCircle2 className="mt-0.5 h-5 w-5 text-primary" />
+            )}
+
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-foreground">Item added to cart</p>
+              {lastAdded?.title ? (
+                <p className="mt-0.5 line-clamp-1 text-sm text-foreground/80">{lastAdded.title}</p>
+              ) : null}
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                {cartCount} {cartCount === 1 ? "item" : "items"} in cart
+              </p>
+
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setOpen(false)}
+                  className="w-full sm:w-auto"
+                >
+                  Continue shopping
+                </Button>
+                <Link href="/cart" className="w-full sm:w-auto" onClick={() => setOpen(false)}>
+                  <Button type="button" variant="secondary" className="w-full sm:w-auto">
+                    View cart
+                  </Button>
+                </Link>
+                <Link href="/checkout" className="w-full sm:w-auto" onClick={() => setOpen(false)}>
+                  <Button type="button" className="w-full sm:w-auto">Checkout Now</Button>
+                </Link>
+              </div>
             </div>
-          ) : (
-            <CheckCircle2 className="mt-0.5 h-5 w-5 text-primary" />
-          )}
 
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-foreground">Item added to cart</p>
-            {lastAdded?.title ? (
-              <p className="mt-0.5 line-clamp-1 text-sm text-foreground/80">{lastAdded.title}</p>
-            ) : null}
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              {cartCount} {cartCount === 1 ? "item" : "items"} in cart
-            </p>
-
-            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-              <Button
+            <button
+              type="button"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl hover:bg-muted"
+              onClick={() => setOpen(false)}
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-foreground">
+                {cartCount} {cartCount === 1 ? "item" : "items"} in cart
+              </p>
+              <button
                 type="button"
-                variant="secondary"
-                onClick={() => setOpen(false)}
-                className="w-full sm:w-auto"
+                className="mt-0.5 text-left text-sm text-muted-foreground hover:underline"
+                onClick={() => setOpen(true)}
               >
-                Continue shopping
-              </Button>
-              <Link href="/checkout" className="w-full sm:w-auto" onClick={() => setOpen(false)}>
-                <Button type="button" className="w-full sm:w-auto">Go to checkout</Button>
+                Added something? Review and checkout
+              </button>
+            </div>
+
+            <div className="flex gap-2">
+              <Link href="/cart" className="flex-1 sm:flex-none">
+                <Button type="button" variant="secondary" className="w-full sm:w-auto">
+                  View cart
+                </Button>
+              </Link>
+              <Link href="/checkout" className="flex-1 sm:flex-none">
+                <Button type="button" className="w-full sm:w-auto">Checkout Now</Button>
               </Link>
             </div>
           </div>
-
-          <button
-            type="button"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-xl hover:bg-muted"
-            onClick={() => setOpen(false)}
-            aria-label="Close"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+        )}
       </div>
     </div>
   );

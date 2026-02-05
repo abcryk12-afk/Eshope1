@@ -10,6 +10,15 @@ function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null;
 }
 
+function isSafeImageSrc(src: string) {
+  const v = String(src || "").trim();
+  if (!v) return false;
+  if (v.startsWith("/")) return true;
+  if (v.startsWith("http://")) return true;
+  if (v.startsWith("https://")) return true;
+  return false;
+}
+
 export async function GET() {
   await dbConnect();
 
@@ -21,16 +30,17 @@ export async function GET() {
     .filter((b) => isRecord(b))
     .map((b) => {
       const r = b as Record<string, unknown>;
+      const image = typeof r.image === "string" ? r.image.trim() : "";
       return {
         id: String(r._id ?? ""),
-        title: typeof r.title === "string" ? r.title : "",
-        subtitle: typeof r.subtitle === "string" ? r.subtitle : "",
-        image: typeof r.image === "string" ? r.image : "",
-        href: typeof r.href === "string" ? r.href : "",
+        title: typeof r.title === "string" ? r.title.trim() : "",
+        subtitle: typeof r.subtitle === "string" ? r.subtitle.trim() : "",
+        image,
+        href: typeof r.href === "string" ? r.href.trim() : "",
         isActive: typeof r.isActive === "boolean" ? r.isActive : true,
       };
     })
-    .filter((b) => b.isActive);
+    .filter((b) => b.isActive && isSafeImageSrc(b.image));
 
   return NextResponse.json({ homeBanners }, { headers: { "Cache-Control": "no-store, max-age=0" } });
 }

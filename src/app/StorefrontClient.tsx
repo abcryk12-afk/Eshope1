@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, SlidersHorizontal } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import ProductCard from "@/components/product/ProductCard";
@@ -10,6 +9,11 @@ import ProductGrid from "@/components/product/ProductGrid";
 import SuperDealsSection from "@/components/deals/SuperDealsSection";
 import HomeBanners from "@/components/home/HomeBanners";
 import Skeleton from "@/components/ui/Skeleton";
+import BottomSheet from "@/components/ui/BottomSheet";
+import ListingTopBar, { type ListingLayoutMode } from "@/components/storefront/ListingTopBar";
+import { useStorefrontSettings } from "@/hooks/useStorefrontSettings";
+import Button from "@/components/ui/Button";
+import Input from "@/components/ui/Input";
 import QuickViewModal from "../components/product/QuickViewModal";
 
 type ProductsMeta = {
@@ -113,6 +117,9 @@ export default function StorefrontClient({
   const [pagination, setPagination] = useState<Pagination | null>(null);
 
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [mobileSortOpen, setMobileSortOpen] = useState(false);
+
+  const [layoutMode, setLayoutMode] = useState<ListingLayoutMode>("grid");
 
   const [quickViewSlug, setQuickViewSlug] = useState<string | null>(null);
 
@@ -299,6 +306,44 @@ export default function StorefrontClient({
     inStock ||
     (sort !== "relevance" && sort !== "");
 
+  const activeFilterCount = useMemo(() => {
+    let c = 0;
+    if (q.trim()) c += 1;
+    if (!fixedCategory && category) c += 1;
+    if (typeof priceMin === "number") c += 1;
+    if (typeof priceMax === "number") c += 1;
+    if (typeof ratingMin === "number") c += 1;
+    if (inStock) c += 1;
+    return c;
+  }, [q, fixedCategory, category, priceMin, priceMax, ratingMin, inStock]);
+
+  const { settings: storefrontSettings } = useStorefrontSettings();
+  const headerSettings = storefrontSettings?.storefrontLayout?.listingHeader;
+
+  const headerSpacing = headerSettings?.spacing ?? "compact";
+  const showSearch = headerSettings?.showSearch ?? true;
+  const showFilters = headerSettings?.showFilters ?? true;
+  const showSort = headerSettings?.showSort ?? true;
+  const showLayoutSwitcher = headerSettings?.enableLayoutSwitcher ?? false;
+
+  const sortLabel = useMemo(() => {
+    const found = SORT_OPTIONS.find((o) => o.value === sort);
+    return found?.label ?? "";
+  }, [sort]);
+
+  const clearAll = useCallback(() => {
+    setQInput("");
+    setQ("");
+    setCategory(fixedCategory || "");
+    setPriceMin(undefined);
+    setPriceMax(undefined);
+    setRatingMin(undefined);
+    setInStock(false);
+    setSort("relevance");
+    setPage(1);
+    router.push(targetPath);
+  }, [fixedCategory, router, targetPath]);
+
   const canGoPrev = (pagination?.page ?? 1) > 1;
   const canGoNext = (pagination?.page ?? 1) < (pagination?.pages ?? 1);
 
@@ -309,8 +354,13 @@ export default function StorefrontClient({
 
   return (
     <div className="bg-background text-foreground">
-      <div className="mx-auto w-full max-w-6xl px-4 py-8">
-        <div className="flex flex-col gap-6">
+      <div
+        className={cn(
+          "mx-auto w-full max-w-6xl px-4",
+          headerSpacing === "compact" ? "py-5 md:py-8" : "py-8"
+        )}
+      >
+        <div className={cn("flex flex-col", headerSpacing === "compact" ? "gap-4" : "gap-6")}>
           {isHome ? (
             <>
               <HomeBanners banners={homeBanners} loading={homeBannersLoading} />
@@ -321,62 +371,44 @@ export default function StorefrontClient({
             </>
           ) : null}
 
-          <div className="flex items-end justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-                {pageTitle?.trim() || "Products"}
-              </h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Filter, compare, and add to cart.
-              </p>
-            </div>
+          <ListingTopBar
+            title={pageTitle?.trim() || "Products"}
+            spacing={headerSpacing}
+            showSearch={showSearch}
+            qInput={qInput}
+            onQInputChange={setQInput}
+            showFilters={showFilters}
+            activeFilterCount={activeFilterCount}
+            onOpenFilters={() => setMobileFiltersOpen(true)}
+            showSort={showSort}
+            sortLabel={sortLabel}
+            onOpenSort={() => setMobileSortOpen(true)}
+            showLayoutSwitcher={showLayoutSwitcher}
+            layoutMode={layoutMode}
+            onLayoutModeChange={showLayoutSwitcher ? setLayoutMode : undefined}
+          />
 
-            <button
-              className="inline-flex h-11 items-center gap-2 rounded-2xl border border-border bg-surface px-4 text-sm font-medium text-foreground hover:bg-muted md:hidden"
-              onClick={() => setMobileFiltersOpen(true)}
-            >
-              <SlidersHorizontal className="h-4 w-4" />
-              Filters
-            </button>
-          </div>
-
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="relative w-full max-w-xl">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                value={qInput}
-                onChange={(e) => setQInput(e.target.value)}
-                placeholder="Search products"
-                className="h-11 w-full rounded-2xl border border-border bg-surface pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
-            </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                setQInput("");
-                setQ("");
-                setCategory(fixedCategory || "");
-                setPriceMin(undefined);
-                setPriceMax(undefined);
-                setRatingMin(undefined);
-                setInStock(false);
-                setSort("relevance");
-                setPage(1);
-                router.push(targetPath);
-              }}
-              className={cn(
-                "inline-flex h-11 items-center justify-center rounded-2xl border border-border bg-surface px-4 text-sm font-medium text-foreground hover:bg-muted",
-                !hasActiveFilters && "pointer-events-none opacity-50"
-              )}
-            >
-              Clear filters
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-[260px_1fr]">
-            <aside className="hidden h-fit rounded-3xl border border-border bg-surface p-4 md:block">
+          <div
+            className={cn(
+              "grid grid-cols-1 gap-6",
+              showFilters && "md:grid-cols-[260px_1fr]"
+            )}
+          >
+            {showFilters ? (
+              <aside className="hidden h-fit rounded-3xl border border-border bg-surface p-4 md:block">
               <div className="space-y-4">
+                <button
+                  type="button"
+                  onClick={clearAll}
+                  className={cn(
+                    "w-full rounded-2xl border border-border bg-surface px-3 py-2 text-sm font-medium text-foreground",
+                    "hover:bg-muted",
+                    !hasActiveFilters && "pointer-events-none opacity-50"
+                  )}
+                >
+                  Clear all
+                </button>
+
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Category
@@ -478,24 +510,27 @@ export default function StorefrontClient({
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Sort
                   </p>
-                  <select
-                    value={sort}
-                    onChange={(e) => {
-                      setPage(1);
-                      setSort(e.target.value);
-                      applyFilters({ sort: e.target.value, page: 1 });
-                    }}
-                    className="mt-2 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm text-foreground"
-                  >
-                    {SORT_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </select>
+                  {showSort ? (
+                    <select
+                      value={sort}
+                      onChange={(e) => {
+                        setPage(1);
+                        setSort(e.target.value);
+                        applyFilters({ sort: e.target.value, page: 1 });
+                      }}
+                      className="mt-2 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm text-foreground"
+                    >
+                      {SORT_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : null}
                 </div>
               </div>
-            </aside>
+              </aside>
+            ) : null}
 
             <section className="min-w-0">
               {!isHome ? (
@@ -585,133 +620,137 @@ export default function StorefrontClient({
         onClose={() => setQuickViewSlug(null)}
       />
 
-      {mobileFiltersOpen ? (
-        <div className="fixed inset-0 z-50 bg-black/40 px-4 py-6 backdrop-blur-sm md:hidden">
-          <div className="mx-auto h-full w-full max-w-md overflow-y-auto rounded-3xl bg-surface p-4">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-foreground">Filters</p>
-              <button
-                className="h-10 rounded-xl px-3 text-sm font-medium text-foreground hover:bg-muted"
-                onClick={() => setMobileFiltersOpen(false)}
-              >
-                Done
-              </button>
-            </div>
+      <BottomSheet
+        open={mobileFiltersOpen && showFilters}
+        title="Filters"
+        onClose={() => setMobileFiltersOpen(false)}
+        rightAction={
+          <Button variant="ghost" size="sm" onClick={clearAll} disabled={!hasActiveFilters} className="h-auto py-2">
+            Clear
+          </Button>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Category</p>
+            <select
+              value={category}
+              onChange={(e) => {
+                if (fixedCategory) {
+                  const next = e.target.value || "";
+                  router.push(next ? `/category/${encodeURIComponent(next)}` : "/");
+                  return;
+                }
 
-            <div className="mt-4 space-y-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Category</p>
-                <select
-                  value={category}
-                  onChange={(e) => {
-                    if (fixedCategory) {
-                      const next = e.target.value || "";
-                      router.push(next ? `/category/${encodeURIComponent(next)}` : "/");
-                      return;
-                    }
+                setPage(1);
+                setCategory(e.target.value || "");
+                applyFilters({ category: e.target.value || "", page: 1 });
+              }}
+              className="mt-2 w-full rounded-2xl border border-border bg-surface px-3 py-2 text-sm text-foreground"
+            >
+              <option value="">All</option>
+              {(meta?.categories ?? []).map((c) => (
+                <option key={c.slug} value={c.slug}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
 
-                    setPage(1);
-                    setCategory(e.target.value || "");
-                    applyFilters({ category: e.target.value || "", page: 1 });
-                  }}
-                  className="mt-2 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm text-foreground"
-                >
-                  <option value="">All</option>
-                  {(meta?.categories ?? []).map((c) => (
-                    <option key={c.slug} value={c.slug}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+          <label className="flex items-center justify-between gap-3 rounded-2xl border border-border p-3 text-sm text-foreground">
+            <span>In stock only</span>
+            <input
+              type="checkbox"
+              checked={inStock}
+              onChange={(e) => {
+                setPage(1);
+                setInStock(e.target.checked);
+                applyFilters({ inStock: e.target.checked, page: 1 });
+              }}
+              className="h-4 w-4"
+            />
+          </label>
 
-              <label className="flex items-center justify-between gap-3 rounded-2xl border border-border p-3 text-sm text-foreground">
-                <span>In stock only</span>
-                <input
-                  type="checkbox"
-                  checked={inStock}
-                  onChange={(e) => {
-                    setPage(1);
-                    setInStock(e.target.checked);
-                    applyFilters({ inStock: e.target.checked, page: 1 });
-                  }}
-                  className="h-4 w-4"
-                />
-              </label>
-
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Price</p>
-                <div className="mt-2 grid grid-cols-2 gap-2">
-                  <input
-                    type="number"
-                    min={priceFloor}
-                    max={priceCeil}
-                    value={typeof priceMin === "number" ? priceMin : ""}
-                    onChange={(e) => setPriceMin(e.target.value ? Number(e.target.value) : undefined)}
-                    onBlur={() => {
-                      setPage(1);
-                      applyFilters({ priceMin, page: 1 });
-                    }}
-                    placeholder="Min"
-                    className="h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm text-foreground"
-                  />
-                  <input
-                    type="number"
-                    min={priceFloor}
-                    max={priceCeil}
-                    value={typeof priceMax === "number" ? priceMax : ""}
-                    onChange={(e) => setPriceMax(e.target.value ? Number(e.target.value) : undefined)}
-                    onBlur={() => {
-                      setPage(1);
-                      applyFilters({ priceMax, page: 1 });
-                    }}
-                    placeholder="Max"
-                    className="h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm text-foreground"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Rating</p>
-                <select
-                  value={typeof ratingMin === "number" ? String(ratingMin) : ""}
-                  onChange={(e) => {
-                    const next = e.target.value ? Number(e.target.value) : undefined;
-                    setPage(1);
-                    setRatingMin(next);
-                    applyFilters({ ratingMin: next, page: 1 });
-                  }}
-                  className="mt-2 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm text-foreground"
-                >
-                  <option value="">Any</option>
-                  <option value="4">4+</option>
-                  <option value="3">3+</option>
-                  <option value="2">2+</option>
-                </select>
-              </div>
-
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Sort</p>
-                <select
-                  value={sort}
-                  onChange={(e) => {
-                    setPage(1);
-                    setSort(e.target.value);
-                    applyFilters({ sort: e.target.value, page: 1 });
-                  }}
-                  className="mt-2 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm text-foreground"
-                >
-                  {SORT_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Price</p>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <Input
+                type="number"
+                min={priceFloor}
+                max={priceCeil}
+                value={typeof priceMin === "number" ? priceMin : ""}
+                onChange={(e) => setPriceMin(e.target.value ? Number(e.target.value) : undefined)}
+                onBlur={() => {
+                  setPage(1);
+                  applyFilters({ priceMin, page: 1 });
+                }}
+                placeholder="Min"
+                className="h-auto rounded-2xl py-2"
+              />
+              <Input
+                type="number"
+                min={priceFloor}
+                max={priceCeil}
+                value={typeof priceMax === "number" ? priceMax : ""}
+                onChange={(e) => setPriceMax(e.target.value ? Number(e.target.value) : undefined)}
+                onBlur={() => {
+                  setPage(1);
+                  applyFilters({ priceMax, page: 1 });
+                }}
+                placeholder="Max"
+                className="h-auto rounded-2xl py-2"
+              />
             </div>
           </div>
+
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Rating</p>
+            <select
+              value={typeof ratingMin === "number" ? String(ratingMin) : ""}
+              onChange={(e) => {
+                const next = e.target.value ? Number(e.target.value) : undefined;
+                setPage(1);
+                setRatingMin(next);
+                applyFilters({ ratingMin: next, page: 1 });
+              }}
+              className="mt-2 w-full rounded-2xl border border-border bg-surface px-3 py-2 text-sm text-foreground"
+            >
+              <option value="">Any</option>
+              <option value="4">4+</option>
+              <option value="3">3+</option>
+              <option value="2">2+</option>
+            </select>
+          </div>
         </div>
-      ) : null}
+      </BottomSheet>
+
+      <BottomSheet
+        open={mobileSortOpen && showSort}
+        title="Sort"
+        onClose={() => setMobileSortOpen(false)}
+      >
+        <div className="space-y-2">
+          {SORT_OPTIONS.map((o) => (
+            <Button
+              key={o.value}
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setPage(1);
+                setSort(o.value);
+                applyFilters({ sort: o.value, page: 1 });
+                setMobileSortOpen(false);
+              }}
+              className={cn(
+                "h-auto w-full justify-start rounded-2xl py-3",
+                sort === o.value && "bg-muted"
+              )}
+            >
+              {o.label}
+            </Button>
+          ))}
+        </div>
+      </BottomSheet>
     </div>
   );
 }

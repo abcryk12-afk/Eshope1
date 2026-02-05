@@ -16,11 +16,31 @@ const GridSchema = z.object({
   mobileCols: z.number().int().min(2).max(5),
   tabletCols: z.number().int().min(3).max(5),
   desktopCols: z.number().int().min(4).max(6),
+  gap: z.enum(["compact", "normal", "spacious"]).optional().default("normal"),
+});
+
+const ListingHeaderSchema = z.object({
+  showSearch: z.boolean(),
+  showFilters: z.boolean(),
+  spacing: z.enum(["compact", "normal"]),
+  showSort: z.boolean(),
+  enableLayoutSwitcher: z.boolean(),
+});
+
+const ProductCardSchema = z.object({
+  density: z.enum(["compact", "balanced", "image_focused"]),
+  imageAspect: z.enum(["square", "portrait", "auto"]),
+  showRating: z.boolean(),
+  showSoldCount: z.boolean(),
+  showWishlistIcon: z.boolean(),
+  showDiscountBadge: z.boolean(),
 });
 
 const BodySchema = z.object({
   storefrontLayout: z.object({
     grid: GridSchema,
+    productCard: ProductCardSchema,
+    listingHeader: ListingHeaderSchema,
   }),
   cartUx: z.object({
     quickCheckoutEnabled: z.boolean(),

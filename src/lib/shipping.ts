@@ -22,10 +22,28 @@ export type StorefrontGridSettings = {
   mobileCols: number;
   tabletCols: number;
   desktopCols: number;
+  gap: "compact" | "normal" | "spacious";
+};
+
+export type StorefrontProductCardSettings = {
+  density: "compact" | "balanced" | "image_focused";
+  imageAspect: "square" | "portrait" | "auto";
+  showRating: boolean;
+  showSoldCount: boolean;
+  showWishlistIcon: boolean;
+  showDiscountBadge: boolean;
 };
 
 export type StorefrontLayoutSettings = {
   grid: StorefrontGridSettings;
+  productCard: StorefrontProductCardSettings;
+  listingHeader: {
+    showSearch: boolean;
+    showFilters: boolean;
+    spacing: "compact" | "normal";
+    showSort: boolean;
+    enableLayoutSwitcher: boolean;
+  };
 };
 
 export type CartUxSettings = {
@@ -146,6 +164,29 @@ export function normalizeStorefrontSettings(doc: unknown): StorefrontSettings {
   const mobileCols = clampInt(readNumber(grid.mobileCols, 2), 2, 5);
   const tabletCols = clampInt(readNumber(grid.tabletCols, 3), 3, 5);
   const desktopCols = clampInt(readNumber(grid.desktopCols, 4), 4, 6);
+  const gapRaw = String(grid.gap ?? "").trim();
+  const gap = gapRaw === "compact" || gapRaw === "spacious" ? gapRaw : "normal";
+
+  const productCard = isRecord(layout.productCard) ? layout.productCard : {};
+  const densityRaw = String(productCard.density ?? "").trim();
+  const density = densityRaw === "compact" || densityRaw === "image_focused" ? densityRaw : "balanced";
+  const aspectRaw = String(productCard.imageAspect ?? "").trim();
+  const imageAspect = aspectRaw === "portrait" || aspectRaw === "auto" ? aspectRaw : "square";
+
+  const showRating = typeof productCard.showRating === "boolean" ? productCard.showRating : true;
+  const showSoldCount = typeof productCard.showSoldCount === "boolean" ? productCard.showSoldCount : true;
+  const showWishlistIcon =
+    typeof productCard.showWishlistIcon === "boolean" ? productCard.showWishlistIcon : true;
+  const showDiscountBadge =
+    typeof productCard.showDiscountBadge === "boolean" ? productCard.showDiscountBadge : true;
+
+  const header = isRecord(layout.listingHeader) ? layout.listingHeader : {};
+  const showSearch = typeof header.showSearch === "boolean" ? header.showSearch : true;
+  const showFilters = typeof header.showFilters === "boolean" ? header.showFilters : true;
+  const spacingRaw = String(header.spacing ?? "").trim();
+  const spacing = spacingRaw === "normal" ? "normal" : "compact";
+  const showSort = typeof header.showSort === "boolean" ? header.showSort : true;
+  const enableLayoutSwitcher = typeof header.enableLayoutSwitcher === "boolean" ? header.enableLayoutSwitcher : false;
 
   const cartUx = isRecord(root.cartUx) ? root.cartUx : {};
   const quickCheckoutEnabled = typeof cartUx.quickCheckoutEnabled === "boolean" ? cartUx.quickCheckoutEnabled : true;
@@ -154,7 +195,18 @@ export function normalizeStorefrontSettings(doc: unknown): StorefrontSettings {
   return {
     inventory: { lowStockThreshold },
     shipping,
-    storefrontLayout: { grid: { mobileCols, tabletCols, desktopCols } },
+    storefrontLayout: {
+      grid: { mobileCols, tabletCols, desktopCols, gap },
+      productCard: {
+        density,
+        imageAspect,
+        showRating,
+        showSoldCount,
+        showWishlistIcon,
+        showDiscountBadge,
+      },
+      listingHeader: { showSearch, showFilters, spacing, showSort, enableLayoutSwitcher },
+    },
     cartUx: { quickCheckoutEnabled, quickCheckoutAutoHideSeconds },
   };
 }

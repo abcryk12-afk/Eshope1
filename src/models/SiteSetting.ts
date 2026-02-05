@@ -110,6 +110,29 @@ const ReturnsSettingsSchema = new Schema(
     mobileCols: { type: Number, default: 2, min: 2, max: 5 },
     tabletCols: { type: Number, default: 3, min: 3, max: 5 },
     desktopCols: { type: Number, default: 4, min: 4, max: 6 },
+    gap: { type: String, trim: true, enum: ["compact", "normal", "spacious"], default: "normal" },
+  },
+  { _id: false }
+ );
+
+ const StorefrontProductCardSchema = new Schema(
+  {
+    density: {
+      type: String,
+      trim: true,
+      enum: ["compact", "balanced", "image_focused"],
+      default: "balanced",
+    },
+    imageAspect: {
+      type: String,
+      trim: true,
+      enum: ["square", "portrait", "auto"],
+      default: "square",
+    },
+    showRating: { type: Boolean, default: true },
+    showSoldCount: { type: Boolean, default: true },
+    showWishlistIcon: { type: Boolean, default: true },
+    showDiscountBadge: { type: Boolean, default: true },
   },
   { _id: false }
  );
@@ -117,6 +140,14 @@ const ReturnsSettingsSchema = new Schema(
  const StorefrontLayoutSchema = new Schema(
   {
     grid: { type: StorefrontGridSchema, default: () => ({}) },
+    productCard: { type: StorefrontProductCardSchema, default: () => ({}) },
+    listingHeader: {
+      showSearch: { type: Boolean, default: true },
+      showFilters: { type: Boolean, default: true },
+      spacing: { type: String, trim: true, enum: ["compact", "normal"], default: "compact" },
+      showSort: { type: Boolean, default: true },
+      enableLayoutSwitcher: { type: Boolean, default: false },
+    },
   },
   { _id: false }
  );

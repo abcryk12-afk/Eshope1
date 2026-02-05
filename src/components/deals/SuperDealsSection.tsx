@@ -39,10 +39,27 @@ function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null;
 }
 
+function isDealProduct(v: unknown): v is DealProduct {
+  if (!isRecord(v)) return false;
+  const id = String(v._id ?? "").trim();
+  const title = String(v.title ?? "").trim();
+  const slug = String(v.slug ?? "").trim();
+  const basePrice = typeof v.basePrice === "number" ? v.basePrice : Number(v.basePrice);
+  const imagesRaw = (v as Record<string, unknown>).images;
+  const images = Array.isArray(imagesRaw)
+    ? (imagesRaw as unknown[]).filter((x) => typeof x === "string").map((x) => String(x).trim()).filter(Boolean)
+    : [];
+  if (!id || !title || !slug) return false;
+  if (!Number.isFinite(basePrice) || basePrice <= 0) return false;
+  if (images.length === 0) return false;
+  return true;
+}
+
 function readItems(json: unknown): DealProduct[] {
   if (!isRecord(json)) return [];
   const items = json.items;
-  return Array.isArray(items) ? (items as DealProduct[]) : [];
+  if (!Array.isArray(items)) return [];
+  return (items as unknown[]).filter(isDealProduct) as DealProduct[];
 }
 
 export default function SuperDealsSection({ categorySlug, onQuickView }: Props) {
