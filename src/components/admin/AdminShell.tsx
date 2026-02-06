@@ -6,6 +6,7 @@ import { signOut, useSession } from "next-auth/react";
 import { BarChart3, Boxes, CreditCard, Folder, LayoutDashboard, LogOut, Palette, Settings, Star, Store, Tag, Undo2, Users } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { signOutFirebaseIfConfigured } from "@/lib/firebaseClient";
 import CurrencySwitcher from "@/components/layout/CurrencySwitcher";
 
 type AdminShellProps = {
@@ -54,6 +55,11 @@ export default function AdminShell({ children }: AdminShellProps) {
     );
   }
 
+  async function onSignOut() {
+    await signOutFirebaseIfConfigured();
+    await signOut({ callbackUrl: "/" });
+  }
+
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-black">
       <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-6 px-4 py-6 lg:grid-cols-[260px_1fr]">
@@ -97,7 +103,7 @@ export default function AdminShell({ children }: AdminShellProps) {
 
           <button
             type="button"
-            onClick={() => signOut({ callbackUrl: "/" })}
+            onClick={onSignOut}
             className="mt-4 flex w-full items-center gap-3 rounded-2xl border border-zinc-200 px-3 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-100 dark:border-zinc-800 dark:text-zinc-50 dark:hover:bg-zinc-900"
           >
             <LogOut className="h-4 w-4" />

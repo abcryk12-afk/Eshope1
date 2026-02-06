@@ -10,6 +10,7 @@ import { Menu, Search, ShoppingBag, User2, X } from "lucide-react";
 
 import { formatMoneyFromPkr } from "@/lib/currency";
 import { cn } from "@/lib/utils";
+import { signOutFirebaseIfConfigured } from "@/lib/firebaseClient";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useStorefrontSettings } from "@/hooks/useStorefrontSettings";
 import { useAppSelector } from "@/store/hooks";
@@ -59,6 +60,11 @@ export default function Header() {
   const [meta, setMeta] = useState<ProductsMeta | null>(null);
 
   const userLabel = useMemo(() => session?.user?.email ?? "Account", [session?.user?.email]);
+
+  async function onSignOut() {
+    await signOutFirebaseIfConfigured();
+    await signOut({ callbackUrl: "/" });
+  }
 
   const brandNode = useMemo(() => {
     const storeName = branding?.storeName?.trim() || "Shop";
@@ -342,7 +348,7 @@ export default function Header() {
               <button
                 type="button"
                 className="hidden rounded-xl px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground md:inline-flex"
-                onClick={() => signOut({ callbackUrl: "/" })}
+                onClick={onSignOut}
               >
                 Sign out
               </button>

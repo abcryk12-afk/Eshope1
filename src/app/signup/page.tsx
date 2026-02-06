@@ -1,77 +1,182 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
+import {
+  FacebookAuthProvider,
+  GoogleAuthProvider,
+  createUserWithEmailAndPassword,
+  getRedirectResult,
+  signInWithPopup,
+  signInWithRedirect,
+  updateProfile,
+  type User,
+} from "firebase/auth";
 
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
+import { getFirebaseClientAuth } from "@/lib/firebaseClient";
 
 export default function SignupPage() {
   const router = useRouter();
+  const params = useSearchParams();
+  const callbackUrl = params.get("callbackUrl") ?? "/";
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<null | "email" | "google" | "facebook">(null);
+
+  const establishSession = useCallback(
+    async (user: User) => {
+      const idToken = await user.getIdToken(true);
+
+      const res = await signIn("firebase", {
+        redirect: false,
+        idToken,
+        callbackUrl,
+      });
+
+      if (!res || res.error) {
+        throw new Error("Could not start session");
+      }
+    },
+    [callbackUrl]
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function hydrateRedirect() {
+      try {
+        const auth = getFirebaseClientAuth();
+        const res = await getRedirectResult(auth);
+        if (!res?.user || cancelled) return;
+
+        await establishSession(res.user);
+
+        toast.success("Welcome");
+        router.push(callbackUrl);
+        router.refresh();
+      } catch {
+        return;
+      }
+    }
+
+    hydrateRedirect();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [callbackUrl, establishSession, router]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    setLoading(true);
+    setLoading("email");
 
-    const res = await fetch("/api/auth/signup", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password }),
-    });
+    try {
+      const auth = getFirebaseClientAuth();
+      const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
+      const nextName = name.trim();
+      if (nextName) {
+        await updateProfile(cred.user, { displayName: nextName });
+      }
 
-    if (!res.ok) {
-      const data = (await res.json().catch(() => null)) as
-        | { message?: string }
-        | null;
+      await establishSession(cred.user);
 
-      setLoading(false);
-      toast.error(data?.message ?? "Could not create account");
-      return;
+      toast.success("Account created");
+      router.push(callbackUrl);
+      router.refresh();
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message === "Firebase is not configured") {
+        toast.error("Authentication is not configured");
+        return;
+      }
+
+      toast.error("Could not create account");
+    } finally {
+      setLoading(null);
     }
+  }
 
-    const signInRes = await signIn("credentials", {
-      redirect: false,
-      email,
-      password,
-    });
+  async function onProvider(provider: "google" | "facebook") {
+    setLoading(provider);
 
-    setLoading(false);
+    try {
+      const auth = getFirebaseClientAuth();
+      const p = provider === "google" ? new GoogleAuthProvider() : new FacebookAuthProvider();
+      const cred = await signInWithPopup(auth, p);
+      await establishSession(cred.user);
 
-    if (!signInRes || signInRes.error) {
-      toast.success("Account created. Please sign in.");
-      router.push("/login");
-      return;
+      toast.success("Welcome");
+      router.push(callbackUrl);
+      router.refresh();
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message === "Firebase is not configured") {
+        toast.error("Authentication is not configured");
+        return;
+      }
+
+      const rec = typeof err === "object" && err !== null ? (err as Record<string, unknown>) : {};
+      const code = typeof rec.code === "string" ? rec.code : "";
+
+      if (code.includes("popup") || code.includes("redirect")) {
+        try {
+          const auth = getFirebaseClientAuth();
+          const p = provider === "google" ? new GoogleAuthProvider() : new FacebookAuthProvider();
+          await signInWithRedirect(auth, p);
+          return;
+        } catch {
+          toast.error("Could not sign up");
+        }
+      } else {
+        toast.error("Could not sign up");
+      }
+    } finally {
+      setLoading(null);
     }
-
-    toast.success("Account created");
-    router.push("/");
-    router.refresh();
   }
 
   return (
-    <div className="min-h-[calc(100vh-0px)] bg-zinc-50 px-4 py-16 dark:bg-black">
-      <div className="mx-auto w-full max-w-md rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+    <div className="min-h-[calc(100vh-0px)] bg-background px-4 py-16">
+      <div className="mx-auto w-full max-w-md rounded-3xl border border-border bg-surface p-6 shadow-sm">
         <div className="space-y-2">
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
             Create account
           </h1>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          <p className="text-sm text-muted-foreground">
             Sign up to manage orders and wishlist.
           </p>
         </div>
 
+        <div className="mt-6 space-y-3">
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full justify-center"
+            disabled={loading !== null}
+            onClick={() => onProvider("google")}
+          >
+            {loading === "google" ? "Signing up..." : "Continue with Google"}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full justify-center"
+            disabled={loading !== null}
+            onClick={() => onProvider("facebook")}
+          >
+            {loading === "facebook" ? "Signing up..." : "Continue with Facebook"}
+          </Button>
+        </div>
+
         <form onSubmit={onSubmit} className="mt-6 space-y-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+            <label className="text-sm font-medium text-foreground">
               Name
             </label>
             <Input
@@ -83,7 +188,7 @@ export default function SignupPage() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+            <label className="text-sm font-medium text-foreground">
               Email
             </label>
             <Input
@@ -96,7 +201,7 @@ export default function SignupPage() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+            <label className="text-sm font-medium text-foreground">
               Password
             </label>
             <Input
@@ -108,16 +213,16 @@ export default function SignupPage() {
             />
           </div>
 
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Creating..." : "Create account"}
+          <Button type="submit" className="w-full" disabled={loading !== null}>
+            {loading === "email" ? "Creating..." : "Create account"}
           </Button>
         </form>
 
-        <div className="mt-6 text-sm text-zinc-600 dark:text-zinc-400">
+        <div className="mt-6 text-sm text-muted-foreground">
           <span>Already have an account?</span>{" "}
           <Link
             href="/login"
-            className="font-medium text-zinc-900 hover:underline dark:text-zinc-50"
+            className="font-medium text-foreground hover:underline"
           >
             Sign in
           </Link>
