@@ -74,14 +74,29 @@ export default function Header() {
     const hasLogo = Boolean(branding?.logo?.url?.trim());
     const showImage = (mode === "image" || mode === "both") && hasLogo;
     const showText =
-      mode !== "image" && (!branding?.hideTextWhenLogoActive || !showImage);
+      (mode !== "image" || !showImage) && (!branding?.hideTextWhenLogoActive || !showImage);
 
     const weight = typeof branding?.brandTextStyle?.weight === "number" ? branding.brandTextStyle.weight : 600;
     const italic = Boolean(branding?.brandTextStyle?.italic);
     const letterSpacing = branding?.brandTextStyle?.letterSpacing ?? "tight";
     const color = branding?.brandTextStyle?.color ?? "foreground";
 
-    const colorVar = color === "primary" ? "var(--theme-primary)" : color === "muted" ? "var(--theme-muted-foreground)" : "var(--theme-foreground)";
+    const customColorEnabled = Boolean(branding?.brandTextStyle?.customColorEnabled);
+    const customColor = branding?.brandTextStyle?.customColor ?? "";
+    const blinkEnabled = Boolean(branding?.brandTextStyle?.blinkEnabled);
+    const blinkSpeedMsRaw = branding?.brandTextStyle?.blinkSpeedMs;
+    const blinkSpeedMs = typeof blinkSpeedMsRaw === "number" && Number.isFinite(blinkSpeedMsRaw) ? blinkSpeedMsRaw : 1400;
+
+    const embossedIntensityRaw = branding?.brandTextStyle?.embossedIntensity;
+    const embossedIntensity = typeof embossedIntensityRaw === "number" && Number.isFinite(embossedIntensityRaw) ? embossedIntensityRaw : 18;
+    const glowEnabled = Boolean(branding?.brandTextStyle?.glowEnabled);
+    const glowColor = branding?.brandTextStyle?.glowColor ?? "#ffffff";
+    const glowIntensityRaw = branding?.brandTextStyle?.glowIntensity;
+    const glowIntensity = typeof glowIntensityRaw === "number" && Number.isFinite(glowIntensityRaw) ? glowIntensityRaw : 14;
+
+    const colorVar = customColorEnabled && customColor.trim()
+      ? customColor.trim()
+      : color === "primary" ? "var(--theme-primary)" : color === "muted" ? "var(--theme-muted-foreground)" : "var(--theme-foreground)";
     const trackingClass = letterSpacing === "wide" ? "tracking-wide" : letterSpacing === "normal" ? "tracking-normal" : "tracking-tight";
 
     const gradientEnabled = Boolean(branding?.brandTextStyle?.gradientEnabled);
@@ -103,9 +118,22 @@ export default function Header() {
           backgroundImage: gradientEnabled ? "linear-gradient(90deg, var(--theme-primary), var(--theme-foreground))" : undefined,
           WebkitBackgroundClip: gradientEnabled ? "text" : undefined,
           backgroundClip: gradientEnabled ? "text" : undefined,
-          textShadow: embossedEnabled
-            ? "0 1px 0 color-mix(in srgb, var(--theme-foreground) 18%, transparent), 0 -1px 0 color-mix(in srgb, var(--theme-background) 18%, transparent)"
-            : undefined,
+          textShadow: (() => {
+            const shadows: string[] = [];
+            if (embossedEnabled) {
+              shadows.push(
+                `0 1px 0 color-mix(in srgb, var(--theme-foreground) ${Math.max(0, Math.min(60, embossedIntensity))}%, transparent)`
+              );
+              shadows.push(
+                `0 -1px 0 color-mix(in srgb, var(--theme-background) ${Math.max(0, Math.min(60, embossedIntensity))}%, transparent)`
+              );
+            }
+            if (glowEnabled) {
+              shadows.push(`0 0 ${Math.max(0, Math.min(60, glowIntensity))}px ${glowColor}`);
+            }
+            return shadows.length ? shadows.join(", ") : undefined;
+          })(),
+          animation: blinkEnabled ? `brandTextBlink ${Math.max(200, Math.min(6000, blinkSpeedMs))}ms infinite` : undefined,
         }}
       >
         {headerBrandText}
@@ -362,7 +390,7 @@ export default function Header() {
             )}
 
             <Link
-              href="/account"
+              href={session?.user ? "/account" : "/login"}
               className="inline-flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
               aria-label="Account"
             >
@@ -434,6 +462,27 @@ export default function Header() {
                 >
                   Track Order
                 </Link>
+
+                {session?.user ? (
+                  <button
+                    type="button"
+                    className="block w-full rounded-xl px-3 py-2 text-left text-sm font-semibold text-foreground hover:bg-muted"
+                    onClick={async () => {
+                      setMobileMenuOpen(false);
+                      await onSignOut();
+                    }}
+                  >
+                    Sign out
+                  </button>
+                ) : (
+                  <Link
+                    href="/login"
+                    className="block rounded-xl px-3 py-2 text-sm font-semibold text-foreground hover:bg-muted"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Sign in
+                  </Link>
+                )}
                 {(meta?.categories ?? []).slice(0, 12).map((c) => (
                   <Link
                     key={c.slug}

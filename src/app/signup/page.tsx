@@ -6,7 +6,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import {
-  FacebookAuthProvider,
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
   getRedirectResult,
@@ -28,13 +27,13 @@ export default function SignupPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState<null | "email" | "google" | "facebook">(null);
+  const [loading, setLoading] = useState<null | "email" | "google">(null);
 
   const establishSession = useCallback(
     async (user: User) => {
       const idToken = await user.getIdToken(true);
 
-      const res = await signIn("firebase", {
+      const res = await signIn("credentials", {
         redirect: false,
         idToken,
         callbackUrl,
@@ -97,18 +96,21 @@ export default function SignupPage() {
         return;
       }
 
-      toast.error("Could not create account");
+      const rec = typeof err === "object" && err !== null ? (err as Record<string, unknown>) : {};
+      const code = typeof rec.code === "string" ? rec.code : "";
+      const message = typeof rec.message === "string" ? rec.message : "";
+      toast.error(code || message || "Could not create account");
     } finally {
       setLoading(null);
     }
   }
 
-  async function onProvider(provider: "google" | "facebook") {
+  async function onProvider(provider: "google") {
     setLoading(provider);
 
     try {
       const auth = getFirebaseClientAuth();
-      const p = provider === "google" ? new GoogleAuthProvider() : new FacebookAuthProvider();
+      const p = new GoogleAuthProvider();
       const cred = await signInWithPopup(auth, p);
       await establishSession(cred.user);
 
@@ -123,18 +125,19 @@ export default function SignupPage() {
 
       const rec = typeof err === "object" && err !== null ? (err as Record<string, unknown>) : {};
       const code = typeof rec.code === "string" ? rec.code : "";
+      const message = typeof rec.message === "string" ? rec.message : "";
 
-      if (code.includes("popup") || code.includes("redirect")) {
+      if (code.includes("popup") || code.includes("redirect") || code.includes("blocked")) {
         try {
           const auth = getFirebaseClientAuth();
-          const p = provider === "google" ? new GoogleAuthProvider() : new FacebookAuthProvider();
+          const p = new GoogleAuthProvider();
           await signInWithRedirect(auth, p);
           return;
         } catch {
-          toast.error("Could not sign up");
+          toast.error(code || message || "Could not sign up");
         }
       } else {
-        toast.error("Could not sign up");
+        toast.error(code || message || "Could not sign up");
       }
     } finally {
       setLoading(null);
@@ -162,15 +165,6 @@ export default function SignupPage() {
             onClick={() => onProvider("google")}
           >
             {loading === "google" ? "Signing up..." : "Continue with Google"}
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            className="w-full justify-center"
-            disabled={loading !== null}
-            onClick={() => onProvider("facebook")}
-          >
-            {loading === "facebook" ? "Signing up..." : "Continue with Facebook"}
           </Button>
         </div>
 

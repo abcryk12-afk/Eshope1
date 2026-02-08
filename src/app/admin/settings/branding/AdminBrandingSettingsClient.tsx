@@ -26,8 +26,18 @@ type BrandingPayload = {
       italic: boolean;
       letterSpacing: LetterSpacing;
       color: BrandColor;
+      customColorEnabled: boolean;
+      customColor: string;
       gradientEnabled: boolean;
       embossedEnabled: boolean;
+      embossedIntensity: number;
+
+      glowEnabled: boolean;
+      glowColor: string;
+      glowIntensity: number;
+
+      blinkEnabled: boolean;
+      blinkSpeedMs: number;
     };
     seo: { title: string; description: string; ogImageUrl: string };
     favicon: { sourceUrl: string; assetsVersion: string; updatedAt: number };
@@ -51,8 +61,18 @@ type FormState = {
   italic: boolean;
   letterSpacing: LetterSpacing;
   color: BrandColor;
+  customColorEnabled: boolean;
+  customColor: string;
   gradientEnabled: boolean;
   embossedEnabled: boolean;
+  embossedIntensity: number;
+
+  glowEnabled: boolean;
+  glowColor: string;
+  glowIntensity: number;
+
+  blinkEnabled: boolean;
+  blinkSpeedMs: number;
 
   seoTitle: string;
   seoDescription: string;
@@ -96,8 +116,18 @@ function emptyForm(): FormState {
     italic: false,
     letterSpacing: "tight",
     color: "foreground",
+    customColorEnabled: false,
+    customColor: "#171717",
     gradientEnabled: false,
     embossedEnabled: false,
+    embossedIntensity: 18,
+
+    glowEnabled: false,
+    glowColor: "#ffffff",
+    glowIntensity: 14,
+
+    blinkEnabled: false,
+    blinkSpeedMs: 1400,
 
     seoTitle: "",
     seoDescription: "",
@@ -143,8 +173,18 @@ function normalizePayload(json: unknown): FormState {
     italic: typeof style.italic === "boolean" ? style.italic : false,
     letterSpacing: style.letterSpacing === "normal" || style.letterSpacing === "wide" ? (style.letterSpacing as LetterSpacing) : "tight",
     color: style.color === "muted" || style.color === "primary" ? (style.color as BrandColor) : "foreground",
+    customColorEnabled: typeof style.customColorEnabled === "boolean" ? style.customColorEnabled : false,
+    customColor: typeof style.customColor === "string" && style.customColor.trim() ? style.customColor.trim() : "#171717",
     gradientEnabled: typeof style.gradientEnabled === "boolean" ? style.gradientEnabled : false,
     embossedEnabled: typeof style.embossedEnabled === "boolean" ? style.embossedEnabled : false,
+    embossedIntensity: clampInt(style.embossedIntensity, 0, 60, 18),
+
+    glowEnabled: typeof style.glowEnabled === "boolean" ? style.glowEnabled : false,
+    glowColor: typeof style.glowColor === "string" && style.glowColor.trim() ? style.glowColor.trim() : "#ffffff",
+    glowIntensity: clampInt(style.glowIntensity, 0, 60, 14),
+
+    blinkEnabled: typeof style.blinkEnabled === "boolean" ? style.blinkEnabled : false,
+    blinkSpeedMs: clampInt(style.blinkSpeedMs, 200, 6000, 1400),
 
     seoTitle: typeof seo.title === "string" ? seo.title.trim() : "",
     seoDescription: typeof seo.description === "string" ? seo.description.trim() : "",
@@ -247,8 +287,16 @@ export default function AdminBrandingSettingsClient() {
         italic: form.italic,
         letterSpacing: form.letterSpacing,
         color: form.color,
+        customColorEnabled: form.customColorEnabled,
+        customColor: form.customColor,
         gradientEnabled: form.gradientEnabled,
         embossedEnabled: form.embossedEnabled,
+        embossedIntensity: form.embossedIntensity,
+        glowEnabled: form.glowEnabled,
+        glowColor: form.glowColor,
+        glowIntensity: form.glowIntensity,
+        blinkEnabled: form.blinkEnabled,
+        blinkSpeedMs: form.blinkSpeedMs,
       },
       seo: {
         title: form.seoTitle,
@@ -291,7 +339,11 @@ export default function AdminBrandingSettingsClient() {
   async function onPickLogo(file: File) {
     try {
       const url = await uploadImage(file);
-      setForm((s) => ({ ...s, logoUrl: url }));
+      setForm((s) => ({
+        ...s,
+        logoUrl: url,
+        logoMode: s.logoMode === "text" ? "both" : s.logoMode,
+      }));
       toast.success("Logo uploaded");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Upload failed");
@@ -425,6 +477,24 @@ export default function AdminBrandingSettingsClient() {
                   className="block w-full text-sm text-zinc-700 file:mr-3 file:rounded-xl file:border-0 file:bg-zinc-900 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white dark:text-zinc-300 dark:file:bg-zinc-50 dark:file:text-zinc-900"
                 />
                 {form.logoUrl ? <p className="text-xs text-zinc-500 break-all">{form.logoUrl}</p> : null}
+                {form.logoUrl ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() =>
+                      setForm((s) => ({
+                        ...s,
+                        logoUrl: "",
+                        logoWidth: null,
+                        logoHeight: null,
+                        logoMode: "text",
+                      }))
+                    }
+                    disabled={saving}
+                  >
+                    Remove logo
+                  </Button>
+                ) : null}
               </div>
 
               <div className="space-y-2">
@@ -477,6 +547,34 @@ export default function AdminBrandingSettingsClient() {
               </div>
 
               <label className="flex items-center justify-between gap-3 rounded-2xl border border-zinc-200 p-3 text-sm text-zinc-900 dark:border-zinc-800 dark:text-zinc-50">
+                <span>Custom color</span>
+                <input
+                  type="checkbox"
+                  checked={form.customColorEnabled}
+                  onChange={(e) => setForm((s) => ({ ...s, customColorEnabled: e.target.checked }))}
+                  className="h-4 w-4 rounded border-zinc-300"
+                />
+              </label>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Custom color (HEX)</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={form.customColor}
+                    onChange={(e) => setForm((s) => ({ ...s, customColor: e.target.value }))}
+                    className="h-11 w-14 rounded-xl border border-zinc-200 bg-white px-2 dark:border-zinc-800 dark:bg-zinc-950"
+                    disabled={!form.customColorEnabled}
+                  />
+                  <Input
+                    value={form.customColor}
+                    onChange={(e) => setForm((s) => ({ ...s, customColor: e.target.value }))}
+                    disabled={!form.customColorEnabled}
+                  />
+                </div>
+              </div>
+
+              <label className="flex items-center justify-between gap-3 rounded-2xl border border-zinc-200 p-3 text-sm text-zinc-900 dark:border-zinc-800 dark:text-zinc-50">
                 <span>Italic</span>
                 <input
                   type="checkbox"
@@ -505,6 +603,80 @@ export default function AdminBrandingSettingsClient() {
                   className="h-4 w-4 rounded border-zinc-300"
                 />
               </label>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Emboss intensity</label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={60}
+                  value={form.embossedIntensity}
+                  onChange={(e) => setForm((s) => ({ ...s, embossedIntensity: clampInt(e.target.value, 0, 60, 18) }))}
+                  disabled={!form.embossedEnabled}
+                />
+              </div>
+
+              <label className="flex items-center justify-between gap-3 rounded-2xl border border-zinc-200 p-3 text-sm text-zinc-900 dark:border-zinc-800 dark:text-zinc-50">
+                <span>Glow</span>
+                <input
+                  type="checkbox"
+                  checked={form.glowEnabled}
+                  onChange={(e) => setForm((s) => ({ ...s, glowEnabled: e.target.checked }))}
+                  className="h-4 w-4 rounded border-zinc-300"
+                />
+              </label>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Glow color</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={form.glowColor}
+                    onChange={(e) => setForm((s) => ({ ...s, glowColor: e.target.value }))}
+                    className="h-11 w-14 rounded-xl border border-zinc-200 bg-white px-2 dark:border-zinc-800 dark:bg-zinc-950"
+                    disabled={!form.glowEnabled}
+                  />
+                  <Input
+                    value={form.glowColor}
+                    onChange={(e) => setForm((s) => ({ ...s, glowColor: e.target.value }))}
+                    disabled={!form.glowEnabled}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Glow intensity</label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={60}
+                  value={form.glowIntensity}
+                  onChange={(e) => setForm((s) => ({ ...s, glowIntensity: clampInt(e.target.value, 0, 60, 14) }))}
+                  disabled={!form.glowEnabled}
+                />
+              </div>
+
+              <label className="flex items-center justify-between gap-3 rounded-2xl border border-zinc-200 p-3 text-sm text-zinc-900 dark:border-zinc-800 dark:text-zinc-50">
+                <span>Blinking</span>
+                <input
+                  type="checkbox"
+                  checked={form.blinkEnabled}
+                  onChange={(e) => setForm((s) => ({ ...s, blinkEnabled: e.target.checked }))}
+                  className="h-4 w-4 rounded border-zinc-300"
+                />
+              </label>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Blink speed (ms)</label>
+                <Input
+                  type="number"
+                  min={200}
+                  max={6000}
+                  value={form.blinkSpeedMs}
+                  onChange={(e) => setForm((s) => ({ ...s, blinkSpeedMs: clampInt(e.target.value, 200, 6000, 1400) }))}
+                  disabled={!form.blinkEnabled}
+                />
+              </div>
             </div>
           </div>
 
@@ -605,19 +777,24 @@ export default function AdminBrandingSettingsClient() {
                         color:
                           form.gradientEnabled
                             ? "transparent"
-                            : form.color === "primary"
-                              ? "var(--theme-primary)"
-                              : form.color === "muted"
-                                ? "var(--theme-muted-foreground)"
-                                : "var(--theme-foreground)",
+                            : form.customColorEnabled
+                              ? form.customColor
+                              : form.color === "primary"
+                                ? "var(--theme-primary)"
+                                : form.color === "muted"
+                                  ? "var(--theme-muted-foreground)"
+                                  : "var(--theme-foreground)",
                         backgroundImage: form.gradientEnabled
                           ? "linear-gradient(90deg, var(--theme-primary), var(--theme-foreground))"
                           : undefined,
                         WebkitBackgroundClip: form.gradientEnabled ? "text" : undefined,
                         backgroundClip: form.gradientEnabled ? "text" : undefined,
                         textShadow: form.embossedEnabled
-                          ? "0 1px 0 color-mix(in srgb, var(--theme-foreground) 18%, transparent), 0 -1px 0 color-mix(in srgb, var(--theme-background) 18%, transparent)"
-                          : undefined,
+                          ? `0 1px 0 color-mix(in srgb, var(--theme-foreground) ${Math.max(0, Math.min(60, form.embossedIntensity))}%, transparent), 0 -1px 0 color-mix(in srgb, var(--theme-background) ${Math.max(0, Math.min(60, form.embossedIntensity))}%, transparent)`
+                          : form.glowEnabled
+                            ? `0 0 ${Math.max(0, Math.min(60, form.glowIntensity))}px ${form.glowColor}`
+                            : undefined,
+                        animation: form.blinkEnabled ? `brandTextBlink ${Math.max(200, Math.min(6000, form.blinkSpeedMs))}ms infinite` : undefined,
                       }}
                       className="text-base"
                     >

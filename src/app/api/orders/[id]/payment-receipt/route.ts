@@ -82,8 +82,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const paymentMethod = String((order as unknown as { paymentMethod?: string }).paymentMethod ?? "");
 
-  if (paymentMethod !== "manual") {
-    return NextResponse.json({ message: "Receipt upload is only available for manual payment" }, { status: 400 });
+  if (paymentMethod !== "manual" && paymentMethod !== "online") {
+    return NextResponse.json({ message: "Receipt upload is only available for manual or online payment" }, { status: 400 });
   }
 
   const paymentStatus = String((order as unknown as { paymentStatus?: string }).paymentStatus ?? "");

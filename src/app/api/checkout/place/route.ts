@@ -12,6 +12,10 @@ import Order from "@/models/Order";
 import Product from "@/models/Product";
 import Promotion from "@/models/Promotion";
 import SiteSetting from "@/models/SiteSetting";
+import { sendOrderConfirmationEmail } from "@/lib/email";
+import { sendMail } from "@/lib/mailer";
+import { orderAdminNotifyEmailHtml } from "@/emails/order-admin-notify";
+import User from "@/models/User";
 
 export const runtime = "nodejs";
 
@@ -583,6 +587,112 @@ export async function POST(req: NextRequest) {
 
   if (couponCode) {
     await Coupon.updateOne({ code: couponCode }, { $inc: { usedCount: 1 } });
+  }
+
+  try {
+    const brandName = (process.env.BRAND_NAME ?? process.env.SMTP_FROM_NAME ?? "").trim();
+    const accentColor = (process.env.EMAIL_BRAND_ACCENT_COLOR ?? "#2563eb").trim();
+    const supportEmail = (process.env.SUPPORT_EMAIL ?? process.env.SMTP_FROM_EMAIL ?? "").trim();
+    const adminEmail = (process.env.ADMIN_ORDER_NOTIFY_EMAIL ?? process.env.SMTP_FROM_EMAIL ?? "").trim();
+
+    const missing: string[] = [];
+    if (!brandName) missing.push("BRAND_NAME/SMTP_FROM_NAME");
+    if (!supportEmail) missing.push("SUPPORT_EMAIL/SMTP_FROM_EMAIL");
+    if (!adminEmail) missing.push("ADMIN_ORDER_NOTIFY_EMAIL/SMTP_FROM_EMAIL");
+
+    const smtpMissing: string[] = [];
+    if (!(process.env.SMTP_HOST ?? "").trim()) smtpMissing.push("SMTP_HOST");
+    if (!(process.env.SMTP_PORT ?? "").trim()) smtpMissing.push("SMTP_PORT");
+    if (!(process.env.SMTP_USER ?? "").trim()) smtpMissing.push("SMTP_USER");
+    if (!(process.env.SMTP_PASS ?? "").trim()) smtpMissing.push("SMTP_PASS");
+    if (!(process.env.SMTP_FROM_EMAIL ?? "").trim()) smtpMissing.push("SMTP_FROM_EMAIL");
+    if (!(process.env.SMTP_FROM_NAME ?? "").trim()) smtpMissing.push("SMTP_FROM_NAME");
+
+    if (missing.length > 0 || smtpMissing.length > 0) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[email] order emails skipped due to missing config", {
+          missing,
+          smtpMissing,
+        });
+      }
+    } else {
+      let customerEmail = guestEmail ?? "";
+
+      if (!customerEmail && userId) {
+        const user = await User.findById(userId).select("email").lean();
+        customerEmail = String((user as unknown as { email?: unknown })?.email ?? "").trim().toLowerCase();
+      }
+
+      const customerName = String(parsed.data.shippingAddress.fullName ?? "Customer").trim() || "Customer";
+      const orderId = order._id.toString();
+
+      const itemsForEmail = computed.map((i) => ({
+        title: i.title,
+        quantity: i.quantity,
+        unitPrice: i.unitPrice,
+      }));
+
+      if (customerEmail) {
+        try {
+          await sendOrderConfirmationEmail({
+            toEmail: customerEmail,
+            customer: {
+              fullName: String(parsed.data.shippingAddress.fullName ?? "").trim(),
+              email: customerEmail,
+              phone: String(parsed.data.shippingAddress.phone ?? "").trim(),
+            },
+            order: {
+              id: orderId,
+              createdAt: (order as unknown as { createdAt?: Date })?.createdAt,
+              paymentMethod: String(parsed.data.paymentMethod ?? "").trim(),
+              orderStatus: String((order as unknown as { orderStatus?: unknown })?.orderStatus ?? "").trim(),
+              trackingUrl: String((order as unknown as { trackingUrl?: unknown })?.trackingUrl ?? "").trim() || null,
+              shippingAddress: {
+                fullName: String(parsed.data.shippingAddress.fullName ?? "").trim(),
+                phone: String(parsed.data.shippingAddress.phone ?? "").trim(),
+                addressLine1: String(parsed.data.shippingAddress.addressLine1 ?? "").trim(),
+                addressLine2: String(parsed.data.shippingAddress.addressLine2 ?? "").trim(),
+                city: String(parsed.data.shippingAddress.city ?? "").trim(),
+                state: String(parsed.data.shippingAddress.state ?? "").trim(),
+                country: String(parsed.data.shippingAddress.country ?? "").trim(),
+                postalCode: String(parsed.data.shippingAddress.postalCode ?? "").trim(),
+              },
+              items: itemsForEmail,
+              currency,
+              itemsSubtotal,
+              shippingAmount,
+              discountAmount,
+              taxAmount,
+              totalAmount,
+            },
+          });
+        } catch (err: unknown) {
+          console.warn("[email] customer order confirmation failed", err);
+        }
+      }
+
+      const adminHtml = orderAdminNotifyEmailHtml({
+        brandName,
+        accentColor,
+        orderId,
+        customerName,
+        totalAmount,
+        currency,
+      });
+
+      try {
+        await sendMail({
+          to: adminEmail,
+          subject: `New order received – ${brandName}`,
+          html: adminHtml,
+          replyTo: supportEmail,
+        });
+      } catch (err: unknown) {
+        console.warn("[email] admin order notification failed", err);
+      }
+    }
+  } catch (err: unknown) {
+    console.warn("[email] order emails failed", err);
   }
 
   return NextResponse.json({ orderId: order._id.toString() });

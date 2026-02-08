@@ -20,8 +20,18 @@ const BrandTextStyleSchema = z.object({
   italic: z.boolean(),
   letterSpacing: z.enum(["tight", "normal", "wide"]),
   color: z.enum(["foreground", "muted", "primary"]),
+  customColorEnabled: z.boolean().optional().default(false),
+  customColor: z.string().trim().optional().default("#171717"),
   gradientEnabled: z.boolean(),
   embossedEnabled: z.boolean(),
+  embossedIntensity: z.number().int().min(0).max(60).optional().default(18),
+
+  glowEnabled: z.boolean().optional().default(false),
+  glowColor: z.string().trim().optional().default("#ffffff"),
+  glowIntensity: z.number().int().min(0).max(60).optional().default(14),
+
+  blinkEnabled: z.boolean().optional().default(false),
+  blinkSpeedMs: z.number().int().min(200).max(6000).optional().default(1400),
 });
 
 const LogoSchema = z.object({
@@ -279,8 +289,16 @@ function normalizeBrandingResponse(doc: unknown) {
         italic: typeof style.italic === "boolean" ? style.italic : false,
         letterSpacing: readString(style.letterSpacing) || "tight",
         color: readString(style.color) || "foreground",
+        customColorEnabled: typeof style.customColorEnabled === "boolean" ? style.customColorEnabled : false,
+        customColor: readString(style.customColor) || "#171717",
         gradientEnabled: typeof style.gradientEnabled === "boolean" ? style.gradientEnabled : false,
         embossedEnabled: typeof style.embossedEnabled === "boolean" ? style.embossedEnabled : false,
+        embossedIntensity: Math.max(0, Math.min(60, Math.trunc(readNumber(style.embossedIntensity, 18)))),
+        glowEnabled: typeof style.glowEnabled === "boolean" ? style.glowEnabled : false,
+        glowColor: readString(style.glowColor) || "#ffffff",
+        glowIntensity: Math.max(0, Math.min(60, Math.trunc(readNumber(style.glowIntensity, 14)))),
+        blinkEnabled: typeof style.blinkEnabled === "boolean" ? style.blinkEnabled : false,
+        blinkSpeedMs: Math.max(200, Math.min(6000, Math.trunc(readNumber(style.blinkSpeedMs, 1400)))),
       },
       seo: {
         title: readString(seo.title),

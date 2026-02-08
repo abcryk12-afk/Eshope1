@@ -215,7 +215,7 @@ export default function OrderReceiptClient({ orderId, email }: Props) {
         ? "Payment Rejected"
         : paymentStatus;
 
-  const canUploadReceipt = method === "manual" && paymentStatus !== "Paid" && !order.isPaid;
+  const canUploadReceipt = (method === "manual" || method === "online") && paymentStatus !== "Paid" && !order.isPaid;
 
   async function uploadReceipt() {
     if (!receiptFile) {
@@ -263,7 +263,7 @@ export default function OrderReceiptClient({ orderId, email }: Props) {
       : method === "manual"
         ? "Manual / Bank Transfer"
         : method === "online"
-          ? "Online Payment"
+          ? "JazzCash"
           : method || "Payment";
 
   return (
@@ -360,6 +360,60 @@ export default function OrderReceiptClient({ orderId, email }: Props) {
         </div>
       ) : null}
 
+      {method === "online" ? (
+        <div className="rounded-3xl border border-border bg-surface p-6">
+          <h2 className="text-sm font-semibold text-foreground">Upload JazzCash receipt</h2>
+          <p className="mt-2 text-sm text-muted-foreground">Status: {paymentStatusLabel}</p>
+
+          {paymentStatus === "Rejected" && rejectReason ? (
+            <p className="mt-2 text-sm text-destructive">Rejected: {rejectReason}</p>
+          ) : null}
+
+          {receiptUrl ? (
+            <div className="mt-4 space-y-2">
+              {receiptUploadedAt ? (
+                <p className="text-xs text-muted-foreground">Uploaded: {fmtDate(receiptUploadedAt)}</p>
+              ) : null}
+
+              <div className="rounded-2xl border border-border bg-background p-3">
+                {receiptUrl.toLowerCase().endsWith(".pdf") ? (
+                  <p className="text-sm text-foreground-secondary">PDF receipt uploaded.</p>
+                ) : (
+                  <Image
+                    src={receiptUrl}
+                    alt="Payment receipt"
+                    width={1200}
+                    height={900}
+                    className="max-h-72 w-full rounded-xl object-contain"
+                    unoptimized
+                  />
+                )}
+              </div>
+
+              <a href={receiptUrl} target="_blank" rel="noreferrer noopener">
+                <Button variant="secondary" size="sm">Download receipt</Button>
+              </a>
+            </div>
+          ) : (
+            <p className="mt-3 text-sm text-muted-foreground">No receipt uploaded yet.</p>
+          )}
+
+          {canUploadReceipt ? (
+            <div className="mt-4 space-y-3">
+              <input
+                type="file"
+                accept="image/jpeg,image/png,application/pdf"
+                onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
+                className="block w-full text-sm text-foreground-secondary"
+              />
+              <Button type="button" onClick={() => void uploadReceipt()} disabled={receiptUploading}>
+                {receiptUploading ? "Uploading..." : receiptUrl ? "Re-upload receipt" : "Upload JazzCash Receipt"}
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       {method === "manual" ? (
         <div className="rounded-3xl border border-warning/30 bg-warning/10 p-6 text-foreground">
           <h2 className="text-sm font-semibold">Bank transfer instructions</h2>
@@ -394,30 +448,17 @@ export default function OrderReceiptClient({ orderId, email }: Props) {
 
       {method === "online" ? (
         <div className="rounded-3xl border border-primary/25 bg-primary/10 p-6 text-foreground">
-          <h2 className="text-sm font-semibold">Complete your payment</h2>
+          <h2 className="text-sm font-semibold">JazzCash payment instructions</h2>
           {paymentSettings?.online?.provider ? (
-            <p className="mt-2 text-sm opacity-90">Provider: {paymentSettings.online.provider}</p>
+            <p className="mt-2 text-sm opacity-90">JazzCash number: {paymentSettings.online.provider}</p>
           ) : null}
           {paymentSettings?.online?.instructions ? (
             <p className="mt-2 text-sm opacity-90">{paymentSettings.online.instructions}</p>
           ) : (
-            <p className="mt-2 text-sm opacity-90">Click Pay Now to complete your payment and confirm the order.</p>
+            <p className="mt-2 text-sm opacity-90">
+              Send the total amount via JazzCash to the number above, then upload your receipt to confirm the order.
+            </p>
           )}
-          <div className="mt-4">
-            <Button
-              variant="accent"
-              onClick={() =>
-                toast.info(
-                  paymentSettings?.online?.enabled
-                    ? "Online payment flow is not implemented yet."
-                    : "Online payment is not configured yet."
-                )
-              }
-              disabled={paymentStatus === "Paid"}
-            >
-              {paymentStatus === "Paid" ? "Paid" : "Pay Now"}
-            </Button>
-          </div>
         </div>
       ) : null}
 

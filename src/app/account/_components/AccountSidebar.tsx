@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import { signOut } from "next-auth/react";
 import {
   BarChart3,
   CreditCard,
@@ -15,6 +16,7 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { signOutFirebaseIfConfigured } from "@/lib/firebaseClient";
 
 type SidebarUser = {
   name: string;
@@ -35,6 +37,11 @@ type Item = {
 
 export default function AccountSidebar({ user }: Props) {
   const pathname = usePathname();
+
+  async function onSignOut() {
+    await signOutFirebaseIfConfigured();
+    await signOut({ callbackUrl: "/" });
+  }
 
   const items: Item[] = [
     {
@@ -138,6 +145,14 @@ export default function AccountSidebar({ user }: Props) {
       >
         Back to shop
       </Link>
+
+      <button
+        type="button"
+        className="block w-full rounded-2xl border border-border bg-background px-3 py-2 text-left text-sm font-semibold text-foreground hover:bg-muted"
+        onClick={onSignOut}
+      >
+        Sign out
+      </button>
     </div>
   );
 }

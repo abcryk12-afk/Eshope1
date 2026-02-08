@@ -191,8 +191,18 @@ const ReturnsSettingsSchema = new Schema(
         enum: ["foreground", "muted", "primary"],
         default: "foreground",
       },
+      customColorEnabled: { type: Boolean, default: false },
+      customColor: { type: String, trim: true, default: "#171717" },
       gradientEnabled: { type: Boolean, default: false },
       embossedEnabled: { type: Boolean, default: false },
+      embossedIntensity: { type: Number, default: 18, min: 0, max: 60 },
+
+      glowEnabled: { type: Boolean, default: false },
+      glowColor: { type: String, trim: true, default: "#ffffff" },
+      glowIntensity: { type: Number, default: 14, min: 0, max: 60 },
+
+      blinkEnabled: { type: Boolean, default: false },
+      blinkSpeedMs: { type: Number, default: 1400, min: 200, max: 6000 },
     },
     seo: {
       title: { type: String, trim: true, maxlength: 160 },

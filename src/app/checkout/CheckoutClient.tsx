@@ -640,8 +640,8 @@ export default function CheckoutClient() {
                     (!manualAllowed || loadingPayments) && "opacity-50"
                   )}
                 >
-                  <p className="text-sm font-semibold text-foreground">Manual payment</p>
-                  <p className="mt-1 text-sm text-muted-foreground">Mark as unpaid, confirm later.</p>
+                  <p className="text-sm font-semibold text-foreground">Bank Transfer</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Make a bank transfer to complete payment.</p>
                 </button>
 
                 <button
@@ -656,8 +656,8 @@ export default function CheckoutClient() {
                     (!onlineAllowed || loadingPayments) && "opacity-50"
                   )}
                 >
-                  <p className="text-sm font-semibold text-foreground">Online payment</p>
-                  <p className="mt-1 text-sm text-muted-foreground">Pay now to confirm your order.</p>
+                  <p className="text-sm font-semibold text-foreground">JazzCash Transfer</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Pay via JazzCash to confirm your order.</p>
                 </button>
               </div>
 
@@ -705,13 +705,13 @@ export default function CheckoutClient() {
               {!loadingPayments && paymentMethod === "online" ? (
                 <div className="mt-3 rounded-2xl border border-border bg-muted p-4">
                   <p className="text-sm font-semibold text-foreground">
-                    {paymentSettings?.online?.provider ? `Online payment (${paymentSettings.online.provider})` : "Online payment"}
+                    {paymentSettings?.online?.provider ? `JazzCash Transfer (${paymentSettings.online.provider})` : "JazzCash Transfer"}
                   </p>
                   {paymentSettings?.online?.instructions ? (
                     <p className="mt-2 text-sm text-foreground-secondary">{paymentSettings.online.instructions}</p>
                   ) : (
                     <p className="mt-2 text-sm text-foreground-secondary">
-                      Online payments are not configured yet. You can still place the order and pay later.
+                      JazzCash Transfer is not configured yet. You can still place the order and pay later.
                     </p>
                   )}
                 </div>

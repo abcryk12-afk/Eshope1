@@ -136,3 +136,12 @@ body {
   color: var(--color-text-primary);
   font-family: var(--font-sans);
 }
+
+@keyframes brandTextBlink {
+  0%, 48%, 100% {
+    opacity: 1;
+  }
+  50%, 98% {
+    opacity: 0.15;
+  }
+}

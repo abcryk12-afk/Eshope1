@@ -10,6 +10,90 @@ type AppRole = "user" | "staff" | "admin" | "super_admin";
 
 const ADMIN_ROLES: AppRole[] = ["staff", "admin", "super_admin"];
 
+async function authorizeWithFirebaseIdToken(idToken: string) {
+  const auth = getFirebaseAdminAuth();
+
+  let decoded: {
+    uid: string;
+    email?: string;
+    name?: string;
+  };
+
+  try {
+    const token = await auth.verifyIdToken(idToken);
+    decoded = {
+      uid: String(token.uid),
+      email: typeof token.email === "string" ? token.email : undefined,
+      name:
+        typeof (token as unknown as { name?: unknown }).name === "string"
+          ? String((token as unknown as { name?: unknown }).name)
+          : undefined,
+    };
+  } catch (err: unknown) {
+    console.warn("[auth] firebase token verify failed", err);
+    return null;
+  }
+
+  const email = decoded.email?.trim().toLowerCase() ?? "";
+  const uid = decoded.uid.trim();
+
+  if (!uid) return null;
+
+  await dbConnect();
+
+  const existingByUid = await User.findOne({ firebaseUid: uid }).lean();
+  const existingByEmail = email ? await User.findOne({ email }).lean() : null;
+  const existing = existingByUid ?? existingByEmail;
+
+  if (existing && existing.isBlocked) {
+    console.warn("[auth] user blocked (firebase)", { email, uid });
+    return null;
+  }
+
+  const nameFromToken = decoded.name?.trim() || "";
+  const fallbackName = email ? email.split("@")[0] || "User" : "User";
+  const safeName = (nameFromToken || fallbackName).slice(0, 80);
+  const safeRole = String(existing?.role ?? "user").trim() as AppRole;
+
+  if (existing) {
+    if (!existingByUid && uid) {
+      await User.updateOne({ _id: existing._id }, { $set: { firebaseUid: uid } }).catch(() => null);
+    }
+
+    if (!String(existing.name ?? "").trim() && safeName.length >= 2) {
+      await User.updateOne({ _id: existing._id }, { $set: { name: safeName } }).catch(() => null);
+    }
+
+    return {
+      id: String(existing._id),
+      name: String(existing.name ?? safeName),
+      email: String(existing.email ?? email),
+      role: safeRole,
+    };
+  }
+
+  if (!email) return null;
+
+  try {
+    const created = await User.create({
+      name: safeName.length >= 2 ? safeName : "User",
+      email,
+      firebaseUid: uid,
+      role: "user",
+    });
+
+    return {
+      id: created._id.toString(),
+      name: created.name,
+      email: created.email,
+      role: "user" as AppRole,
+    };
+  } catch (err: unknown) {
+    console.error("[auth] firebase user upsert failed", err);
+    return null;
+  }
+}
+
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   session: { strategy: "jwt", maxAge: 60 * 60 * 8 },
@@ -26,99 +110,23 @@ export const authOptions: NextAuthOptions = {
 
         if (!idToken) return null;
 
-        const auth = getFirebaseAdminAuth();
-
-        let decoded: {
-          uid: string;
-          email?: string;
-          name?: string;
-        };
-
-        try {
-          const token = await auth.verifyIdToken(idToken);
-          decoded = {
-            uid: String(token.uid),
-            email: typeof token.email === "string" ? token.email : undefined,
-            name: typeof (token as unknown as { name?: unknown }).name === "string"
-              ? String((token as unknown as { name?: unknown }).name)
-              : undefined,
-          };
-        } catch (err: unknown) {
-          console.warn("[auth] firebase token verify failed", err);
-          return null;
-        }
-
-        const email = decoded.email?.trim().toLowerCase() ?? "";
-        const uid = decoded.uid.trim();
-
-        if (!uid) return null;
-
-        await dbConnect();
-
-        const existingByUid = await User.findOne({ firebaseUid: uid }).lean();
-
-        const existingByEmail = email ? await User.findOne({ email }).lean() : null;
-        const existing = existingByUid ?? existingByEmail;
-
-        if (existing && existing.isBlocked) {
-          console.warn("[auth] user blocked (firebase)", { email, uid });
-          return null;
-        }
-
-        const nameFromToken = decoded.name?.trim() || "";
-        const fallbackName = email ? email.split("@")[0] || "User" : "User";
-        const safeName = (nameFromToken || fallbackName).slice(0, 80);
-        const safeRole = String(existing?.role ?? "user").trim() as AppRole;
-
-        if (existing) {
-          if (!existingByUid && uid) {
-            await User.updateOne({ _id: existing._id }, { $set: { firebaseUid: uid } }).catch(() => null);
-          }
-
-          if (!String(existing.name ?? "").trim() && safeName.length >= 2) {
-            await User.updateOne({ _id: existing._id }, { $set: { name: safeName } }).catch(() => null);
-          }
-
-          return {
-            id: String(existing._id),
-            name: String(existing.name ?? safeName),
-            email: String(existing.email ?? email),
-            role: safeRole,
-          };
-        }
-
-        if (!email) {
-          return null;
-        }
-
-        try {
-          const created = await User.create({
-            name: safeName.length >= 2 ? safeName : "User",
-            email,
-            firebaseUid: uid,
-            role: "user",
-          });
-
-          return {
-            id: created._id.toString(),
-            name: created.name,
-            email: created.email,
-            role: "user" as AppRole,
-          };
-        } catch (err: unknown) {
-          console.error("[auth] firebase user upsert failed", err);
-          return null;
-        }
+        return authorizeWithFirebaseIdToken(idToken);
       },
     }),
     CredentialsProvider({
       name: "Credentials",
       credentials: {
+        idToken: { label: "idToken", type: "text" },
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
         admin: { label: "Admin", type: "text" },
       },
       async authorize(credentials) {
+        const idToken = credentials?.idToken?.trim();
+        if (idToken) {
+          return authorizeWithFirebaseIdToken(idToken);
+        }
+
         const email = credentials?.email?.trim().toLowerCase();
         const password = credentials?.password;
         const adminOnly = credentials?.admin === "true";

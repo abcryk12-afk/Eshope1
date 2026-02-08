@@ -12,6 +12,9 @@
     "recompute-sold-count": "node scripts/recompute-sold-count.js"
   },
   "dependencies": {
+    "@firebase/auth": "^1.12.0",
+    "@firebase/firestore": "^4.11.0",
+    "@firebase/storage": "^0.14.0",
     "@reduxjs/toolkit": "^2.11.2",
     "@tiptap/extension-color": "^2.26.1",
     "@tiptap/extension-image": "^2.26.1",
@@ -31,6 +34,7 @@
     "mongoose": "^9.1.5",
     "next": "16.1.6",
     "next-auth": "^4.24.13",
+    "nodemailer": "^7.0.13",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-redux": "^9.2.0",
@@ -42,6 +46,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/nodemailer": "^6.4.14",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",

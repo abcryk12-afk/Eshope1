@@ -34,6 +34,15 @@ yarn-error.log*
 .env*
 !.env.example
 
+# secrets
+firebase-service-account.json
+
+# uploaded assets (runtime)
+/public/uploads/
+/public/uploads/**
+/public/uploads/receipts/
+/public/uploads/receipts/**
+
 # vercel
 .vercel
 

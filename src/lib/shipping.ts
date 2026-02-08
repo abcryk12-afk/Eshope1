@@ -65,8 +65,16 @@ export type BrandingTextStyle = {
   italic: boolean;
   letterSpacing: "tight" | "normal" | "wide";
   color: "foreground" | "muted" | "primary";
+  customColorEnabled: boolean;
+  customColor: string;
   gradientEnabled: boolean;
   embossedEnabled: boolean;
+  embossedIntensity: number;
+  glowEnabled: boolean;
+  glowColor: string;
+  glowIntensity: number;
+  blinkEnabled: boolean;
+  blinkSpeedMs: number;
 };
 
 export type BrandingSeo = {
@@ -277,8 +285,18 @@ export function normalizeStorefrontSettings(doc: unknown): StorefrontSettings {
   const letterSpacing = letterSpacingRaw === "normal" || letterSpacingRaw === "wide" ? (letterSpacingRaw as "normal" | "wide") : "tight";
   const colorRaw = String(styleRoot.color ?? "").trim();
   const color = colorRaw === "muted" || colorRaw === "primary" ? (colorRaw as "muted" | "primary") : "foreground";
+  const customColorEnabled = typeof styleRoot.customColorEnabled === "boolean" ? styleRoot.customColorEnabled : false;
+  const customColor = readString(styleRoot.customColor, "#171717");
   const gradientEnabled = typeof styleRoot.gradientEnabled === "boolean" ? styleRoot.gradientEnabled : false;
   const embossedEnabled = typeof styleRoot.embossedEnabled === "boolean" ? styleRoot.embossedEnabled : false;
+  const embossedIntensity = clampInt(readNumber(styleRoot.embossedIntensity, 18), 0, 60);
+
+  const glowEnabled = typeof styleRoot.glowEnabled === "boolean" ? styleRoot.glowEnabled : false;
+  const glowColor = readString(styleRoot.glowColor, "#ffffff");
+  const glowIntensity = clampInt(readNumber(styleRoot.glowIntensity, 14), 0, 60);
+
+  const blinkEnabled = typeof styleRoot.blinkEnabled === "boolean" ? styleRoot.blinkEnabled : false;
+  const blinkSpeedMs = clampInt(readNumber(styleRoot.blinkSpeedMs, 1400), 200, 6000);
 
   const seoRoot = isRecord(brandingRoot.seo) ? brandingRoot.seo : {};
   const seoTitle = readString(seoRoot.title, "").slice(0, 160);
@@ -331,8 +349,16 @@ export function normalizeStorefrontSettings(doc: unknown): StorefrontSettings {
         italic,
         letterSpacing,
         color,
+        customColorEnabled,
+        customColor,
         gradientEnabled,
         embossedEnabled,
+        embossedIntensity,
+        glowEnabled,
+        glowColor,
+        glowIntensity,
+        blinkEnabled,
+        blinkSpeedMs,
       },
       seo: {
         title: seoTitle,
