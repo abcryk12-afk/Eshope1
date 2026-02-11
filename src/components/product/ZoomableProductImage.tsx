@@ -172,6 +172,7 @@ export default function ZoomableProductImage({ src, alt, className }: Props) {
         aria-label={canInteract ? "Open image zoom" : undefined}
       >
         <Image
+          data-product-main-image="true"
           src={src}
           alt={alt}
           fill

@@ -14,9 +14,55 @@ const BannerSchema = z.object({
   title: z.string().trim().max(120).optional(),
   subtitle: z.string().trim().max(200).optional(),
   image: z.string().trim().optional().default(""),
+  desktopImage: z.string().trim().optional().default(""),
+  mobileImage: z.string().trim().optional().default(""),
   href: z.string().trim().optional(),
+  buttonText: z.string().trim().max(60).optional().default(""),
+  buttonHref: z.string().trim().optional().default(""),
+  textAlign: z.enum(["left", "center", "right"]).optional().default("left"),
+  verticalAlign: z.enum(["top", "center", "bottom"]).optional().default("center"),
+  overlayColor: z.string().trim().optional().default("#000000"),
+  overlayOpacity: z.number().min(0).max(1).optional().default(0.25),
+  textColor: z.string().trim().optional().default("#ffffff"),
+  buttonColor: z.string().trim().optional().default("#ffffff"),
   isActive: z.boolean().optional().default(true),
 });
+
+const HeroBannerSettingsSchema = z.object({
+  desktopHeightPx: z.number().int().min(200).max(900).optional().default(520),
+  mobileHeightPx: z.number().int().min(180).max(900).optional().default(360),
+  aspectMode: z.enum(["height", "ratio"]).optional().default("height"),
+  aspectRatio: z.string().trim().optional().default("16/9"),
+  customAspectW: z.number().int().min(1).max(64).optional().default(16),
+  customAspectH: z.number().int().min(1).max(64).optional().default(9),
+  fitMode: z.enum(["cover", "contain"]).optional().default("cover"),
+  autoplayEnabled: z.boolean().optional().default(true),
+  autoplayDelayMs: z.number().int().min(1000).max(20000).optional().default(5000),
+  loop: z.boolean().optional().default(true),
+  showDots: z.boolean().optional().default(true),
+  showArrows: z.boolean().optional().default(true),
+  transitionSpeedMs: z.number().int().min(100).max(5000).optional().default(550),
+  animation: z.enum(["slide", "fade"]).optional().default("slide"),
+  keyboard: z.boolean().optional().default(true),
+});
+
+const DEFAULT_HERO_BANNER_SETTINGS = {
+  desktopHeightPx: 520,
+  mobileHeightPx: 360,
+  aspectMode: "height",
+  aspectRatio: "16/9",
+  customAspectW: 16,
+  customAspectH: 9,
+  fitMode: "cover",
+  autoplayEnabled: true,
+  autoplayDelayMs: 5000,
+  loop: true,
+  showDots: true,
+  showArrows: true,
+  transitionSpeedMs: 550,
+  animation: "slide",
+  keyboard: true,
+} as const;
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null;
@@ -32,7 +78,17 @@ function normalizeBanners(raw: unknown) {
         title: typeof r.title === "string" ? r.title.trim() : "",
         subtitle: typeof r.subtitle === "string" ? r.subtitle.trim() : "",
         image: typeof r.image === "string" ? r.image.trim() : "",
+        desktopImage: typeof r.desktopImage === "string" ? r.desktopImage.trim() : "",
+        mobileImage: typeof r.mobileImage === "string" ? r.mobileImage.trim() : "",
         href: typeof r.href === "string" ? r.href.trim() : "",
+        buttonText: typeof r.buttonText === "string" ? r.buttonText.trim() : "",
+        buttonHref: typeof r.buttonHref === "string" ? r.buttonHref.trim() : "",
+        textAlign: r.textAlign === "center" ? "center" : r.textAlign === "right" ? "right" : "left",
+        verticalAlign: r.verticalAlign === "top" ? "top" : r.verticalAlign === "bottom" ? "bottom" : "center",
+        overlayColor: typeof r.overlayColor === "string" ? r.overlayColor.trim() : "#000000",
+        overlayOpacity: typeof r.overlayOpacity === "number" ? Math.max(0, Math.min(1, r.overlayOpacity)) : 0.25,
+        textColor: typeof r.textColor === "string" ? r.textColor.trim() : "#ffffff",
+        buttonColor: typeof r.buttonColor === "string" ? r.buttonColor.trim() : "#ffffff",
         isActive: typeof r.isActive === "boolean" ? r.isActive : true,
       };
     });
@@ -67,6 +123,8 @@ const FooterSchema = z
 
 const BodySchema = z.object({
   homeBanners: z.array(BannerSchema).optional().default([]),
+  heroBanners: z.array(BannerSchema).optional().default([]),
+  heroBannerSettings: HeroBannerSettingsSchema.optional().default(DEFAULT_HERO_BANNER_SETTINGS),
   footerText: z.string().trim().max(500).optional(),
   footer: z.union([FooterSchema, z.null()]).optional(),
   globalSeoTitle: z.string().trim().max(160).optional(),
@@ -192,6 +250,12 @@ export async function GET() {
   return NextResponse.json({
     settings: {
       homeBanners: normalizeBanners((doc as unknown as { homeBanners?: unknown }).homeBanners),
+      heroBanners: normalizeBanners((doc as unknown as { heroBanners?: unknown }).heroBanners),
+      heroBannerSettings:
+        typeof (doc as unknown as { heroBannerSettings?: unknown }).heroBannerSettings === "object" &&
+        (doc as unknown as { heroBannerSettings?: unknown }).heroBannerSettings !== null
+          ? (doc as unknown as { heroBannerSettings?: unknown }).heroBannerSettings
+          : {},
       footerText: doc?.footerText ?? "",
       footer: (doc as unknown as { footer?: unknown }).footer ?? {},
       globalSeoTitle: doc?.globalSeoTitle ?? "",
@@ -425,6 +489,12 @@ export async function PUT(req: NextRequest) {
   return NextResponse.json({
     settings: {
       homeBanners: normalizeBanners((doc as unknown as { homeBanners?: unknown }).homeBanners),
+      heroBanners: normalizeBanners((doc as unknown as { heroBanners?: unknown }).heroBanners),
+      heroBannerSettings:
+        typeof (doc as unknown as { heroBannerSettings?: unknown }).heroBannerSettings === "object" &&
+        (doc as unknown as { heroBannerSettings?: unknown }).heroBannerSettings !== null
+          ? (doc as unknown as { heroBannerSettings?: unknown }).heroBannerSettings
+          : {},
       footerText: doc?.footerText ?? "",
       footer: (doc as unknown as { footer?: unknown }).footer ?? {},
       globalSeoTitle: doc?.globalSeoTitle ?? "",

@@ -5,10 +5,51 @@ const BannerSchema = new Schema(
     title: { type: String, trim: true, maxlength: 120 },
     subtitle: { type: String, trim: true, maxlength: 200 },
     image: { type: String, trim: true },
+    desktopImage: { type: String, trim: true },
+    mobileImage: { type: String, trim: true },
     href: { type: String, trim: true },
+    buttonText: { type: String, trim: true, maxlength: 60 },
+    buttonHref: { type: String, trim: true },
+    textAlign: {
+      type: String,
+      trim: true,
+      enum: ["left", "center", "right"],
+      default: "left",
+    },
+    verticalAlign: {
+      type: String,
+      trim: true,
+      enum: ["top", "center", "bottom"],
+      default: "center",
+    },
+    overlayColor: { type: String, trim: true, default: "#000000" },
+    overlayOpacity: { type: Number, default: 0.25, min: 0, max: 1 },
+    textColor: { type: String, trim: true, default: "#ffffff" },
+    buttonColor: { type: String, trim: true, default: "#ffffff" },
     isActive: { type: Boolean, default: true },
   },
   { _id: true }
+);
+
+const HeroBannerSettingsSchema = new Schema(
+  {
+    desktopHeightPx: { type: Number, default: 520, min: 200, max: 900 },
+    mobileHeightPx: { type: Number, default: 360, min: 180, max: 900 },
+    aspectMode: { type: String, trim: true, enum: ["height", "ratio"], default: "height" },
+    aspectRatio: { type: String, trim: true, default: "16/9" },
+    customAspectW: { type: Number, default: 16, min: 1, max: 64 },
+    customAspectH: { type: Number, default: 9, min: 1, max: 64 },
+    fitMode: { type: String, trim: true, enum: ["cover", "contain"], default: "cover" },
+    autoplayEnabled: { type: Boolean, default: true },
+    autoplayDelayMs: { type: Number, default: 5000, min: 1000, max: 20000 },
+    loop: { type: Boolean, default: true },
+    showDots: { type: Boolean, default: true },
+    showArrows: { type: Boolean, default: true },
+    transitionSpeedMs: { type: Number, default: 550, min: 100, max: 5000 },
+    animation: { type: String, trim: true, enum: ["slide", "fade"], default: "slide" },
+    keyboard: { type: Boolean, default: true },
+  },
+  { _id: false }
 );
 
 const LocalizedTextSchema = {
@@ -222,6 +263,8 @@ const SiteSettingSchema = new Schema(
   {
     key: { type: String, required: true, unique: true, trim: true, index: true },
     homeBanners: { type: [BannerSchema], default: [] },
+    heroBanners: { type: [BannerSchema], default: [] },
+    heroBannerSettings: { type: HeroBannerSettingsSchema, default: () => ({}) },
     footerText: { type: String, trim: true, maxlength: 500 },
     footer: { type: FooterSchema, default: () => ({}) },
     globalSeoTitle: { type: String, trim: true, maxlength: 160 },

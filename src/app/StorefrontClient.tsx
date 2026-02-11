@@ -8,6 +8,10 @@ import ProductCard from "@/components/product/ProductCard";
 import ProductGrid from "@/components/product/ProductGrid";
 import SuperDealsSection from "@/components/deals/SuperDealsSection";
 import HomeBanners from "@/components/home/HomeBanners";
+import HeroBannerSlider, {
+  type HeroBanner,
+  type HeroBannerSettings,
+} from "@/components/home/HeroBannerSlider";
 import Skeleton from "@/components/ui/Skeleton";
 import BottomSheet from "@/components/ui/BottomSheet";
 import ListingTopBar, { type ListingLayoutMode } from "@/components/storefront/ListingTopBar";
@@ -40,6 +44,12 @@ type HomeBanner = {
   subtitle: string;
   image: string;
   href: string;
+};
+
+type HeroHomeResponse = {
+  homeBanners?: HomeBanner[];
+  heroBanners?: HeroBanner[];
+  heroBannerSettings?: HeroBannerSettings;
 };
 
 type Pagination = {
@@ -125,6 +135,9 @@ export default function StorefrontClient({
 
   const [homeBanners, setHomeBanners] = useState<HomeBanner[]>([]);
   const [homeBannersLoading, setHomeBannersLoading] = useState(false);
+
+  const [heroBanners, setHeroBanners] = useState<HeroBanner[]>([]);
+  const [heroBannerSettings, setHeroBannerSettings] = useState<HeroBannerSettings | null>(null);
 
   const applyFilters = useCallback(
     (next: {
@@ -213,8 +226,11 @@ export default function StorefrontClient({
       }
 
       const json = (await res.json().catch(() => null)) as unknown;
-      const root = json as { homeBanners?: HomeBanner[] } | null;
+      const root = json as HeroHomeResponse | null;
+
       setHomeBanners(Array.isArray(root?.homeBanners) ? root?.homeBanners : []);
+      setHeroBanners(Array.isArray(root?.heroBanners) ? root?.heroBanners : []);
+      setHeroBannerSettings(root?.heroBannerSettings ?? null);
       setHomeBannersLoading(false);
     }
 
@@ -364,6 +380,9 @@ export default function StorefrontClient({
 
   return (
     <div className="bg-background text-foreground">
+      {isHome && heroBanners.length && heroBannerSettings ? (
+        <HeroBannerSlider banners={heroBanners} settings={heroBannerSettings} />
+      ) : null}
       <div
         className={cn(
           "mx-auto w-full max-w-6xl px-4",

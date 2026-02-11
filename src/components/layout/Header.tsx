@@ -2,11 +2,11 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Menu, Search, ShoppingBag, User2, X } from "lucide-react";
+import { Menu, Search, User2, X } from "lucide-react";
 
 import { formatMoneyFromPkr } from "@/lib/currency";
 import { cn } from "@/lib/utils";
@@ -18,6 +18,7 @@ import { useAppSelector } from "@/store/hooks";
 import MiniCartDrawer from "./MiniCartDrawer";
 import CurrencySwitcher from "./CurrencySwitcher";
 import LanguageSwitcher from "./LanguageSwitcher";
+import CartIconButton from "./CartIconButton";
 
 type Suggestion = {
   _id?: string;
@@ -41,9 +42,6 @@ export default function Header() {
   const isAdminPath = pathname.startsWith("/admin");
 
   const { data: session } = useSession();
-  const cartCount = useAppSelector((s) =>
-    s.cart.items.reduce((acc, i) => acc + i.quantity, 0)
-  );
   const currency = useAppSelector((s) => s.currency.selected);
   const pkrPerUsd = useAppSelector((s) => s.currency.pkrPerUsd);
 
@@ -60,6 +58,9 @@ export default function Header() {
   const [meta, setMeta] = useState<ProductsMeta | null>(null);
 
   const userLabel = useMemo(() => session?.user?.email ?? "Account", [session?.user?.email]);
+
+  const lastAddedAt = useAppSelector((s) => s.cart.lastAddedAt);
+  const manualCloseAtRef = useRef(0);
 
   async function onSignOut() {
     await signOutFirebaseIfConfigured();
@@ -213,6 +214,17 @@ export default function Header() {
       cancelled = true;
     };
   }, [debouncedQ, isAdminPath]);
+
+  useEffect(() => {
+    if (isAdminPath) return;
+    if (!lastAddedAt) return;
+    if (cartOpen) return;
+
+    const now = Date.now();
+    if (now - manualCloseAtRef.current < 5000) return;
+
+    setCartOpen(true);
+  }, [isAdminPath, lastAddedAt, cartOpen]);
 
   if (isAdminPath) {
     return null;
@@ -398,28 +410,18 @@ export default function Header() {
               <span className="hidden max-w-35 truncate md:inline">{userLabel}</span>
             </Link>
 
-            <button
-              type="button"
-              className={cn(
-                "relative inline-flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-medium",
-                "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
-              onClick={() => setCartOpen(true)}
-              aria-label="Open cart"
-            >
-              <ShoppingBag className="h-4 w-4" />
-              <span className="hidden md:inline">Cart</span>
-              {cartCount > 0 ? (
-                <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-semibold text-primary-foreground">
-                  {cartCount}
-                </span>
-              ) : null}
-            </button>
+            <CartIconButton onClick={() => setCartOpen(true)} />
           </div>
         </div>
       </header>
 
-      <MiniCartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
+      <MiniCartDrawer
+        open={cartOpen}
+        onClose={() => {
+          manualCloseAtRef.current = Date.now();
+          setCartOpen(false);
+        }}
+      />
 
       <AnimatePresence>
         {mobileMenuOpen ? (

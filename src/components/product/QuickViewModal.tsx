@@ -222,6 +222,18 @@ export default function QuickViewModal({ open, slug, onClose }: QuickViewModalPr
     return true;
   }, [product, selectedVariant]);
 
+  const [addUi, setAddUi] = useState<"idle" | "loading" | "added">("idle");
+
+  useEffect(() => {
+    let t: number | null = null;
+    if (addUi === "added") {
+      t = window.setTimeout(() => setAddUi("idle"), 1500);
+    }
+    return () => {
+      if (t) window.clearTimeout(t);
+    };
+  }, [addUi]);
+
   const availableStock = selectedVariant
     ? selectedVariant.stock
     : typeof product?.stock === "number"
@@ -273,7 +285,22 @@ export default function QuickViewModal({ open, slug, onClose }: QuickViewModalPr
       })
     );
 
-    toast.success("Added to cart");
+    toast.success("Added to cart", {
+      closeButton: true,
+      duration: 2500,
+    });
+  }
+
+  async function handleAddToCart() {
+    if (addUi !== "idle") return;
+    if (!canAdd) return;
+
+    setAddUi("loading");
+
+    await Promise.resolve();
+
+    add();
+    setAddUi("added");
   }
 
   return (
@@ -592,16 +619,20 @@ export default function QuickViewModal({ open, slug, onClose }: QuickViewModalPr
 
                 <button
                   type="button"
-                  onClick={add}
-                  disabled={!canAdd}
+                  onClick={handleAddToCart}
+                  disabled={!canAdd || addUi !== "idle"}
                   className={cn(
                     "mt-3 h-11 w-full bg-primary px-4 text-sm font-semibold text-primary-foreground",
                     "hover:bg-primary-hover",
-                    !canAdd && "pointer-events-none opacity-50"
+                    "transition-transform duration-150 active:scale-[0.98]",
+                    (!canAdd || addUi !== "idle") && "pointer-events-none opacity-60"
                   )}
                   style={{ borderRadius: "var(--radius-md)" }}
                 >
-                  Add to cart
+                  <span className="sr-only" aria-live="polite">
+                    {addUi === "loading" ? "Adding to cart" : addUi === "added" ? "Added" : ""}
+                  </span>
+                  {addUi === "added" ? "✓ Added" : addUi === "loading" ? "Adding…" : "Add to cart"}
                 </button>
               </div>
             </motion.div>

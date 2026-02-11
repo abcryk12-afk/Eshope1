@@ -5,7 +5,7 @@ import { authOptions } from "@/lib/auth";
 import AdminLoginClient from "@/app/admin/login/AdminLoginClient";
 
 type PageProps = {
-  searchParams: Record<string, string | string[] | undefined> | Promise<Record<string, string | string[] | undefined>>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
 function readString(v: string | string[] | undefined) {
@@ -20,7 +20,7 @@ export default async function AdminLoginPage({ searchParams }: PageProps) {
     redirect("/admin");
   }
 
-  const resolvedSearchParams = await Promise.resolve(searchParams);
+  const resolvedSearchParams = (await searchParams) ?? {};
   const callbackUrl = readString(resolvedSearchParams.callbackUrl) || "/admin";
 
   return <AdminLoginClient callbackUrl={callbackUrl} />;

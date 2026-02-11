@@ -17,6 +17,7 @@ import { StarRatingDisplay } from "@/components/ui/StarRating";
 import ProductCard from "@/components/product/ProductCard";
 import ProductGrid from "@/components/product/ProductGrid";
 import ZoomableProductImage from "@/components/product/ZoomableProductImage";
+import AddToCartButton from "@/components/product/AddToCartButton";
 import { useStorefrontSettings } from "@/hooks/useStorefrontSettings";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { addToCart } from "@/store/slices/cartSlice";
@@ -526,7 +527,10 @@ export default function ProductDetailClient({ slug }: Props) {
       })
     );
 
-    toast.success("Added to cart");
+    toast.success("Added to cart", {
+      closeButton: true,
+      duration: 2500,
+    });
   }
 
   function buyNow() {
@@ -775,18 +779,15 @@ export default function ProductDetailClient({ slug }: Props) {
                 </button>
               </div>
 
-              <button
-                type="button"
-                onClick={add}
-                disabled={!canAdd}
+              <AddToCartButton
+                canAdd={canAdd}
+                getImageEl={() => document.querySelector<HTMLElement>("[data-product-main-image='true']")}
+                onAdd={add}
                 className={cn(
                   "h-11 flex-1 rounded-2xl bg-zinc-900 px-4 text-sm font-semibold text-white hover:bg-zinc-800",
-                  "dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200",
-                  !canAdd && "pointer-events-none opacity-50"
+                  "dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
                 )}
-              >
-                Add to cart
-              </button>
+              />
             </div>
 
             <div

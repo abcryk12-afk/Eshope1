@@ -15,8 +15,36 @@ type Banner = {
   title?: string;
   subtitle?: string;
   image?: string;
+  desktopImage?: string;
+  mobileImage?: string;
   href?: string;
+  buttonText?: string;
+  buttonHref?: string;
+  textAlign?: "left" | "center" | "right";
+  verticalAlign?: "top" | "center" | "bottom";
+  overlayColor?: string;
+  overlayOpacity?: number;
+  textColor?: string;
+  buttonColor?: string;
   isActive?: boolean;
+};
+
+type HeroBannerSettings = {
+  desktopHeightPx: number;
+  mobileHeightPx: number;
+  aspectMode: "height" | "ratio";
+  aspectRatio: string;
+  customAspectW: number;
+  customAspectH: number;
+  fitMode: "cover" | "contain";
+  autoplayEnabled: boolean;
+  autoplayDelayMs: number;
+  loop: boolean;
+  showDots: boolean;
+  showArrows: boolean;
+  transitionSpeedMs: number;
+  animation: "slide" | "fade";
+  keyboard: boolean;
 };
 
 type LocalizedText = Record<string, string | undefined>;
@@ -46,6 +74,8 @@ type FooterSettings = {
 
 type Settings = {
   homeBanners: Banner[];
+  heroBanners: Banner[];
+  heroBannerSettings: HeroBannerSettings;
   footerText: string;
   footer: FooterSettings | null;
   globalSeoTitle: string;
@@ -101,6 +131,56 @@ function isSafeImageSrc(src: string) {
   return false;
 }
 
+function clampInt(n: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, Math.trunc(n)));
+}
+
+function defaultHeroBannerSettings(): HeroBannerSettings {
+  return {
+    desktopHeightPx: 520,
+    mobileHeightPx: 360,
+    aspectMode: "height",
+    aspectRatio: "16/9",
+    customAspectW: 16,
+    customAspectH: 9,
+    fitMode: "cover",
+    autoplayEnabled: true,
+    autoplayDelayMs: 5000,
+    loop: true,
+    showDots: true,
+    showArrows: true,
+    transitionSpeedMs: 550,
+    animation: "slide",
+    keyboard: true,
+  };
+}
+
+function normalizeHeroBannerSettings(raw: unknown): HeroBannerSettings {
+  const d = defaultHeroBannerSettings();
+  if (!isRecord(raw)) return d;
+  const r = raw as Record<string, unknown>;
+  const aspectMode = r.aspectMode === "ratio" ? "ratio" : "height";
+  const fitMode = r.fitMode === "contain" ? "contain" : "cover";
+  const animation = r.animation === "fade" ? "fade" : "slide";
+  return {
+    desktopHeightPx: clampInt(typeof r.desktopHeightPx === "number" ? r.desktopHeightPx : d.desktopHeightPx, 200, 900),
+    mobileHeightPx: clampInt(typeof r.mobileHeightPx === "number" ? r.mobileHeightPx : d.mobileHeightPx, 180, 900),
+    aspectMode,
+    aspectRatio: typeof r.aspectRatio === "string" && r.aspectRatio.trim() ? r.aspectRatio.trim() : d.aspectRatio,
+    customAspectW: clampInt(typeof r.customAspectW === "number" ? r.customAspectW : d.customAspectW, 1, 64),
+    customAspectH: clampInt(typeof r.customAspectH === "number" ? r.customAspectH : d.customAspectH, 1, 64),
+    fitMode,
+    autoplayEnabled: typeof r.autoplayEnabled === "boolean" ? r.autoplayEnabled : d.autoplayEnabled,
+    autoplayDelayMs: clampInt(typeof r.autoplayDelayMs === "number" ? r.autoplayDelayMs : d.autoplayDelayMs, 1000, 20000),
+    loop: typeof r.loop === "boolean" ? r.loop : d.loop,
+    showDots: typeof r.showDots === "boolean" ? r.showDots : d.showDots,
+    showArrows: typeof r.showArrows === "boolean" ? r.showArrows : d.showArrows,
+    transitionSpeedMs: clampInt(typeof r.transitionSpeedMs === "number" ? r.transitionSpeedMs : d.transitionSpeedMs, 100, 5000),
+    animation,
+    keyboard: typeof r.keyboard === "boolean" ? r.keyboard : d.keyboard,
+  };
+}
+
 async function uploadBannerImage(file: File) {
   const form = new FormData();
   form.append("files", file);
@@ -128,6 +208,9 @@ export default function AdminCmsSettingsClient() {
 
   const [bannerUploading, setBannerUploading] = useState<Record<number, boolean>>({});
   const bannerFileInputsRef = useRef<Record<number, HTMLInputElement | null>>({});
+  const heroFileInputsRef = useRef<Record<number, { desktop?: HTMLInputElement | null; mobile?: HTMLInputElement | null }>>({});
+  const [heroUploading, setHeroUploading] = useState<Record<string, boolean>>({});
+  const dragFromIndexRef = useRef<number | null>(null);
 
   const [footerLang, setFooterLang] = useState<FooterLang>("en");
 
@@ -144,7 +227,15 @@ export default function AdminCmsSettingsClient() {
     }
 
     const json = (await res.json()) as ApiResponse;
-    setSettings(json.settings);
+    setSettings({
+      ...json.settings,
+      heroBanners: Array.isArray((json.settings as unknown as { heroBanners?: unknown }).heroBanners)
+        ? json.settings.heroBanners
+        : [],
+      heroBannerSettings: normalizeHeroBannerSettings(
+        (json.settings as unknown as { heroBannerSettings?: unknown }).heroBannerSettings
+      ),
+    });
     setLoading(false);
   }, []);
 
@@ -154,8 +245,14 @@ export default function AdminCmsSettingsClient() {
   }, [load]);
 
   async function save(nextSettings?: Settings) {
-    const payload = nextSettings ?? settings;
-    if (!payload) return;
+    const root = nextSettings ?? settings;
+    if (!root) return;
+
+    const payload: Settings = {
+      ...root,
+      heroBanners: Array.isArray(root.heroBanners) ? root.heroBanners : [],
+      heroBannerSettings: normalizeHeroBannerSettings(root.heroBannerSettings),
+    };
 
     setSaving(true);
 
@@ -242,6 +339,655 @@ export default function AdminCmsSettingsClient() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-4">
+          <div className="rounded-3xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Hero banner slider</h2>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() =>
+                  setSettings((s) =>
+                    s ? { ...s, heroBanners: [...(s.heroBanners ?? []), { isActive: true, textAlign: "left", verticalAlign: "center" }] } : s
+                  )
+                }
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add
+              </Button>
+            </div>
+
+            <div className="mt-4 rounded-3xl border border-zinc-200 p-4 dark:border-zinc-800">
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Global slider settings</p>
+
+              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                <Input
+                  type="number"
+                  value={settings.heroBannerSettings?.desktopHeightPx ?? 520}
+                  onChange={(e) =>
+                    setSettings((s) =>
+                      s
+                        ? {
+                            ...s,
+                            heroBannerSettings: {
+                              ...normalizeHeroBannerSettings(s.heroBannerSettings),
+                              desktopHeightPx: clampInt(Number(e.target.value || 0), 200, 900),
+                            },
+                          }
+                        : s
+                    )
+                  }
+                  placeholder="Desktop height (px)"
+                />
+                <Input
+                  type="number"
+                  value={settings.heroBannerSettings?.mobileHeightPx ?? 360}
+                  onChange={(e) =>
+                    setSettings((s) =>
+                      s
+                        ? {
+                            ...s,
+                            heroBannerSettings: {
+                              ...normalizeHeroBannerSettings(s.heroBannerSettings),
+                              mobileHeightPx: clampInt(Number(e.target.value || 0), 180, 900),
+                            },
+                          }
+                        : s
+                    )
+                  }
+                  placeholder="Mobile height (px)"
+                />
+
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Aspect mode</label>
+                  <select
+                    value={settings.heroBannerSettings?.aspectMode ?? "height"}
+                    onChange={(e) =>
+                      setSettings((s) =>
+                        s
+                          ? {
+                              ...s,
+                              heroBannerSettings: {
+                                ...normalizeHeroBannerSettings(s.heroBannerSettings),
+                                aspectMode: e.target.value === "ratio" ? "ratio" : "height",
+                              },
+                            }
+                          : s
+                      )
+                    }
+                    className="mt-2 h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+                  >
+                    <option value="height">Fixed height (recommended)</option>
+                    <option value="ratio">Aspect ratio</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Fit mode (mobile & desktop)</label>
+                  <select
+                    value={settings.heroBannerSettings?.fitMode ?? "cover"}
+                    onChange={(e) =>
+                      setSettings((s) =>
+                        s
+                          ? {
+                              ...s,
+                              heroBannerSettings: {
+                                ...normalizeHeroBannerSettings(s.heroBannerSettings),
+                                fitMode: e.target.value === "contain" ? "contain" : "cover",
+                              },
+                            }
+                          : s
+                      )
+                    }
+                    className="mt-2 h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+                  >
+                    <option value="cover">Cover (no stretching)</option>
+                    <option value="contain">Contain (no crop)</option>
+                  </select>
+                </div>
+
+                <Input
+                  type="number"
+                  value={settings.heroBannerSettings?.autoplayDelayMs ?? 5000}
+                  onChange={(e) =>
+                    setSettings((s) =>
+                      s
+                        ? {
+                            ...s,
+                            heroBannerSettings: {
+                              ...normalizeHeroBannerSettings(s.heroBannerSettings),
+                              autoplayDelayMs: clampInt(Number(e.target.value || 0), 1000, 20000),
+                            },
+                          }
+                        : s
+                    )
+                  }
+                  placeholder="Autoplay delay (ms)"
+                />
+
+                <Input
+                  type="number"
+                  value={settings.heroBannerSettings?.transitionSpeedMs ?? 550}
+                  onChange={(e) =>
+                    setSettings((s) =>
+                      s
+                        ? {
+                            ...s,
+                            heroBannerSettings: {
+                              ...normalizeHeroBannerSettings(s.heroBannerSettings),
+                              transitionSpeedMs: clampInt(Number(e.target.value || 0), 100, 5000),
+                            },
+                          }
+                        : s
+                    )
+                  }
+                  placeholder="Transition speed (ms)"
+                />
+              </div>
+
+              <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                <label className="flex items-center justify-between gap-3 rounded-2xl border border-zinc-200 p-3 text-sm text-zinc-700 dark:border-zinc-800 dark:text-zinc-300">
+                  <span>Autoplay</span>
+                  <input
+                    type="checkbox"
+                    checked={settings.heroBannerSettings?.autoplayEnabled ?? true}
+                    onChange={(e) =>
+                      setSettings((s) =>
+                        s
+                          ? {
+                              ...s,
+                              heroBannerSettings: {
+                                ...normalizeHeroBannerSettings(s.heroBannerSettings),
+                                autoplayEnabled: e.target.checked,
+                              },
+                            }
+                          : s
+                      )
+                    }
+                    className="h-4 w-4"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between gap-3 rounded-2xl border border-zinc-200 p-3 text-sm text-zinc-700 dark:border-zinc-800 dark:text-zinc-300">
+                  <span>Loop</span>
+                  <input
+                    type="checkbox"
+                    checked={settings.heroBannerSettings?.loop ?? true}
+                    onChange={(e) =>
+                      setSettings((s) =>
+                        s
+                          ? {
+                              ...s,
+                              heroBannerSettings: {
+                                ...normalizeHeroBannerSettings(s.heroBannerSettings),
+                                loop: e.target.checked,
+                              },
+                            }
+                          : s
+                      )
+                    }
+                    className="h-4 w-4"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between gap-3 rounded-2xl border border-zinc-200 p-3 text-sm text-zinc-700 dark:border-zinc-800 dark:text-zinc-300">
+                  <span>Arrows</span>
+                  <input
+                    type="checkbox"
+                    checked={settings.heroBannerSettings?.showArrows ?? true}
+                    onChange={(e) =>
+                      setSettings((s) =>
+                        s
+                          ? {
+                              ...s,
+                              heroBannerSettings: {
+                                ...normalizeHeroBannerSettings(s.heroBannerSettings),
+                                showArrows: e.target.checked,
+                              },
+                            }
+                          : s
+                      )
+                    }
+                    className="h-4 w-4"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between gap-3 rounded-2xl border border-zinc-200 p-3 text-sm text-zinc-700 dark:border-zinc-800 dark:text-zinc-300">
+                  <span>Dots</span>
+                  <input
+                    type="checkbox"
+                    checked={settings.heroBannerSettings?.showDots ?? true}
+                    onChange={(e) =>
+                      setSettings((s) =>
+                        s
+                          ? {
+                              ...s,
+                              heroBannerSettings: {
+                                ...normalizeHeroBannerSettings(s.heroBannerSettings),
+                                showDots: e.target.checked,
+                              },
+                            }
+                          : s
+                      )
+                    }
+                    className="h-4 w-4"
+                  />
+                </label>
+
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Animation</label>
+                  <select
+                    value={settings.heroBannerSettings?.animation ?? "slide"}
+                    onChange={(e) =>
+                      setSettings((s) =>
+                        s
+                          ? {
+                              ...s,
+                              heroBannerSettings: {
+                                ...normalizeHeroBannerSettings(s.heroBannerSettings),
+                                animation: e.target.value === "fade" ? "fade" : "slide",
+                              },
+                            }
+                          : s
+                      )
+                    }
+                    className="mt-2 h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+                  >
+                    <option value="slide">Slide</option>
+                    <option value="fade">Fade</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 space-y-4">
+              {(settings.heroBanners ?? []).length === 0 ? (
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">No hero banners.</p>
+              ) : (
+                (settings.heroBanners ?? []).map((b, idx) => {
+                  const key = `${idx}`;
+                  const busy = Boolean(heroUploading[key]);
+                  return (
+                    <div
+                      key={idx}
+                      className="rounded-3xl border border-zinc-200 p-4 dark:border-zinc-800"
+                      draggable
+                      onDragStart={() => {
+                        dragFromIndexRef.current = idx;
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                      }}
+                      onDrop={() => {
+                        const from = dragFromIndexRef.current;
+                        dragFromIndexRef.current = null;
+                        if (from === null || from === idx) return;
+                        setSettings((s) => {
+                          if (!s) return s;
+                          const next = [...(s.heroBanners ?? [])];
+                          const [moved] = next.splice(from, 1);
+                          next.splice(idx, 0, moved);
+                          return { ...s, heroBanners: next };
+                        });
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="cursor-grab select-none rounded-lg border border-zinc-200 px-2 py-1 text-xs text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">
+                            Drag
+                          </span>
+                          <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Slide {idx + 1}</p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="border border-zinc-200 dark:border-zinc-800"
+                          onClick={() =>
+                            setSettings((s) =>
+                              s ? { ...s, heroBanners: (s.heroBanners ?? []).filter((_, i) => i !== idx) } : s
+                            )
+                          }
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+
+                      <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                        <Input
+                          value={b.title ?? ""}
+                          onChange={(e) =>
+                            setSettings((s) => {
+                              if (!s) return s;
+                              const next = [...(s.heroBanners ?? [])];
+                              next[idx] = { ...next[idx], title: e.target.value };
+                              return { ...s, heroBanners: next };
+                            })
+                          }
+                          placeholder="Title"
+                        />
+                        <Input
+                          value={b.subtitle ?? ""}
+                          onChange={(e) =>
+                            setSettings((s) => {
+                              if (!s) return s;
+                              const next = [...(s.heroBanners ?? [])];
+                              next[idx] = { ...next[idx], subtitle: e.target.value };
+                              return { ...s, heroBanners: next };
+                            })
+                          }
+                          placeholder="Subtitle"
+                        />
+
+                        <Input
+                          value={b.href ?? ""}
+                          onChange={(e) =>
+                            setSettings((s) => {
+                              if (!s) return s;
+                              const next = [...(s.heroBanners ?? [])];
+                              next[idx] = { ...next[idx], href: e.target.value };
+                              return { ...s, heroBanners: next };
+                            })
+                          }
+                          placeholder="Slide link (href)"
+                        />
+                        <Input
+                          value={b.buttonText ?? ""}
+                          onChange={(e) =>
+                            setSettings((s) => {
+                              if (!s) return s;
+                              const next = [...(s.heroBanners ?? [])];
+                              next[idx] = { ...next[idx], buttonText: e.target.value };
+                              return { ...s, heroBanners: next };
+                            })
+                          }
+                          placeholder="Button text"
+                        />
+                        <Input
+                          value={b.buttonHref ?? ""}
+                          onChange={(e) =>
+                            setSettings((s) => {
+                              if (!s) return s;
+                              const next = [...(s.heroBanners ?? [])];
+                              next[idx] = { ...next[idx], buttonHref: e.target.value };
+                              return { ...s, heroBanners: next };
+                            })
+                          }
+                          placeholder="Button link (URL)"
+                        />
+
+                        <div>
+                          <label className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Text align</label>
+                          <select
+                            value={b.textAlign ?? "left"}
+                            onChange={(e) =>
+                              setSettings((s) => {
+                                if (!s) return s;
+                                const next = [...(s.heroBanners ?? [])];
+                                next[idx] = {
+                                  ...next[idx],
+                                  textAlign: e.target.value === "center" ? "center" : e.target.value === "right" ? "right" : "left",
+                                };
+                                return { ...s, heroBanners: next };
+                              })
+                            }
+                            className="mt-2 h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+                          >
+                            <option value="left">Left</option>
+                            <option value="center">Center</option>
+                            <option value="right">Right</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Vertical align</label>
+                          <select
+                            value={b.verticalAlign ?? "center"}
+                            onChange={(e) =>
+                              setSettings((s) => {
+                                if (!s) return s;
+                                const next = [...(s.heroBanners ?? [])];
+                                next[idx] = {
+                                  ...next[idx],
+                                  verticalAlign: e.target.value === "top" ? "top" : e.target.value === "bottom" ? "bottom" : "center",
+                                };
+                                return { ...s, heroBanners: next };
+                              })
+                            }
+                            className="mt-2 h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+                          >
+                            <option value="top">Top</option>
+                            <option value="center">Center</option>
+                            <option value="bottom">Bottom</option>
+                          </select>
+                        </div>
+
+                        <div className="md:col-span-2">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Images</p>
+                          <div className="mt-2 grid grid-cols-1 gap-3 md:grid-cols-[1fr_280px]">
+                            <div className="space-y-3">
+                              <div>
+                                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Desktop image</p>
+                                <input
+                                  ref={(el) => {
+                                    heroFileInputsRef.current[idx] = { ...(heroFileInputsRef.current[idx] ?? {}), desktop: el };
+                                  }}
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={async (e) => {
+                                    const file = e.target.files?.[0] ?? null;
+                                    e.target.value = "";
+                                    if (!file) return;
+                                    setHeroUploading((m) => ({ ...m, [key]: true }));
+                                    try {
+                                      const url = await uploadBannerImage(file);
+                                      setSettings((s) => {
+                                        if (!s) return s;
+                                        const next = [...(s.heroBanners ?? [])];
+                                        next[idx] = { ...next[idx], desktopImage: url };
+                                        return { ...s, heroBanners: next };
+                                      });
+                                      toast.success("Uploaded");
+                                    } catch (err) {
+                                      const msg = err instanceof Error ? err.message : "Upload failed";
+                                      toast.error(msg);
+                                    } finally {
+                                      setHeroUploading((m) => ({ ...m, [key]: false }));
+                                    }
+                                  }}
+                                />
+
+                                <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+                                  <Button
+                                    type="button"
+                                    variant="secondary"
+                                    size="sm"
+                                    disabled={busy}
+                                    onClick={() => heroFileInputsRef.current[idx]?.desktop?.click()}
+                                  >
+                                    <Upload className="mr-2 h-4 w-4" />
+                                    {busy ? "Uploading..." : "Upload"}
+                                  </Button>
+                                  <Input
+                                    value={b.desktopImage ?? ""}
+                                    onChange={(e) =>
+                                      setSettings((s) => {
+                                        if (!s) return s;
+                                        const next = [...(s.heroBanners ?? [])];
+                                        next[idx] = { ...next[idx], desktopImage: e.target.value };
+                                        return { ...s, heroBanners: next };
+                                      })
+                                    }
+                                    placeholder="Desktop image URL (optional)"
+                                  />
+                                </div>
+                              </div>
+
+                              <div>
+                                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Mobile image</p>
+                                <input
+                                  ref={(el) => {
+                                    heroFileInputsRef.current[idx] = { ...(heroFileInputsRef.current[idx] ?? {}), mobile: el };
+                                  }}
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={async (e) => {
+                                    const file = e.target.files?.[0] ?? null;
+                                    e.target.value = "";
+                                    if (!file) return;
+                                    setHeroUploading((m) => ({ ...m, [key]: true }));
+                                    try {
+                                      const url = await uploadBannerImage(file);
+                                      setSettings((s) => {
+                                        if (!s) return s;
+                                        const next = [...(s.heroBanners ?? [])];
+                                        next[idx] = { ...next[idx], mobileImage: url };
+                                        return { ...s, heroBanners: next };
+                                      });
+                                      toast.success("Uploaded");
+                                    } catch (err) {
+                                      const msg = err instanceof Error ? err.message : "Upload failed";
+                                      toast.error(msg);
+                                    } finally {
+                                      setHeroUploading((m) => ({ ...m, [key]: false }));
+                                    }
+                                  }}
+                                />
+
+                                <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+                                  <Button
+                                    type="button"
+                                    variant="secondary"
+                                    size="sm"
+                                    disabled={busy}
+                                    onClick={() => heroFileInputsRef.current[idx]?.mobile?.click()}
+                                  >
+                                    <Upload className="mr-2 h-4 w-4" />
+                                    {busy ? "Uploading..." : "Upload"}
+                                  </Button>
+                                  <Input
+                                    value={b.mobileImage ?? ""}
+                                    onChange={(e) =>
+                                      setSettings((s) => {
+                                        if (!s) return s;
+                                        const next = [...(s.heroBanners ?? [])];
+                                        next[idx] = { ...next[idx], mobileImage: e.target.value };
+                                        return { ...s, heroBanners: next };
+                                      })
+                                    }
+                                    placeholder="Mobile image URL (optional)"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900">
+                              <div className="relative aspect-3/2 w-full">
+                                {isSafeImageSrc(b.mobileImage ?? "") || isSafeImageSrc(b.desktopImage ?? "") || isSafeImageSrc(b.image ?? "") ? (
+                                  <Image
+                                    src={String(b.mobileImage || b.desktopImage || b.image)}
+                                    alt={b.title?.trim() ? String(b.title) : "Hero"}
+                                    fill
+                                    className="object-cover"
+                                    unoptimized
+                                  />
+                                ) : (
+                                  <div className="flex h-full w-full items-center justify-center px-4 text-center text-xs text-zinc-600 dark:text-zinc-400">
+                                    No image selected
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Overlay color</label>
+                          <Input
+                            type="color"
+                            value={b.overlayColor ?? "#000000"}
+                            onChange={(e) =>
+                              setSettings((s) => {
+                                if (!s) return s;
+                                const next = [...(s.heroBanners ?? [])];
+                                next[idx] = { ...next[idx], overlayColor: e.target.value };
+                                return { ...s, heroBanners: next };
+                              })
+                            }
+                            className="mt-2 h-11"
+                          />
+                        </div>
+                        <Input
+                          type="number"
+                          value={typeof b.overlayOpacity === "number" ? b.overlayOpacity : 0.25}
+                          onChange={(e) =>
+                            setSettings((s) => {
+                              if (!s) return s;
+                              const next = [...(s.heroBanners ?? [])];
+                              const v = Math.max(0, Math.min(1, Number(e.target.value || 0)));
+                              next[idx] = { ...next[idx], overlayOpacity: v };
+                              return { ...s, heroBanners: next };
+                            })
+                          }
+                          placeholder="Overlay opacity (0-1)"
+                        />
+                        <div>
+                          <label className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Text color</label>
+                          <Input
+                            type="color"
+                            value={b.textColor ?? "#ffffff"}
+                            onChange={(e) =>
+                              setSettings((s) => {
+                                if (!s) return s;
+                                const next = [...(s.heroBanners ?? [])];
+                                next[idx] = { ...next[idx], textColor: e.target.value };
+                                return { ...s, heroBanners: next };
+                              })
+                            }
+                            className="mt-2 h-11"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Button color</label>
+                          <Input
+                            type="color"
+                            value={b.buttonColor ?? "#ffffff"}
+                            onChange={(e) =>
+                              setSettings((s) => {
+                                if (!s) return s;
+                                const next = [...(s.heroBanners ?? [])];
+                                next[idx] = { ...next[idx], buttonColor: e.target.value };
+                                return { ...s, heroBanners: next };
+                              })
+                            }
+                            className="mt-2 h-11"
+                          />
+                        </div>
+
+                        <label className="md:col-span-2 mt-1 flex items-center gap-3 text-sm text-zinc-700 dark:text-zinc-300">
+                          <input
+                            type="checkbox"
+                            checked={b.isActive ?? true}
+                            onChange={(e) =>
+                              setSettings((s) => {
+                                if (!s) return s;
+                                const next = [...(s.heroBanners ?? [])];
+                                next[idx] = { ...next[idx], isActive: e.target.checked };
+                                return { ...s, heroBanners: next };
+                              })
+                            }
+                            className="h-4 w-4 rounded border-zinc-300"
+                          />
+                          Enabled
+                        </label>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
           <div className="rounded-3xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Homepage banners</h2>

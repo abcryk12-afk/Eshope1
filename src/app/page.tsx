@@ -5,7 +5,7 @@ import { absoluteUrl } from "@/lib/seo";
 import { getPublicSeoSettings } from "@/lib/siteBranding";
 
 type PageProps = {
-  searchParams: Record<string, string | string[] | undefined> | Promise<Record<string, string | string[] | undefined>>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
 function hasAnyQueryParams(sp: Record<string, string | string[] | undefined>) {
@@ -21,7 +21,7 @@ function hasAnyQueryParams(sp: Record<string, string | string[] | undefined>) {
 }
 
 export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
-  const resolvedSearchParams = await Promise.resolve(searchParams);
+  const resolvedSearchParams = (await searchParams) ?? {};
   const hasQuery = hasAnyQueryParams(resolvedSearchParams);
 
   const settings = await getPublicSeoSettings();
@@ -44,7 +44,7 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
 }
 
 export default async function Home({ searchParams }: PageProps) {
-  const resolvedSearchParams = await Promise.resolve(searchParams);
+  const resolvedSearchParams = (await searchParams) ?? {};
 
   return (
     <StorefrontClient

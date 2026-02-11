@@ -23,13 +23,23 @@ export default function QuickCheckoutBar() {
   const hasCart = cartCount > 0;
 
   const [open, setOpen] = useState(false);
+  const [dismissedAt, setDismissedAt] = useState(0);
   const hideTimerRef = useRef<number | null>(null);
+
+  function closeNow() {
+    setOpen(false);
+    setDismissedAt(Date.now());
+    if (hideTimerRef.current) {
+      window.clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
+    }
+  }
 
   const shouldShow = useMemo(() => {
     if (!enabled) return false;
     if (!hasCart) return false;
-    return lastAddedAt > 0;
-  }, [enabled, lastAddedAt, hasCart]);
+    return lastAddedAt > dismissedAt;
+  }, [enabled, lastAddedAt, hasCart, dismissedAt]);
 
   useEffect(() => {
     if (!shouldShow) return;
@@ -72,26 +82,27 @@ export default function QuickCheckoutBar() {
   if (pathname?.startsWith("/checkout")) return null;
   if (pathname?.startsWith("/cart")) return null;
   if (!hasCart) return null;
+  if (!shouldShow && !open) return null;
 
   return (
     <div
       className={cn(
         "fixed inset-x-0 bottom-0 z-50 px-4 pb-4",
-        open || hasCart ? "pointer-events-auto" : "pointer-events-none"
+        open || shouldShow ? "pointer-events-auto" : "pointer-events-none"
       )}
-      aria-hidden={!(open || hasCart)}
+      aria-hidden={!(open || shouldShow)}
     >
       <div
         className={cn(
           "mx-auto w-full max-w-3xl",
           "rounded-3xl border border-border bg-surface shadow-2xl",
           "transition duration-200",
-          open || hasCart ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"
+          open || shouldShow ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"
         )}
         role="status"
       >
         {open ? (
-          <div className="flex items-start gap-3 p-4">
+          <div className="relative flex items-start gap-3 p-4">
             {lastAdded?.image ? (
               <div className="relative mt-0.5 h-10 w-10 overflow-hidden rounded-2xl bg-muted">
                 <Image
@@ -119,17 +130,17 @@ export default function QuickCheckoutBar() {
                 <Button
                   type="button"
                   variant="secondary"
-                  onClick={() => setOpen(false)}
+                  onClick={closeNow}
                   className="w-full sm:w-auto"
                 >
                   Continue shopping
                 </Button>
-                <Link href="/cart" className="w-full sm:w-auto" onClick={() => setOpen(false)}>
+                <Link href="/cart" className="w-full sm:w-auto" onClick={closeNow}>
                   <Button type="button" variant="secondary" className="w-full sm:w-auto">
                     View cart
                   </Button>
                 </Link>
-                <Link href="/checkout" className="w-full sm:w-auto" onClick={() => setOpen(false)}>
+                <Link href="/checkout" className="w-full sm:w-auto" onClick={closeNow}>
                   <Button type="button" variant="accent" className="w-full sm:w-auto">Checkout Now</Button>
                 </Link>
               </div>
@@ -137,15 +148,23 @@ export default function QuickCheckoutBar() {
 
             <button
               type="button"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-xl hover:bg-muted"
-              onClick={() => setOpen(false)}
+              className={cn(
+                "absolute right-2 top-2",
+                "inline-flex h-9 w-9 items-center justify-center",
+                "rounded-xl hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                "z-10 pointer-events-auto touch-manipulation"
+              )}
+              onClick={(e) => {
+                e.stopPropagation();
+                closeNow();
+              }}
               aria-label="Close"
             >
               <X className="h-5 w-5" />
             </button>
           </div>
         ) : (
-          <div className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
               <p className="text-sm font-semibold text-foreground">
                 {cartCount} {cartCount === 1 ? "item" : "items"} in cart
@@ -169,6 +188,19 @@ export default function QuickCheckoutBar() {
                 <Button type="button" variant="accent" className="w-full sm:w-auto">Checkout Now</Button>
               </Link>
             </div>
+
+            <button
+              type="button"
+              className={cn(
+                "absolute right-2 top-2",
+                "inline-flex h-9 w-9 items-center justify-center",
+                "rounded-xl hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              )}
+              onClick={closeNow}
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
         )}
       </div>
