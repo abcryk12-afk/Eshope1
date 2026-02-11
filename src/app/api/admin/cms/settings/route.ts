@@ -46,6 +46,79 @@ const HeroBannerSettingsSchema = z.object({
   keyboard: z.boolean().optional().default(true),
 });
 
+const AnnouncementBarSettingsSchema = z.object({
+  enabled: z.boolean().optional().default(false),
+  position: z.enum(["fixed", "sticky"]).optional().default("fixed"),
+  showOn: z.enum(["all", "home_only"]).optional().default("all"),
+  heightPx: z.number().int().min(24).max(120).optional().default(36),
+  paddingX: z.number().int().min(0).max(48).optional().default(16),
+  paddingY: z.number().int().min(0).max(24).optional().default(6),
+  textAlign: z.enum(["left", "center", "right"]).optional().default("center"),
+  textColor: z.string().trim().optional().default("#ffffff"),
+  background: z
+    .object({
+      solid: z.string().trim().optional().default("#0f172a"),
+      gradientEnabled: z.boolean().optional().default(false),
+      gradientCss: z.string().trim().optional().default("linear-gradient(90deg,#0f172a,#111827)"),
+    })
+    .optional()
+    .default({ solid: "#0f172a", gradientEnabled: false, gradientCss: "linear-gradient(90deg,#0f172a,#111827)" }),
+  border: z
+    .object({
+      enabled: z.boolean().optional().default(false),
+      color: z.string().trim().optional().default("rgba(255,255,255,0.12)"),
+      thicknessPx: z.number().int().min(0).max(6).optional().default(1),
+    })
+    .optional()
+    .default({ enabled: false, color: "rgba(255,255,255,0.12)", thicknessPx: 1 }),
+  shadowEnabled: z.boolean().optional().default(false),
+  closeButtonEnabled: z.boolean().optional().default(true),
+  closeButtonVariant: z.enum(["minimal", "pill"]).optional().default("minimal"),
+  dismissTtlHours: z.number().int().min(0).max(720).optional().default(24),
+  mode: z.enum(["static", "slide", "fade", "marquee_ltr", "marquee_rtl"]).optional().default("static"),
+  marqueeSpeedPxPerSec: z.number().int().min(10).max(600).optional().default(60),
+  slideIntervalMs: z.number().int().min(800).max(30000).optional().default(3500),
+  transitionMs: z.number().int().min(100).max(4000).optional().default(350),
+  easing: z.string().trim().optional().default("cubic-bezier(0.22, 1, 0.36, 1)"),
+});
+
+const AnnouncementVisibilitySchema = z.object({
+  device: z.enum(["all", "desktop", "mobile"]).optional().default("all"),
+  pageMode: z.enum(["all", "include", "exclude"]).optional().default("all"),
+  paths: z.array(z.string().trim().max(200)).optional().default([]),
+});
+
+const AnnouncementScheduleSchema = z.object({
+  startAt: z.union([z.number().int().min(0), z.null()]).optional().default(null),
+  endAt: z.union([z.number().int().min(0), z.null()]).optional().default(null),
+});
+
+const AnnouncementCtaSchema = z.object({
+  enabled: z.boolean().optional().default(false),
+  label: z.string().trim().max(60).optional().default(""),
+  href: z.string().trim().optional().default(""),
+  newTab: z.boolean().optional().default(false),
+  style: z
+    .object({
+      bg: z.string().trim().optional().default("#ffffff"),
+      text: z.string().trim().optional().default("#0f172a"),
+      hoverBg: z.string().trim().optional().default("#e5e7eb"),
+    })
+    .optional()
+    .default({ bg: "#ffffff", text: "#0f172a", hoverBg: "#e5e7eb" }),
+});
+
+const AnnouncementItemSchema = z.object({
+  id: z.string().trim().max(60).optional().default(""),
+  enabled: z.boolean().optional().default(true),
+  html: z.string().trim().max(12000).optional().default(""),
+  href: z.string().trim().optional().default(""),
+  newTab: z.boolean().optional().default(false),
+  schedule: AnnouncementScheduleSchema.optional().default({ startAt: null, endAt: null }),
+  visibility: AnnouncementVisibilitySchema.optional().default({ device: "all", pageMode: "all", paths: [] }),
+  cta: AnnouncementCtaSchema.optional().default({ enabled: false, label: "", href: "", newTab: false, style: { bg: "#ffffff", text: "#0f172a", hoverBg: "#e5e7eb" } }),
+});
+
 const DEFAULT_HERO_BANNER_SETTINGS = {
   desktopHeightPx: 520,
   mobileHeightPx: 360,
@@ -125,6 +198,28 @@ const BodySchema = z.object({
   homeBanners: z.array(BannerSchema).optional().default([]),
   heroBanners: z.array(BannerSchema).optional().default([]),
   heroBannerSettings: HeroBannerSettingsSchema.optional().default(DEFAULT_HERO_BANNER_SETTINGS),
+  announcementBar: AnnouncementBarSettingsSchema.optional().default({
+    enabled: false,
+    position: "fixed",
+    showOn: "all",
+    heightPx: 36,
+    paddingX: 16,
+    paddingY: 6,
+    textAlign: "center",
+    textColor: "#ffffff",
+    background: { solid: "#0f172a", gradientEnabled: false, gradientCss: "linear-gradient(90deg,#0f172a,#111827)" },
+    border: { enabled: false, color: "rgba(255,255,255,0.12)", thicknessPx: 1 },
+    shadowEnabled: false,
+    closeButtonEnabled: true,
+    closeButtonVariant: "minimal",
+    dismissTtlHours: 24,
+    mode: "static",
+    marqueeSpeedPxPerSec: 60,
+    slideIntervalMs: 3500,
+    transitionMs: 350,
+    easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+  }),
+  announcements: z.array(AnnouncementItemSchema).optional().default([]),
   footerText: z.string().trim().max(500).optional(),
   footer: z.union([FooterSchema, z.null()]).optional(),
   globalSeoTitle: z.string().trim().max(160).optional(),
@@ -256,6 +351,14 @@ export async function GET() {
         (doc as unknown as { heroBannerSettings?: unknown }).heroBannerSettings !== null
           ? (doc as unknown as { heroBannerSettings?: unknown }).heroBannerSettings
           : {},
+      announcementBar:
+        typeof (doc as unknown as { announcementBar?: unknown }).announcementBar === "object" &&
+        (doc as unknown as { announcementBar?: unknown }).announcementBar !== null
+          ? (doc as unknown as { announcementBar?: unknown }).announcementBar
+          : {},
+      announcements: Array.isArray((doc as unknown as { announcements?: unknown }).announcements)
+        ? ((doc as unknown as { announcements?: unknown[] }).announcements ?? [])
+        : [],
       footerText: doc?.footerText ?? "",
       footer: (doc as unknown as { footer?: unknown }).footer ?? {},
       globalSeoTitle: doc?.globalSeoTitle ?? "",
@@ -394,6 +497,10 @@ export async function PUT(req: NextRequest) {
     setPayload.footer = {};
   }
 
+  if (!Array.isArray(parsed.data.announcements)) {
+    setPayload.announcements = [];
+  }
+
   if (typeof nextReturnsWindowDays === "number") {
     setPayload.returns = { windowDays: nextReturnsWindowDays };
   }
@@ -495,6 +602,14 @@ export async function PUT(req: NextRequest) {
         (doc as unknown as { heroBannerSettings?: unknown }).heroBannerSettings !== null
           ? (doc as unknown as { heroBannerSettings?: unknown }).heroBannerSettings
           : {},
+      announcementBar:
+        typeof (doc as unknown as { announcementBar?: unknown }).announcementBar === "object" &&
+        (doc as unknown as { announcementBar?: unknown }).announcementBar !== null
+          ? (doc as unknown as { announcementBar?: unknown }).announcementBar
+          : {},
+      announcements: Array.isArray((doc as unknown as { announcements?: unknown }).announcements)
+        ? ((doc as unknown as { announcements?: unknown[] }).announcements ?? [])
+        : [],
       footerText: doc?.footerText ?? "",
       footer: (doc as unknown as { footer?: unknown }).footer ?? {},
       globalSeoTitle: doc?.globalSeoTitle ?? "",

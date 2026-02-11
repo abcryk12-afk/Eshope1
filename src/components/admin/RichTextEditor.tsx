@@ -4,6 +4,7 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import TextStyle from "@tiptap/extension-text-style";
 import Color from "@tiptap/extension-color";
+import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
 import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
@@ -33,10 +34,58 @@ const COLOR_PALETTE = [
 
 const DEFAULT_IMAGE_STYLE = "display:block;max-width:100%;height:auto;margin:0.5rem auto;";
 
+const EnhancedTextStyle = TextStyle.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      fontSize: {
+        default: null,
+        parseHTML: (el) => el.style.fontSize || null,
+        renderHTML: (attrs) => (attrs.fontSize ? { style: `font-size:${attrs.fontSize}` } : {}),
+      },
+      backgroundColor: {
+        default: null,
+        parseHTML: (el) => el.style.backgroundColor || null,
+        renderHTML: (attrs) => (attrs.backgroundColor ? { style: `background-color:${attrs.backgroundColor}` } : {}),
+      },
+      textShadow: {
+        default: null,
+        parseHTML: (el) => el.style.textShadow || null,
+        renderHTML: (attrs) => (attrs.textShadow ? { style: `text-shadow:${attrs.textShadow}` } : {}),
+      },
+      textTransform: {
+        default: null,
+        parseHTML: (el) => el.style.textTransform || null,
+        renderHTML: (attrs) => (attrs.textTransform ? { style: `text-transform:${attrs.textTransform}` } : {}),
+      },
+      gradientCss: {
+        default: null,
+        parseHTML: (el) => el.getAttribute("data-gradient") || null,
+        renderHTML: (attrs) =>
+          attrs.gradientCss
+            ? {
+                "data-gradient": String(attrs.gradientCss),
+                style:
+                  `background-image:${attrs.gradientCss};` +
+                  "-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;",
+              }
+            : {},
+      },
+      fx: {
+        default: null,
+        parseHTML: (el) => el.getAttribute("data-fx") || null,
+        renderHTML: (attrs) => (attrs.fx ? { "data-fx": String(attrs.fx) } : {}),
+      },
+    };
+  },
+});
+
 type RichTextChain = {
   unsetColor: () => { run: () => boolean };
   setColor: (color: string) => { run: () => boolean };
   setTextAlign: (alignment: "left" | "center" | "right") => { run: () => boolean };
+  setMark: (name: "textStyle", attrs: Record<string, unknown>) => { run: () => boolean };
+  unsetMark: (name: "textStyle") => { run: () => boolean };
 };
 
 const CustomImage = Image.extend({
@@ -81,8 +130,9 @@ export default function RichTextEditor({ value, onChange }: Props) {
   const extensions = useMemo(
     () => [
       StarterKit,
-      TextStyle,
+      EnhancedTextStyle,
       Color.configure({ types: ["textStyle"] }),
+      Underline,
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       Link.configure({ openOnClick: true }),
       CustomImage.configure({ inline: false, allowBase64: false }),
@@ -188,6 +238,21 @@ export default function RichTextEditor({ value, onChange }: Props) {
     chain.setColor(color).run();
   }
 
+  function setTextStyleAttrs(attrs: Record<string, unknown>) {
+    if (!editor) return;
+    const chain = editor.chain().focus() as unknown as RichTextChain;
+    chain.setMark("textStyle", attrs).run();
+  }
+
+  function clearTextStyleAttr(keys: string[]) {
+    if (!editor) return;
+    const current = editor.getAttributes("textStyle") as Record<string, unknown>;
+    const next: Record<string, unknown> = { ...current };
+    for (const k of keys) delete next[k];
+    const chain = editor.chain().focus() as unknown as RichTextChain;
+    chain.setMark("textStyle", next).run();
+  }
+
   function alignText(align: "left" | "center" | "right") {
     if (!editor) return;
     const chain = editor.chain().focus() as unknown as RichTextChain;
@@ -232,6 +297,17 @@ export default function RichTextEditor({ value, onChange }: Props) {
           className={cn(editor.isActive("italic") && "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900")}
         >
           Italic
+        </Button>
+
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onMouseDown={keepSelection}
+          onClick={() => editor.chain().focus().toggleUnderline().run()}
+          className={cn(editor.isActive("underline") && "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900")}
+        >
+          Underline
         </Button>
 
         <Button
@@ -325,6 +401,169 @@ export default function RichTextEditor({ value, onChange }: Props) {
               />
             </button>
           ))}
+        </div>
+
+        <div className="h-6 w-px bg-zinc-200 dark:bg-zinc-800" />
+
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+            Size
+            <select
+              className="h-9 rounded-xl border border-zinc-200 bg-white px-2 text-sm text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+              value={String((editor.getAttributes("textStyle") as Record<string, unknown>).fontSize ?? "")}
+              onMouseDown={keepSelection}
+              onChange={(e) => {
+                const v = String(e.target.value || "");
+                if (!v) {
+                  clearTextStyleAttr(["fontSize"]);
+                  return;
+                }
+                setTextStyleAttrs({ fontSize: v });
+              }}
+            >
+              <option value="">Default</option>
+              <option value="12px">12</option>
+              <option value="14px">14</option>
+              <option value="16px">16</option>
+              <option value="18px">18</option>
+              <option value="20px">20</option>
+              <option value="24px">24</option>
+              <option value="28px">28</option>
+              <option value="32px">32</option>
+            </select>
+          </label>
+
+          <label className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+            Highlight
+            <input
+              type="color"
+              className="h-9 w-12 rounded-xl border border-zinc-200 bg-white p-1 dark:border-zinc-800 dark:bg-zinc-950"
+              value={
+                String((editor.getAttributes("textStyle") as Record<string, unknown>).backgroundColor ?? "") ||
+                "#ffff00"
+              }
+              onMouseDown={keepSelection}
+              onChange={(e) => {
+                const v = String(e.target.value || "");
+                setTextStyleAttrs({ backgroundColor: v });
+              }}
+              title="Background highlight"
+            />
+          </label>
+
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onMouseDown={keepSelection}
+            onClick={() => clearTextStyleAttr(["backgroundColor"])}
+          >
+            Clear HL
+          </Button>
+
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onMouseDown={keepSelection}
+            onClick={() => setTextStyleAttrs({ textShadow: "0 1px 10px rgba(0,0,0,0.35)" })}
+          >
+            Shadow
+          </Button>
+
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onMouseDown={keepSelection}
+            onClick={() => clearTextStyleAttr(["textShadow"])}
+          >
+            No Shadow
+          </Button>
+
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onMouseDown={keepSelection}
+            onClick={() =>
+              setTextStyleAttrs({
+                gradientCss: "linear-gradient(90deg,#ef4444,#f59e0b,#22c55e,#3b82f6)",
+              })
+            }
+          >
+            Gradient
+          </Button>
+
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onMouseDown={keepSelection}
+            onClick={() => clearTextStyleAttr(["gradientCss"])}
+          >
+            No Grad
+          </Button>
+
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onMouseDown={keepSelection}
+            onClick={() => setTextStyleAttrs({ textTransform: "uppercase" })}
+          >
+            Upper
+          </Button>
+
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onMouseDown={keepSelection}
+            onClick={() => setTextStyleAttrs({ textTransform: "lowercase" })}
+          >
+            Lower
+          </Button>
+
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onMouseDown={keepSelection}
+            onClick={() => clearTextStyleAttr(["textTransform"])}
+          >
+            Normal
+          </Button>
+
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onMouseDown={keepSelection}
+            onClick={() => setTextStyleAttrs({ fx: "blink" })}
+          >
+            Blink
+          </Button>
+
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onMouseDown={keepSelection}
+            onClick={() => setTextStyleAttrs({ fx: "pulse" })}
+          >
+            Pulse
+          </Button>
+
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onMouseDown={keepSelection}
+            onClick={() => clearTextStyleAttr(["fx"])}
+          >
+            No FX
+          </Button>
         </div>
 
         <Button

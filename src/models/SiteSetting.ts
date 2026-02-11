@@ -197,17 +197,101 @@ const ReturnsSettingsSchema = new Schema(
     },
   },
   { _id: false }
- );
+);
 
- const CartUxSettingsSchema = new Schema(
+const CartUxSettingsSchema = new Schema(
   {
     quickCheckoutEnabled: { type: Boolean, default: true },
     quickCheckoutAutoHideSeconds: { type: Number, default: 4, min: 1, max: 30 },
   },
   { _id: false }
- );
+);
 
- const BrandingSchema = new Schema(
+const AnnouncementBarSettingsSchema = new Schema(
+  {
+    enabled: { type: Boolean, default: false },
+    position: { type: String, trim: true, enum: ["fixed", "sticky"], default: "fixed" },
+    showOn: { type: String, trim: true, enum: ["all", "home_only"], default: "all" },
+    heightPx: { type: Number, default: 36, min: 24, max: 120 },
+    paddingX: { type: Number, default: 16, min: 0, max: 48 },
+    paddingY: { type: Number, default: 6, min: 0, max: 24 },
+    textAlign: { type: String, trim: true, enum: ["left", "center", "right"], default: "center" },
+    textColor: { type: String, trim: true, default: "#ffffff" },
+    background: {
+      solid: { type: String, trim: true, default: "#0f172a" },
+      gradientEnabled: { type: Boolean, default: false },
+      gradientCss: { type: String, trim: true, default: "linear-gradient(90deg,#0f172a,#111827)" },
+    },
+    border: {
+      enabled: { type: Boolean, default: false },
+      color: { type: String, trim: true, default: "rgba(255,255,255,0.12)" },
+      thicknessPx: { type: Number, default: 1, min: 0, max: 6 },
+    },
+    shadowEnabled: { type: Boolean, default: false },
+    closeButtonEnabled: { type: Boolean, default: true },
+    closeButtonVariant: { type: String, trim: true, enum: ["minimal", "pill"], default: "minimal" },
+    dismissTtlHours: { type: Number, default: 24, min: 0, max: 720 },
+    mode: {
+      type: String,
+      trim: true,
+      enum: ["static", "slide", "fade", "marquee_ltr", "marquee_rtl"],
+      default: "static",
+    },
+    marqueeSpeedPxPerSec: { type: Number, default: 60, min: 10, max: 600 },
+    slideIntervalMs: { type: Number, default: 3500, min: 800, max: 30000 },
+    transitionMs: { type: Number, default: 350, min: 100, max: 4000 },
+    easing: { type: String, trim: true, default: "cubic-bezier(0.22, 1, 0.36, 1)" },
+  },
+  { _id: false }
+);
+
+const AnnouncementVisibilitySchema = new Schema(
+  {
+    device: { type: String, trim: true, enum: ["all", "desktop", "mobile"], default: "all" },
+    pageMode: { type: String, trim: true, enum: ["all", "include", "exclude"], default: "all" },
+    paths: { type: [String], default: [] },
+  },
+  { _id: false }
+);
+
+const AnnouncementScheduleSchema = new Schema(
+  {
+    startAt: { type: Number },
+    endAt: { type: Number },
+  },
+  { _id: false }
+);
+
+const AnnouncementCtaSchema = new Schema(
+  {
+    enabled: { type: Boolean, default: false },
+    label: { type: String, trim: true, maxlength: 60 },
+    href: { type: String, trim: true },
+    newTab: { type: Boolean, default: false },
+    style: {
+      bg: { type: String, trim: true, default: "#ffffff" },
+      text: { type: String, trim: true, default: "#0f172a" },
+      hoverBg: { type: String, trim: true, default: "#e5e7eb" },
+    },
+  },
+  { _id: false }
+);
+
+const AnnouncementItemSchema = new Schema(
+  {
+    id: { type: String, trim: true, index: true },
+    enabled: { type: Boolean, default: true },
+    html: { type: String, trim: true },
+    href: { type: String, trim: true },
+    newTab: { type: Boolean, default: false },
+    schedule: { type: AnnouncementScheduleSchema, default: () => ({}) },
+    visibility: { type: AnnouncementVisibilitySchema, default: () => ({}) },
+    cta: { type: AnnouncementCtaSchema, default: () => ({}) },
+  },
+  { _id: true }
+);
+
+const BrandingSchema = new Schema(
   {
     storeName: { type: String, trim: true, maxlength: 80 },
     headerBrandText: { type: String, trim: true, maxlength: 80 },
@@ -279,6 +363,8 @@ const SiteSettingSchema = new Schema(
     shipping: { type: ShippingSettingsSchema, default: () => ({}) },
     storefrontLayout: { type: StorefrontLayoutSchema, default: () => ({}) },
     cartUx: { type: CartUxSettingsSchema, default: () => ({}) },
+    announcementBar: { type: AnnouncementBarSettingsSchema, default: () => ({}) },
+    announcements: { type: [AnnouncementItemSchema], default: [] },
     payments: {
       codEnabled: { type: Boolean, default: true },
       manual: {

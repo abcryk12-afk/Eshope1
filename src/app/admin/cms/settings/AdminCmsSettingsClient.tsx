@@ -9,6 +9,7 @@ import { Plus, RefreshCw, Trash2, Upload } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Skeleton from "@/components/ui/Skeleton";
+import RichTextEditor from "@/components/admin/RichTextEditor";
 import { cn } from "@/lib/utils";
 
 type Banner = {
@@ -47,6 +48,55 @@ type HeroBannerSettings = {
   keyboard: boolean;
 };
 
+type AnnouncementBarMode = "static" | "slide" | "fade" | "marquee_ltr" | "marquee_rtl";
+
+type AnnouncementBarSettings = {
+  enabled: boolean;
+  position: "fixed" | "sticky";
+  showOn: "all" | "home_only";
+  heightPx: number;
+  paddingX: number;
+  paddingY: number;
+  textAlign: "left" | "center" | "right";
+  textColor: string;
+  background: {
+    solid: string;
+    gradientEnabled: boolean;
+    gradientCss: string;
+  };
+  border: {
+    enabled: boolean;
+    color: string;
+    thicknessPx: number;
+  };
+  shadowEnabled: boolean;
+  closeButtonEnabled: boolean;
+  closeButtonVariant: "minimal" | "pill";
+  dismissTtlHours: number;
+  mode: AnnouncementBarMode;
+  marqueeSpeedPxPerSec: number;
+  slideIntervalMs: number;
+  transitionMs: number;
+  easing: string;
+};
+
+type AnnouncementItem = {
+  id: string;
+  enabled: boolean;
+  html: string;
+  href: string;
+  newTab: boolean;
+  schedule: { startAt: number | null; endAt: number | null };
+  visibility: { device: "all" | "desktop" | "mobile"; pageMode: "all" | "include" | "exclude"; paths: string[] };
+  cta: {
+    enabled: boolean;
+    label: string;
+    href: string;
+    newTab: boolean;
+    style: { bg: string; text: string; hoverBg: string };
+  };
+};
+
 type LocalizedText = Record<string, string | undefined>;
 
 type FooterLink = {
@@ -76,6 +126,8 @@ type Settings = {
   homeBanners: Banner[];
   heroBanners: Banner[];
   heroBannerSettings: HeroBannerSettings;
+  announcementBar: AnnouncementBarSettings;
+  announcements: AnnouncementItem[];
   footerText: string;
   footer: FooterSettings | null;
   globalSeoTitle: string;
@@ -106,6 +158,142 @@ type FooterLang = (typeof FOOTER_LANGS)[number];
 function readLocalized(value: LocalizedText | undefined, lang: FooterLang) {
   const v = value?.[lang];
   return typeof v === "string" ? v : "";
+}
+
+function defaultAnnouncementBarSettings(): AnnouncementBarSettings {
+  return {
+    enabled: false,
+    position: "fixed",
+    showOn: "all",
+    heightPx: 36,
+    paddingX: 16,
+    paddingY: 6,
+    textAlign: "center",
+    textColor: "#ffffff",
+    background: {
+      solid: "#0f172a",
+      gradientEnabled: false,
+      gradientCss: "linear-gradient(90deg,#0f172a,#111827)",
+    },
+    border: { enabled: false, color: "rgba(255,255,255,0.12)", thicknessPx: 1 },
+    shadowEnabled: false,
+    closeButtonEnabled: true,
+    closeButtonVariant: "minimal",
+    dismissTtlHours: 24,
+    mode: "static",
+    marqueeSpeedPxPerSec: 60,
+    slideIntervalMs: 3500,
+    transitionMs: 350,
+    easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+  };
+}
+
+function normalizeAnnouncementBarSettings(raw: unknown): AnnouncementBarSettings {
+  const d = defaultAnnouncementBarSettings();
+  if (!isRecord(raw)) return d;
+  const r = raw as Record<string, unknown>;
+
+  const background = isRecord(r.background) ? (r.background as Record<string, unknown>) : {};
+  const border = isRecord(r.border) ? (r.border as Record<string, unknown>) : {};
+
+  const modeRaw = String(r.mode ?? "").trim();
+  const mode: AnnouncementBarMode =
+    modeRaw === "slide" ||
+    modeRaw === "fade" ||
+    modeRaw === "marquee_ltr" ||
+    modeRaw === "marquee_rtl" ||
+    modeRaw === "static"
+      ? (modeRaw as AnnouncementBarMode)
+      : d.mode;
+
+  return {
+    enabled: typeof r.enabled === "boolean" ? r.enabled : d.enabled,
+    position: r.position === "sticky" ? "sticky" : "fixed",
+    showOn: r.showOn === "home_only" ? "home_only" : "all",
+    heightPx: clampInt(typeof r.heightPx === "number" ? r.heightPx : d.heightPx, 24, 120),
+    paddingX: clampInt(typeof r.paddingX === "number" ? r.paddingX : d.paddingX, 0, 48),
+    paddingY: clampInt(typeof r.paddingY === "number" ? r.paddingY : d.paddingY, 0, 24),
+    textAlign: r.textAlign === "left" ? "left" : r.textAlign === "right" ? "right" : "center",
+    textColor: typeof r.textColor === "string" && r.textColor.trim() ? r.textColor.trim() : d.textColor,
+    background: {
+      solid: typeof background.solid === "string" ? background.solid : d.background.solid,
+      gradientEnabled: typeof background.gradientEnabled === "boolean" ? background.gradientEnabled : d.background.gradientEnabled,
+      gradientCss: typeof background.gradientCss === "string" ? background.gradientCss : d.background.gradientCss,
+    },
+    border: {
+      enabled: typeof border.enabled === "boolean" ? border.enabled : d.border.enabled,
+      color: typeof border.color === "string" ? border.color : d.border.color,
+      thicknessPx: clampInt(typeof border.thicknessPx === "number" ? border.thicknessPx : d.border.thicknessPx, 0, 6),
+    },
+    shadowEnabled: typeof r.shadowEnabled === "boolean" ? r.shadowEnabled : d.shadowEnabled,
+    closeButtonEnabled: typeof r.closeButtonEnabled === "boolean" ? r.closeButtonEnabled : d.closeButtonEnabled,
+    closeButtonVariant: r.closeButtonVariant === "pill" ? "pill" : "minimal",
+    dismissTtlHours: clampInt(typeof r.dismissTtlHours === "number" ? r.dismissTtlHours : d.dismissTtlHours, 0, 720),
+    mode,
+    marqueeSpeedPxPerSec: clampInt(typeof r.marqueeSpeedPxPerSec === "number" ? r.marqueeSpeedPxPerSec : d.marqueeSpeedPxPerSec, 10, 600),
+    slideIntervalMs: clampInt(typeof r.slideIntervalMs === "number" ? r.slideIntervalMs : d.slideIntervalMs, 800, 30000),
+    transitionMs: clampInt(typeof r.transitionMs === "number" ? r.transitionMs : d.transitionMs, 100, 4000),
+    easing: typeof r.easing === "string" && r.easing.trim() ? r.easing.trim() : d.easing,
+  };
+}
+
+function normalizeAnnouncementItems(raw: unknown): AnnouncementItem[] {
+  const arr = Array.isArray(raw) ? raw : [];
+  return arr
+    .filter((x) => isRecord(x))
+    .map((x, idx) => {
+      const r = x as Record<string, unknown>;
+      const schedule = isRecord(r.schedule) ? (r.schedule as Record<string, unknown>) : {};
+      const visibility = isRecord(r.visibility) ? (r.visibility as Record<string, unknown>) : {};
+      const cta = isRecord(r.cta) ? (r.cta as Record<string, unknown>) : {};
+      const ctaStyle = isRecord(cta.style) ? (cta.style as Record<string, unknown>) : {};
+
+      const id = typeof r.id === "string" && r.id.trim() ? r.id.trim() : `ann_${idx}_${Date.now()}`;
+
+      return {
+        id,
+        enabled: typeof r.enabled === "boolean" ? r.enabled : true,
+        html: typeof r.html === "string" ? r.html : "",
+        href: typeof r.href === "string" ? r.href : "",
+        newTab: typeof r.newTab === "boolean" ? r.newTab : false,
+        schedule: {
+          startAt: typeof schedule.startAt === "number" && Number.isFinite(schedule.startAt) ? schedule.startAt : null,
+          endAt: typeof schedule.endAt === "number" && Number.isFinite(schedule.endAt) ? schedule.endAt : null,
+        },
+        visibility: {
+          device: visibility.device === "desktop" || visibility.device === "mobile" ? visibility.device : "all",
+          pageMode: visibility.pageMode === "include" || visibility.pageMode === "exclude" ? visibility.pageMode : "all",
+          paths: Array.isArray(visibility.paths)
+            ? (visibility.paths as unknown[]).map((p) => String(p ?? "").trim()).filter(Boolean)
+            : [],
+        },
+        cta: {
+          enabled: typeof cta.enabled === "boolean" ? cta.enabled : false,
+          label: typeof cta.label === "string" ? cta.label : "",
+          href: typeof cta.href === "string" ? cta.href : "",
+          newTab: typeof cta.newTab === "boolean" ? cta.newTab : false,
+          style: {
+            bg: typeof ctaStyle.bg === "string" ? ctaStyle.bg : "#ffffff",
+            text: typeof ctaStyle.text === "string" ? ctaStyle.text : "#0f172a",
+            hoverBg: typeof ctaStyle.hoverBg === "string" ? ctaStyle.hoverBg : "#e5e7eb",
+          },
+        },
+      };
+    });
+}
+
+function toDatetimeLocal(ts: number | null) {
+  if (!ts) return "";
+  const d = new Date(ts);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function fromDatetimeLocal(value: string) {
+  const v = String(value || "").trim();
+  if (!v) return null;
+  const t = Date.parse(v);
+  return Number.isFinite(t) ? t : null;
 }
 
 function hasMissing(value: LocalizedText | undefined, lang: FooterLang) {
@@ -235,6 +423,10 @@ export default function AdminCmsSettingsClient() {
       heroBannerSettings: normalizeHeroBannerSettings(
         (json.settings as unknown as { heroBannerSettings?: unknown }).heroBannerSettings
       ),
+      announcementBar: normalizeAnnouncementBarSettings(
+        (json.settings as unknown as { announcementBar?: unknown }).announcementBar
+      ),
+      announcements: normalizeAnnouncementItems((json.settings as unknown as { announcements?: unknown }).announcements),
     });
     setLoading(false);
   }, []);
@@ -252,6 +444,8 @@ export default function AdminCmsSettingsClient() {
       ...root,
       heroBanners: Array.isArray(root.heroBanners) ? root.heroBanners : [],
       heroBannerSettings: normalizeHeroBannerSettings(root.heroBannerSettings),
+      announcementBar: normalizeAnnouncementBarSettings(root.announcementBar),
+      announcements: normalizeAnnouncementItems(root.announcements),
     };
 
     setSaving(true);
@@ -339,6 +533,561 @@ export default function AdminCmsSettingsClient() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-4">
+          <div className="rounded-3xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Announcement bar</h2>
+              <label className="inline-flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-200">
+                <input
+                  type="checkbox"
+                  checked={settings.announcementBar?.enabled ?? false}
+                  onChange={(e) =>
+                    setSettings((s) =>
+                      s
+                        ? {
+                            ...s,
+                            announcementBar: {
+                              ...normalizeAnnouncementBarSettings(s.announcementBar),
+                              enabled: e.target.checked,
+                            },
+                          }
+                        : s
+                    )
+                  }
+                />
+                Enabled
+              </label>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Mode</label>
+                <p className="mt-1 text-xs text-zinc-500">Choose how announcements animate: static text, rotating slides, or marquee.</p>
+                <select
+                  value={settings.announcementBar?.mode ?? "static"}
+                  onChange={(e) =>
+                    setSettings((s) =>
+                      s
+                        ? {
+                            ...s,
+                            announcementBar: {
+                              ...normalizeAnnouncementBarSettings(s.announcementBar),
+                              mode: (e.target.value as AnnouncementBarMode) || "static",
+                            },
+                          }
+                        : s
+                    )
+                  }
+                  className="mt-2 h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+                >
+                  <option value="static">Static</option>
+                  <option value="slide">Slide</option>
+                  <option value="fade">Fade</option>
+                  <option value="marquee_ltr">Marquee (L→R)</option>
+                  <option value="marquee_rtl">Marquee (R→L)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Show on</label>
+                <p className="mt-1 text-xs text-zinc-500">Show the bar on all pages or only on the homepage.</p>
+                <select
+                  value={settings.announcementBar?.showOn ?? "all"}
+                  onChange={(e) =>
+                    setSettings((s) =>
+                      s
+                        ? {
+                            ...s,
+                            announcementBar: {
+                              ...normalizeAnnouncementBarSettings(s.announcementBar),
+                              showOn: e.target.value === "home_only" ? "home_only" : "all",
+                            },
+                          }
+                        : s
+                    )
+                  }
+                  className="mt-2 h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+                >
+                  <option value="all">All pages</option>
+                  <option value="home_only">Homepage only</option>
+                </select>
+              </div>
+
+              <Input
+                type="number"
+                value={settings.announcementBar?.heightPx ?? 36}
+                onChange={(e) =>
+                  setSettings((s) =>
+                    s
+                      ? {
+                          ...s,
+                          announcementBar: {
+                            ...normalizeAnnouncementBarSettings(s.announcementBar),
+                            heightPx: clampInt(Number(e.target.value || 0), 24, 120),
+                          },
+                        }
+                      : s
+                  )
+                }
+                placeholder="Height (px)"
+              />
+
+              <p className="text-xs text-zinc-500">Total bar height. Header will automatically offset by this amount.</p>
+
+              <Input
+                type="number"
+                value={settings.announcementBar?.slideIntervalMs ?? 3500}
+                onChange={(e) =>
+                  setSettings((s) =>
+                    s
+                      ? {
+                          ...s,
+                          announcementBar: {
+                            ...normalizeAnnouncementBarSettings(s.announcementBar),
+                            slideIntervalMs: clampInt(Number(e.target.value || 0), 800, 30000),
+                          },
+                        }
+                      : s
+                  )
+                }
+                placeholder="Slide interval (ms)"
+              />
+
+              <p className="text-xs text-zinc-500">Only used for Slide/Fade modes. Lower values rotate faster.</p>
+
+              <Input
+                type="number"
+                value={settings.announcementBar?.marqueeSpeedPxPerSec ?? 60}
+                onChange={(e) =>
+                  setSettings((s) =>
+                    s
+                      ? {
+                          ...s,
+                          announcementBar: {
+                            ...normalizeAnnouncementBarSettings(s.announcementBar),
+                            marqueeSpeedPxPerSec: clampInt(Number(e.target.value || 0), 10, 600),
+                          },
+                        }
+                      : s
+                  )
+                }
+                placeholder="Marquee speed (px/s)"
+              />
+
+              <p className="text-xs text-zinc-500">Only used for marquee modes. Higher values scroll faster.</p>
+
+              <div className="flex items-center gap-3">
+                <label className="text-xs font-semibold uppercase tracking-wide text-zinc-500">BG</label>
+                <p className="text-xs text-zinc-500">Solid background color.</p>
+                <input
+                  type="color"
+                  value={settings.announcementBar?.background?.solid ?? "#0f172a"}
+                  className="h-11 w-16 rounded-xl border border-zinc-200 bg-white p-1 dark:border-zinc-800 dark:bg-zinc-950"
+                  onChange={(e) =>
+                    setSettings((s) =>
+                      s
+                        ? {
+                            ...s,
+                            announcementBar: {
+                              ...normalizeAnnouncementBarSettings(s.announcementBar),
+                              background: {
+                                ...normalizeAnnouncementBarSettings(s.announcementBar).background,
+                                solid: String(e.target.value || "#0f172a"),
+                              },
+                            },
+                          }
+                        : s
+                    )
+                  }
+                />
+
+                <label className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Text</label>
+                <p className="text-xs text-zinc-500">Text color for the entire bar.</p>
+                <input
+                  type="color"
+                  value={settings.announcementBar?.textColor ?? "#ffffff"}
+                  className="h-11 w-16 rounded-xl border border-zinc-200 bg-white p-1 dark:border-zinc-800 dark:bg-zinc-950"
+                  onChange={(e) =>
+                    setSettings((s) =>
+                      s
+                        ? {
+                            ...s,
+                            announcementBar: {
+                              ...normalizeAnnouncementBarSettings(s.announcementBar),
+                              textColor: String(e.target.value || "#ffffff"),
+                            },
+                          }
+                        : s
+                    )
+                  }
+                />
+
+                <label className="inline-flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-200">
+                  <input
+                    type="checkbox"
+                    checked={settings.announcementBar?.background?.gradientEnabled ?? false}
+                    onChange={(e) =>
+                      setSettings((s) =>
+                        s
+                          ? {
+                              ...s,
+                              announcementBar: {
+                                ...normalizeAnnouncementBarSettings(s.announcementBar),
+                                background: {
+                                  ...normalizeAnnouncementBarSettings(s.announcementBar).background,
+                                  gradientEnabled: e.target.checked,
+                                },
+                              },
+                            }
+                          : s
+                      )
+                    }
+                  />
+                  Gradient
+                </label>
+              </div>
+
+              <Input
+                value={settings.announcementBar?.background?.gradientCss ?? ""}
+                onChange={(e) =>
+                  setSettings((s) =>
+                    s
+                      ? {
+                          ...s,
+                          announcementBar: {
+                            ...normalizeAnnouncementBarSettings(s.announcementBar),
+                            background: {
+                              ...normalizeAnnouncementBarSettings(s.announcementBar).background,
+                              gradientCss: e.target.value,
+                            },
+                          },
+                        }
+                      : s
+                  )
+                }
+                placeholder="Gradient CSS (e.g. linear-gradient(...))"
+              />
+
+              <p className="text-xs text-zinc-500">When gradient is enabled, this CSS is used as the background.</p>
+
+              <label className="inline-flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-200">
+                <input
+                  type="checkbox"
+                  checked={settings.announcementBar?.closeButtonEnabled ?? true}
+                  onChange={(e) =>
+                    setSettings((s) =>
+                      s
+                        ? {
+                            ...s,
+                            announcementBar: {
+                              ...normalizeAnnouncementBarSettings(s.announcementBar),
+                              closeButtonEnabled: e.target.checked,
+                            },
+                          }
+                        : s
+                    )
+                  }
+                />
+                Close button
+              </label>
+
+              <p className="text-xs text-zinc-500">Lets visitors hide the bar temporarily.</p>
+
+              <Input
+                type="number"
+                value={settings.announcementBar?.dismissTtlHours ?? 24}
+                onChange={(e) =>
+                  setSettings((s) =>
+                    s
+                      ? {
+                          ...s,
+                          announcementBar: {
+                            ...normalizeAnnouncementBarSettings(s.announcementBar),
+                            dismissTtlHours: clampInt(Number(e.target.value || 0), 0, 720),
+                          },
+                        }
+                      : s
+                  )
+                }
+                placeholder="Dismiss TTL (hours)"
+              />
+
+              <p className="text-xs text-zinc-500">How long the bar stays hidden after a user closes it.</p>
+            </div>
+
+            <div className="mt-6 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Announcements</h3>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() =>
+                  setSettings((s) => {
+                    if (!s) return s;
+                    const id = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `ann_${Date.now()}`;
+                    const next: AnnouncementItem = {
+                      id,
+                      enabled: true,
+                      html: "<p>🔥 Big <span style=\"color:#ef4444\">SALE</span> — Get <span data-gradient=\"linear-gradient(90deg,#f97316,#ef4444)\" style=\"background-image:linear-gradient(90deg,#f97316,#ef4444);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;\">50% OFF</span> <span data-fx=\"blink\">Today</span></p>",
+                      href: "",
+                      newTab: false,
+                      schedule: { startAt: null, endAt: null },
+                      visibility: { device: "all", pageMode: "all", paths: [] },
+                      cta: { enabled: false, label: "Shop now", href: "", newTab: false, style: { bg: "#ffffff", text: "#0f172a", hoverBg: "#e5e7eb" } },
+                    };
+                    return { ...s, announcements: [...(s.announcements ?? []), next] };
+                  })
+                }
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add
+              </Button>
+            </div>
+
+            <div className="mt-3 space-y-3">
+              {(settings.announcements ?? []).map((a, idx) => (
+                <div key={a.id} className="rounded-3xl border border-zinc-200 p-4 dark:border-zinc-800">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div className="flex items-center gap-3">
+                      <label className="inline-flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-200">
+                        <input
+                          type="checkbox"
+                          checked={a.enabled}
+                          onChange={(e) =>
+                            setSettings((s) =>
+                              s
+                                ? {
+                                    ...s,
+                                    announcements: (s.announcements ?? []).map((x) =>
+                                      x.id === a.id ? { ...x, enabled: e.target.checked } : x
+                                    ),
+                                  }
+                                : s
+                            )
+                          }
+                        />
+                        Enabled
+                      </label>
+
+                      <div className="flex items-center gap-1">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          disabled={idx === 0}
+                          onClick={() =>
+                            setSettings((s) => {
+                              if (!s) return s;
+                              const list = [...(s.announcements ?? [])];
+                              if (idx <= 0) return s;
+                              const t = list[idx]!;
+                              list[idx] = list[idx - 1]!;
+                              list[idx - 1] = t;
+                              return { ...s, announcements: list };
+                            })
+                          }
+                        >
+                          Up
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          disabled={idx === (settings.announcements ?? []).length - 1}
+                          onClick={() =>
+                            setSettings((s) => {
+                              if (!s) return s;
+                              const list = [...(s.announcements ?? [])];
+                              if (idx >= list.length - 1) return s;
+                              const t = list[idx]!;
+                              list[idx] = list[idx + 1]!;
+                              list[idx + 1] = t;
+                              return { ...s, announcements: list };
+                            })
+                          }
+                        >
+                          Down
+                        </Button>
+                      </div>
+                    </div>
+
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() =>
+                        setSettings((s) =>
+                          s
+                            ? { ...s, announcements: (s.announcements ?? []).filter((x) => x.id !== a.id) }
+                            : s
+                        )
+                      }
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Remove
+                    </Button>
+                  </div>
+
+                  <div className="mt-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Rich text</p>
+                    <div className="mt-2">
+                      <RichTextEditor
+                        value={a.html}
+                        onChange={(html) =>
+                          setSettings((s) =>
+                            s
+                              ? {
+                                  ...s,
+                                  announcements: (s.announcements ?? []).map((x) =>
+                                    x.id === a.id ? { ...x, html } : x
+                                  ),
+                                }
+                              : s
+                          )
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <Input
+                      value={a.href}
+                      onChange={(e) =>
+                        setSettings((s) =>
+                          s
+                            ? {
+                                ...s,
+                                announcements: (s.announcements ?? []).map((x) =>
+                                  x.id === a.id ? { ...x, href: e.target.value } : x
+                                ),
+                              }
+                            : s
+                        )
+                      }
+                      placeholder="Click link (optional)"
+                    />
+
+                    <label className="inline-flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-200">
+                      <input
+                        type="checkbox"
+                        checked={a.newTab}
+                        onChange={(e) =>
+                          setSettings((s) =>
+                            s
+                              ? {
+                                  ...s,
+                                  announcements: (s.announcements ?? []).map((x) =>
+                                    x.id === a.id ? { ...x, newTab: e.target.checked } : x
+                                  ),
+                                }
+                              : s
+                          )
+                        }
+                      />
+                      Open in new tab
+                    </label>
+
+                    <Input
+                      value={toDatetimeLocal(a.schedule?.startAt ?? null)}
+                      onChange={(e) => {
+                        const startAt = fromDatetimeLocal(e.target.value);
+                        setSettings((s) =>
+                          s
+                            ? {
+                                ...s,
+                                announcements: (s.announcements ?? []).map((x) =>
+                                  x.id === a.id ? { ...x, schedule: { ...x.schedule, startAt } } : x
+                                ),
+                              }
+                            : s
+                        );
+                      }}
+                      placeholder="Start (optional)"
+                      type="datetime-local"
+                    />
+
+                    <Input
+                      value={toDatetimeLocal(a.schedule?.endAt ?? null)}
+                      onChange={(e) => {
+                        const endAt = fromDatetimeLocal(e.target.value);
+                        setSettings((s) =>
+                          s
+                            ? {
+                                ...s,
+                                announcements: (s.announcements ?? []).map((x) =>
+                                  x.id === a.id ? { ...x, schedule: { ...x.schedule, endAt } } : x
+                                ),
+                              }
+                            : s
+                        );
+                      }}
+                      placeholder="End (optional)"
+                      type="datetime-local"
+                    />
+                  </div>
+
+                  <div className="mt-4 rounded-2xl border border-zinc-200 p-3 dark:border-zinc-800">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">CTA button</p>
+                      <label className="inline-flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-200">
+                        <input
+                          type="checkbox"
+                          checked={a.cta?.enabled ?? false}
+                          onChange={(e) =>
+                            setSettings((s) =>
+                              s
+                                ? {
+                                    ...s,
+                                    announcements: (s.announcements ?? []).map((x) =>
+                                      x.id === a.id ? { ...x, cta: { ...x.cta, enabled: e.target.checked } } : x
+                                    ),
+                                  }
+                                : s
+                            )
+                          }
+                        />
+                        Enabled
+                      </label>
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                      <Input
+                        value={a.cta?.label ?? ""}
+                        onChange={(e) =>
+                          setSettings((s) =>
+                            s
+                              ? {
+                                  ...s,
+                                  announcements: (s.announcements ?? []).map((x) =>
+                                    x.id === a.id ? { ...x, cta: { ...x.cta, label: e.target.value } } : x
+                                  ),
+                                }
+                              : s
+                          )
+                        }
+                        placeholder="Button text"
+                      />
+                      <Input
+                        value={a.cta?.href ?? ""}
+                        onChange={(e) =>
+                          setSettings((s) =>
+                            s
+                              ? {
+                                  ...s,
+                                  announcements: (s.announcements ?? []).map((x) =>
+                                    x.id === a.id ? { ...x, cta: { ...x.cta, href: e.target.value } } : x
+                                  ),
+                                }
+                              : s
+                          )
+                        }
+                        placeholder="Button link"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="rounded-3xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Hero banner slider</h2>

@@ -52,6 +52,68 @@ export type CartUxSettings = {
   quickCheckoutAutoHideSeconds: number;
 };
 
+export type AnnouncementBarMode = "static" | "slide" | "fade" | "marquee_ltr" | "marquee_rtl";
+
+export type AnnouncementBarSettings = {
+  enabled: boolean;
+  position: "fixed" | "sticky";
+  showOn: "all" | "home_only";
+  heightPx: number;
+  paddingX: number;
+  paddingY: number;
+  textAlign: "left" | "center" | "right";
+  textColor: string;
+  background: {
+    solid: string;
+    gradientEnabled: boolean;
+    gradientCss: string;
+  };
+  border: { enabled: boolean; color: string; thicknessPx: number };
+  shadowEnabled: boolean;
+  closeButtonEnabled: boolean;
+  closeButtonVariant: "minimal" | "pill";
+  dismissTtlHours: number;
+  mode: AnnouncementBarMode;
+  marqueeSpeedPxPerSec: number;
+  slideIntervalMs: number;
+  transitionMs: number;
+  easing: string;
+};
+
+export type AnnouncementVisibility = {
+  device: "all" | "desktop" | "mobile";
+  pageMode: "all" | "include" | "exclude";
+  paths: string[];
+};
+
+export type AnnouncementSchedule = {
+  startAt: number | null;
+  endAt: number | null;
+};
+
+export type AnnouncementCta = {
+  enabled: boolean;
+  label: string;
+  href: string;
+  newTab: boolean;
+  style: {
+    bg: string;
+    text: string;
+    hoverBg: string;
+  };
+};
+
+export type AnnouncementItem = {
+  id: string;
+  enabled: boolean;
+  html: string;
+  href: string;
+  newTab: boolean;
+  schedule: AnnouncementSchedule;
+  visibility: AnnouncementVisibility;
+  cta: AnnouncementCta;
+};
+
 export type BrandingLogo = {
   url: string;
   width: number | null;
@@ -113,6 +175,8 @@ export type StorefrontSettings = {
   shipping: NormalizedShippingSettings;
   storefrontLayout: StorefrontLayoutSettings;
   cartUx: CartUxSettings;
+  announcementBar: AnnouncementBarSettings;
+  announcements: AnnouncementItem[];
   branding: BrandingSettings;
   whatsApp: WhatsAppStorefrontSettings;
 };
@@ -140,6 +204,124 @@ function clampInt(n: number, min: number, max: number) {
 function readString(v: unknown, fallback: string) {
   const s = typeof v === "string" ? v.trim() : "";
   return s || fallback;
+}
+
+function readStringArray(v: unknown) {
+  const arr = Array.isArray(v) ? v : [];
+  return arr.map((x) => String(x ?? "").trim()).filter(Boolean);
+}
+
+function normalizeAnnouncementBarSettings(raw: unknown): AnnouncementBarSettings {
+  const r = isRecord(raw) ? (raw as Record<string, unknown>) : {};
+
+  const position = r.position === "sticky" ? "sticky" : "fixed";
+  const showOn = r.showOn === "home_only" ? "home_only" : "all";
+  const textAlign = r.textAlign === "center" ? "center" : r.textAlign === "right" ? "right" : "left";
+  const closeButtonVariant = r.closeButtonVariant === "pill" ? "pill" : "minimal";
+
+  const modeRaw = String(r.mode ?? "").trim();
+  const mode: AnnouncementBarMode =
+    modeRaw === "slide" ||
+    modeRaw === "fade" ||
+    modeRaw === "marquee_ltr" ||
+    modeRaw === "marquee_rtl" ||
+    modeRaw === "static"
+      ? (modeRaw as AnnouncementBarMode)
+      : "static";
+
+  const bg = isRecord(r.background) ? (r.background as Record<string, unknown>) : {};
+  const border = isRecord(r.border) ? (r.border as Record<string, unknown>) : {};
+
+  return {
+    enabled: typeof r.enabled === "boolean" ? r.enabled : false,
+    position,
+    showOn,
+    heightPx: clampInt(readNumber(r.heightPx, 36), 24, 120),
+    paddingX: clampInt(readNumber(r.paddingX, 16), 0, 48),
+    paddingY: clampInt(readNumber(r.paddingY, 6), 0, 24),
+    textAlign,
+    textColor: readString(r.textColor, "#ffffff"),
+    background: {
+      solid: readString(bg.solid, "#0f172a"),
+      gradientEnabled: typeof bg.gradientEnabled === "boolean" ? bg.gradientEnabled : false,
+      gradientCss: readString(bg.gradientCss, "linear-gradient(90deg,#0f172a,#111827)"),
+    },
+    border: {
+      enabled: typeof border.enabled === "boolean" ? border.enabled : false,
+      color: readString(border.color, "rgba(255,255,255,0.12)"),
+      thicknessPx: clampInt(readNumber(border.thicknessPx, 1), 0, 6),
+    },
+    shadowEnabled: typeof r.shadowEnabled === "boolean" ? r.shadowEnabled : false,
+    closeButtonEnabled: typeof r.closeButtonEnabled === "boolean" ? r.closeButtonEnabled : true,
+    closeButtonVariant,
+    dismissTtlHours: clampInt(readNumber(r.dismissTtlHours, 24), 0, 24 * 30),
+    mode,
+    marqueeSpeedPxPerSec: clampInt(readNumber(r.marqueeSpeedPxPerSec, 60), 10, 600),
+    slideIntervalMs: clampInt(readNumber(r.slideIntervalMs, 3500), 800, 30000),
+    transitionMs: clampInt(readNumber(r.transitionMs, 350), 100, 4000),
+    easing: readString(r.easing, "cubic-bezier(0.22, 1, 0.36, 1)"),
+  };
+}
+
+function isActiveSchedule(schedule: AnnouncementSchedule, now: number) {
+  const startOk = schedule.startAt === null || now >= schedule.startAt;
+  const endOk = schedule.endAt === null || now <= schedule.endAt;
+  return startOk && endOk;
+}
+
+function normalizeAnnouncements(raw: unknown): AnnouncementItem[] {
+  const arr = Array.isArray(raw) ? raw : [];
+  const now = Date.now();
+
+  return arr
+    .filter((x) => isRecord(x))
+    .map((x) => {
+      const r = x as Record<string, unknown>;
+      const visibility = isRecord(r.visibility) ? (r.visibility as Record<string, unknown>) : {};
+      const schedule = isRecord(r.schedule) ? (r.schedule as Record<string, unknown>) : {};
+      const cta = isRecord(r.cta) ? (r.cta as Record<string, unknown>) : {};
+      const ctaStyle = isRecord(cta.style) ? (cta.style as Record<string, unknown>) : {};
+
+      const device = visibility.device === "desktop" || visibility.device === "mobile" ? visibility.device : "all";
+      const pageMode = visibility.pageMode === "include" || visibility.pageMode === "exclude" ? visibility.pageMode : "all";
+
+      const startAtRaw = typeof schedule.startAt === "number" && Number.isFinite(schedule.startAt) ? schedule.startAt : null;
+      const endAtRaw = typeof schedule.endAt === "number" && Number.isFinite(schedule.endAt) ? schedule.endAt : null;
+
+      const normalizedSchedule: AnnouncementSchedule = {
+        startAt: startAtRaw,
+        endAt: endAtRaw,
+      };
+
+      return {
+        id: readString(r.id, ""),
+        enabled: typeof r.enabled === "boolean" ? r.enabled : true,
+        html: typeof r.html === "string" ? r.html.trim() : "",
+        href: typeof r.href === "string" ? r.href.trim() : "",
+        newTab: typeof r.newTab === "boolean" ? r.newTab : false,
+        schedule: normalizedSchedule,
+        visibility: {
+          device: device as AnnouncementVisibility["device"],
+          pageMode: pageMode as AnnouncementVisibility["pageMode"],
+          paths: readStringArray(visibility.paths),
+        },
+        cta: {
+          enabled: typeof cta.enabled === "boolean" ? cta.enabled : false,
+          label: readString(cta.label, ""),
+          href: readString(cta.href, ""),
+          newTab: typeof cta.newTab === "boolean" ? cta.newTab : false,
+          style: {
+            bg: readString(ctaStyle.bg, "#ffffff"),
+            text: readString(ctaStyle.text, "#0f172a"),
+            hoverBg: readString(ctaStyle.hoverBg, "#e5e7eb"),
+          },
+        },
+      };
+    })
+    .filter((a) => a.id)
+    .filter((a) => a.enabled)
+    .filter((a) => a.html)
+    .filter((a) => isActiveSchedule(a.schedule, now));
 }
 
 function normalizeCityKey(v: string) {
@@ -259,6 +441,11 @@ export function normalizeStorefrontSettings(doc: unknown): StorefrontSettings {
   const quickCheckoutEnabled = typeof cartUx.quickCheckoutEnabled === "boolean" ? cartUx.quickCheckoutEnabled : true;
   const quickCheckoutAutoHideSeconds = clampInt(readNumber(cartUx.quickCheckoutAutoHideSeconds, 4), 1, 30);
 
+  const announcementBar = normalizeAnnouncementBarSettings(
+    (root as Record<string, unknown>).announcementBar
+  );
+  const announcements = normalizeAnnouncements((root as Record<string, unknown>).announcements);
+
   const brandingRoot = isRecord(root.branding) ? root.branding : {};
   const storeName = readString(brandingRoot.storeName, "Shop").slice(0, 80);
   const headerBrandText = readString(brandingRoot.headerBrandText, storeName).slice(0, 80);
@@ -330,6 +517,8 @@ export function normalizeStorefrontSettings(doc: unknown): StorefrontSettings {
       listingHeader: { showSearch, showFilters, spacing, showSort, enableLayoutSwitcher },
     },
     cartUx: { quickCheckoutEnabled, quickCheckoutAutoHideSeconds },
+    announcementBar,
+    announcements,
     branding: {
       storeName,
       headerBrandText,

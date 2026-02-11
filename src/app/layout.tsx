@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import "./globals.css";
 
 import Providers from "@/app/providers";
+import AnnouncementBar from "@/components/layout/AnnouncementBar";
 import Header from "@/components/layout/Header";
 import SiteFooter from "@/components/layout/SiteFooter";
 import { dbConnect } from "@/lib/db";
@@ -150,6 +151,7 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Providers>
+          <AnnouncementBar />
           <Header />
           {children}
           <SiteFooter />
