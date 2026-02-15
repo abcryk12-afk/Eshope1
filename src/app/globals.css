@@ -231,9 +231,10 @@ body {
   padding-bottom: 8px;
   scroll-behavior: smooth;
   overscroll-behavior-x: contain;
+  overscroll-behavior-y: auto;
   scroll-padding-inline: 16px;
   scrollbar-width: none;
-  touch-action: pan-x;
+  touch-action: pan-y pinch-zoom;
   -webkit-transform: translateZ(0);
   transform: translateZ(0);
   will-change: scroll-position;

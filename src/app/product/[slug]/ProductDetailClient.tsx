@@ -16,6 +16,7 @@ import Skeleton from "@/components/ui/Skeleton";
 import { StarRatingDisplay } from "@/components/ui/StarRating";
 import ProductCardGate from "@/components/product/ProductCardGate";
 import ProductGrid from "@/components/product/ProductGrid";
+import CategoryCarousel from "@/components/storefront/CategoryCarousel";
 import ZoomableProductImage from "@/components/product/ZoomableProductImage";
 import AddToCartButton from "@/components/product/AddToCartButton";
 import ProductShare from "@/components/product/ProductShare";
@@ -894,32 +895,58 @@ export default function ProductDetailClient({ slug }: Props) {
               <Link
                 href={
                   product.categorySlug
-                    ? `/category/${encodeURIComponent(product.categorySlug)}`
-                    : `/?category=${encodeURIComponent(product.category)}`
+                    ? `/category/${product.categorySlug}`
+                    : `/category/${encodeURIComponent(product.category)}`
                 }
-                className="text-sm font-semibold text-zinc-900 hover:underline dark:text-zinc-50"
+                className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
               >
-                View category
+                View all
               </Link>
             </div>
 
             <div className="mt-4">
-              <ProductGrid>
-                {loadingRelated
-                  ? Array.from({ length: 4 }).map((_, idx) => (
-                      <div
-                        key={idx}
-                        className="rounded-3xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950"
-                      >
-                        <Skeleton className="aspect-square w-full rounded-2xl" />
-                        <Skeleton className="mt-3 h-4 w-3/4" />
-                        <Skeleton className="mt-2 h-4 w-1/2" />
-                      </div>
-                    ))
-                  : related.map((p) => (
-                      <ProductCardGate key={p._id} product={p} onQuickView={() => router.push(`/product/${p.slug}`)} />
-                    ))}
-              </ProductGrid>
+              <div className="md:hidden">
+                <CategoryCarousel
+                  title=""
+                  items={loadingRelated ? (Array.from({ length: 6 }) as ProductListItem[]) : related}
+                  loading={loadingRelated}
+                  skeletonCount={6}
+                  edgeFade="soft"
+                  desktopArrows="hover"
+                  className="[&>div:first-child]:hidden"
+                  renderSkeleton={() => (
+                    <div className="group relative overflow-hidden rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950">
+                      <Skeleton className="aspect-square w-full rounded-xl" />
+                      <Skeleton className="mt-3 h-4 w-5/6" />
+                      <Skeleton className="mt-2 h-3.5 w-2/3" />
+                      <Skeleton className="mt-2 h-4 w-1/2" />
+                    </div>
+                  )}
+                  renderItem={(p) => (
+                    <ProductCardGate product={p} onQuickView={() => router.push(`/product/${p.slug}`)} />
+                  )}
+                />
+              </div>
+
+              <div className="hidden md:block">
+                <ProductGrid>
+                  {loadingRelated
+                    ? Array.from({ length: 4 }).map((_, idx) => (
+                        <div
+                          key={idx}
+                          className="group relative overflow-hidden rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950"
+                        >
+                          <Skeleton className="aspect-square w-full rounded-xl" />
+                          <Skeleton className="mt-3 h-4 w-5/6" />
+                          <Skeleton className="mt-2 h-3.5 w-2/3" />
+                          <Skeleton className="mt-2 h-4 w-1/2" />
+                        </div>
+                      ))
+                    : related.map((p) => (
+                        <ProductCardGate key={p._id} product={p} onQuickView={() => router.push(`/product/${p.slug}`)} />
+                      ))}
+                </ProductGrid>
+              </div>
             </div>
           </div>
         ) : null}

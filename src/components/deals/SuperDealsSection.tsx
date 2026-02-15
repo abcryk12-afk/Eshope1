@@ -138,6 +138,8 @@ export default function SuperDealsSection({ categorySlug, onQuickView }: Props) 
         items={items}
         loading={loading}
         skeletonCount={6}
+        edgeFade="strong"
+        desktopArrows="hover"
         renderSkeleton={() => (
           <div
             className="group relative overflow-hidden border border-border bg-surface shadow-sm"
