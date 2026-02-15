@@ -35,6 +35,8 @@ export default function CategoryCarousel<T>({
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const swipeBlockClickRef = useRef(false);
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
+  const pointerStartScrollLeftRef = useRef(0);
+  const pointerMaxDeltaRef = useRef<{ dx: number; dy: number }>({ dx: 0, dy: 0 });
 
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -103,6 +105,8 @@ export default function CategoryCarousel<T>({
     // Track if user is swiping; we'll cancel click if movement exceeds a small threshold.
     // This avoids accidental product opens while doing horizontal swipe.
     pointerStartRef.current = { x: e.clientX, y: e.clientY };
+    pointerStartScrollLeftRef.current = e.currentTarget.scrollLeft;
+    pointerMaxDeltaRef.current = { dx: 0, dy: 0 };
     swipeBlockClickRef.current = false;
   }
 
@@ -112,17 +116,27 @@ export default function CategoryCarousel<T>({
 
     const dx = Math.abs(e.clientX - start.x);
     const dy = Math.abs(e.clientY - start.y);
-
-    const threshold = e.pointerType === "touch" ? 10 : 6;
-
-    if (dx > threshold && dx > dy) {
-      swipeBlockClickRef.current = true;
-    }
+    const cur = pointerMaxDeltaRef.current;
+    pointerMaxDeltaRef.current = { dx: Math.max(cur.dx, dx), dy: Math.max(cur.dy, dy) };
   }
 
   function onPointerUp() {
+    const el = scrollerRef.current;
+    const start = pointerStartRef.current;
+    const max = pointerMaxDeltaRef.current;
     pointerStartRef.current = null;
-    // Keep swipeBlockClickRef for the ensuing click event; it will be reset on next pointer down.
+
+    if (!el || !start) return;
+
+    const scrollDelta = Math.abs(el.scrollLeft - pointerStartScrollLeftRef.current);
+    const threshold = 12;
+
+    // Only block click if the gesture actually caused horizontal scroll.
+    // This prevents normal taps (with small finger jitter) from being cancelled.
+    if (max.dx > threshold && max.dx > max.dy && scrollDelta > 2) {
+      swipeBlockClickRef.current = true;
+    }
+    // Keep swipeBlockClickRef for the ensuing click event; it will be reset by onClickCapture or next pointer down.
   }
 
   function onClickCapture(e: React.MouseEvent<HTMLDivElement>) {
