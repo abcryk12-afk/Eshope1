@@ -16,8 +16,10 @@ function mergeChildren(a: MobileMenuItem[], b: MobileMenuItem[]) {
 export function resolveMenuItemsWithCategories(args: {
   items: MobileMenuItem[];
   tree: CategoryTreeNode[];
+  autoSyncCategories?: boolean;
+  pagesById?: Map<string, { id: string; title: string; slug: string }>;
 }): MobileMenuItem[] {
-  const { items, tree } = args;
+  const { items, tree, pagesById, autoSyncCategories = true } = args;
 
   const byId = new Map<string, CategoryTreeNode>();
   const walk = (n: CategoryTreeNode) => {
@@ -35,15 +37,16 @@ export function resolveMenuItemsWithCategories(args: {
       if (!raw || !raw.enabled) continue;
 
       if (raw.type === "category") {
-        const cid = raw.categoryId?.trim() || toCategoryId(raw.id);
+        const cid = raw.refId?.trim() || raw.categoryId?.trim() || toCategoryId(raw.id);
         const node = cid ? byId.get(cid) : undefined;
         if (!node || !node.isActive) continue;
 
         const title = String(node.menuLabel || node.name || "").trim();
         const href = `/category/${encodeURIComponent(String(node.slug || "").trim())}`;
 
-        const dynamicChildren = raw.includeChildren ? treeToMenuItems(node.children ?? []) : [];
-        const manualChildren = raw.includeChildren ? [] : resolveList(raw.children ?? [], depth + 1);
+        const include = typeof raw.includeChildren === "boolean" ? raw.includeChildren : autoSyncCategories;
+        const dynamicChildren = include ? treeToMenuItems(node.children ?? []) : [];
+        const manualChildren = include ? [] : resolveList(raw.children ?? [], depth + 1);
 
         out.push({
           ...raw,
@@ -54,6 +57,22 @@ export function resolveMenuItemsWithCategories(args: {
           children: mergeChildren(dynamicChildren, manualChildren),
         });
 
+        continue;
+      }
+
+      if (raw.type === "page") {
+        const pid = raw.refId?.trim() || "";
+        const p = pid && pagesById ? pagesById.get(pid) : undefined;
+        if (!p) continue;
+        const baseTitle = String(p.title || "").trim();
+        const title = raw.title?.trim() ? raw.title.trim() : baseTitle;
+        const href = `/p/${encodeURIComponent(String(p.slug || "").trim())}`;
+        out.push({
+          ...raw,
+          title,
+          href,
+          children: resolveList(raw.children ?? [], depth + 1),
+        });
         continue;
       }
 

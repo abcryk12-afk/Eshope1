@@ -18,11 +18,13 @@ const MenuItemSchema: z.ZodTypeAny = z.lazy(() =>
   z
   .object({
     id: z.string().trim().min(1).max(80),
-    type: z.enum(["category", "link"]),
+    type: z.enum(["category", "link", "page"]),
     title: z.string().trim().max(120).optional().default(""),
     href: z.string().trim().max(500).optional().default(""),
+    refId: z.string().trim().max(60).optional().default(""),
     categoryId: z.string().trim().max(60).optional().default(""),
     includeChildren: z.boolean().optional().default(false),
+    openInNewTab: z.boolean().optional().default(false),
     enabled: z.boolean(),
     visibility: VisibilitySchema,
     icon: z.string().trim().max(80).optional().default(""),
@@ -33,7 +35,9 @@ const MenuItemSchema: z.ZodTypeAny = z.lazy(() =>
   .superRefine((val, ctx) => {
     const t = String(val.title || "").trim();
     const h = String(val.href || "").trim();
+    const rid = String(val.refId || "").trim();
     const cid = String(val.categoryId || "").trim();
+    const ref = rid || cid;
 
     if (val.type === "link") {
       if (!t || !h) {
@@ -42,9 +46,9 @@ const MenuItemSchema: z.ZodTypeAny = z.lazy(() =>
       return;
     }
 
-    // category
-    if (!cid && (!t || !h)) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Category items must have categoryId or title+href" });
+    // category/page
+    if (!ref && (!t || !h)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Ref items must have refId or title+href" });
     }
   })
 );
@@ -52,6 +56,7 @@ const MenuItemSchema: z.ZodTypeAny = z.lazy(() =>
 const BodySchema = z.object({
   mobileMenu: z.object({
     useDefaultMenu: z.boolean(),
+    autoSyncCategories: z.boolean().optional().default(true),
     featuredBannerHtml: z.string().optional().default(""),
     promoBannerHtml: z.string().optional().default(""),
     items: z.array(MenuItemSchema).default([]),
@@ -116,6 +121,7 @@ export async function PUT(req: NextRequest) {
           useDefaultMenu: parsed.data.mobileMenu.useDefaultMenu,
           featuredBannerHtml: parsed.data.mobileMenu.featuredBannerHtml,
           promoBannerHtml: parsed.data.mobileMenu.promoBannerHtml,
+          autoSyncCategories: parsed.data.mobileMenu.autoSyncCategories ?? true,
           items: parsed.data.mobileMenu.items,
           updatedAt: now,
         },

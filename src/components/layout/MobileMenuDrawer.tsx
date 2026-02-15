@@ -12,11 +12,13 @@ export type MobileMenuVisibility = "all" | "mobile" | "desktop";
 
 export type MobileMenuItem = {
   id: string;
-  type: "category" | "link";
+  type: "category" | "link" | "page";
   title: string;
   href: string;
   categoryId?: string;
+  refId?: string;
   includeChildren?: boolean;
+  openInNewTab?: boolean;
   enabled: boolean;
   visibility: MobileMenuVisibility;
   icon?: string;
@@ -122,7 +124,13 @@ function MenuNode({
               </span>
             </button>
           ) : (
-            <Link href={item.href} className="flex min-w-0 flex-1 items-center gap-2" onClick={onNavigate}>
+            <Link
+              href={item.href}
+              className="flex min-w-0 flex-1 items-center gap-2"
+              onClick={onNavigate}
+              target={item.openInNewTab ? "_blank" : undefined}
+              rel={item.openInNewTab ? "noopener noreferrer" : undefined}
+            >
               <span className="truncate font-semibold text-foreground">{item.title}</span>
               {item.badgeLabel?.trim() ? (
                 <span className="ml-auto shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-foreground">

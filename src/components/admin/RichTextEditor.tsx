@@ -126,6 +126,7 @@ async function uploadImages(files: File[]) {
 export default function RichTextEditor({ value, onChange }: Props) {
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const lastSelectionRef = useRef<unknown>(null);
 
   const extensions = useMemo(
     () => [
@@ -207,6 +208,25 @@ export default function RichTextEditor({ value, onChange }: Props) {
     editor.commands.setContent(normalizedValue || "<p></p>", false);
   }, [editor, normalizedValue]);
 
+  useEffect(() => {
+    if (!editor) return;
+
+    // Keep track of the latest selection so toolbar clicks (which can steal focus)
+    // don't cause commands to apply to the wrong block.
+    const update = () => {
+      lastSelectionRef.current = editor.state.selection;
+    };
+
+    update();
+    editor.on("selectionUpdate", update);
+    editor.on("focus", update);
+
+    return () => {
+      editor.off("selectionUpdate", update);
+      editor.off("focus", update);
+    };
+  }, [editor]);
+
   async function onPickFile(files: FileList | null) {
     const list = Array.from(files ?? []).filter((f) => f.type.startsWith("image/"));
     if (!editor || list.length === 0) return;
@@ -225,7 +245,24 @@ export default function RichTextEditor({ value, onChange }: Props) {
   }
 
   function keepSelection(e: MouseEvent<HTMLElement>) {
+    if (editor) lastSelectionRef.current = editor.state.selection;
     e.preventDefault();
+    e.stopPropagation();
+  }
+
+  function runWithSelection(run: () => void) {
+    if (!editor) return;
+
+    const selection = lastSelectionRef.current as { from?: number; to?: number } | null;
+    const from = typeof selection?.from === "number" ? selection.from : null;
+    const to = typeof selection?.to === "number" ? selection.to : null;
+
+    if (from != null && to != null) {
+      editor.commands.setTextSelection({ from, to });
+    }
+
+    editor.chain().focus().run();
+    run();
   }
 
   function setTextColor(color: string) {
@@ -259,6 +296,43 @@ export default function RichTextEditor({ value, onChange }: Props) {
     chain.setTextAlign(align).run();
   }
 
+  function applyHeadingSmart(level: 2) {
+    if (!editor) return;
+
+    const sel = editor.state.selection;
+    const from = sel.from;
+    const to = sel.to;
+
+    // No range selection: normal toggle behavior.
+    if (from === to) {
+      editor.chain().focus().toggleHeading({ level }).run();
+      return;
+    }
+
+    // If selection spans multiple blocks, keep the default behavior (apply to all selected blocks).
+    const $from = sel.$from;
+    const $to = sel.$to;
+    const isSingleParagraphSelection =
+      $from.sameParent($to) &&
+      $from.parent.isTextblock &&
+      $from.parent.type.name === "paragraph";
+
+    if (!isSingleParagraphSelection) {
+      editor.chain().focus().toggleHeading({ level }).run();
+      return;
+    }
+
+    // Split the paragraph into: [before][selected][after], then apply heading to the middle block.
+    // Split at the end first so `from` stays stable.
+    editor.commands.setTextSelection(to);
+    editor.commands.splitBlock();
+
+    editor.commands.setTextSelection(from);
+    editor.commands.splitBlock();
+
+    editor.chain().focus().setNode("heading", { level }).run();
+  }
+
   function alignSelectedImage(align: "left" | "center" | "right") {
     if (!editor) return;
     const style =
@@ -282,7 +356,7 @@ export default function RichTextEditor({ value, onChange }: Props) {
           variant="secondary"
           size="sm"
           onMouseDown={keepSelection}
-          onClick={() => editor.chain().focus().toggleBold().run()}
+          onClick={() => runWithSelection(() => editor.chain().focus().toggleBold().run())}
           className={cn(editor.isActive("bold") && "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900")}
         >
           Bold
@@ -293,7 +367,7 @@ export default function RichTextEditor({ value, onChange }: Props) {
           variant="secondary"
           size="sm"
           onMouseDown={keepSelection}
-          onClick={() => editor.chain().focus().toggleItalic().run()}
+          onClick={() => runWithSelection(() => editor.chain().focus().toggleItalic().run())}
           className={cn(editor.isActive("italic") && "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900")}
         >
           Italic
@@ -304,7 +378,7 @@ export default function RichTextEditor({ value, onChange }: Props) {
           variant="secondary"
           size="sm"
           onMouseDown={keepSelection}
-          onClick={() => editor.chain().focus().toggleUnderline().run()}
+          onClick={() => runWithSelection(() => editor.chain().focus().toggleUnderline().run())}
           className={cn(editor.isActive("underline") && "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900")}
         >
           Underline
@@ -315,7 +389,7 @@ export default function RichTextEditor({ value, onChange }: Props) {
           variant="secondary"
           size="sm"
           onMouseDown={keepSelection}
-          onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+          onClick={() => runWithSelection(() => applyHeadingSmart(2))}
           className={cn(editor.isActive("heading", { level: 2 }) && "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900")}
         >
           H2
@@ -326,7 +400,7 @@ export default function RichTextEditor({ value, onChange }: Props) {
           variant="secondary"
           size="sm"
           onMouseDown={keepSelection}
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
+          onClick={() => runWithSelection(() => editor.chain().focus().toggleBulletList().run())}
           className={cn(editor.isActive("bulletList") && "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900")}
         >
           Bullets
@@ -337,7 +411,7 @@ export default function RichTextEditor({ value, onChange }: Props) {
           variant="secondary"
           size="sm"
           onMouseDown={keepSelection}
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
+          onClick={() => runWithSelection(() => editor.chain().focus().toggleOrderedList().run())}
           className={cn(editor.isActive("orderedList") && "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900")}
         >
           Numbered
@@ -350,7 +424,7 @@ export default function RichTextEditor({ value, onChange }: Props) {
           variant="secondary"
           size="sm"
           onMouseDown={keepSelection}
-          onClick={() => alignText("left")}
+          onClick={() => runWithSelection(() => alignText("left"))}
           className={cn(editor.isActive({ textAlign: "left" }) && "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900")}
         >
           Left
@@ -361,7 +435,7 @@ export default function RichTextEditor({ value, onChange }: Props) {
           variant="secondary"
           size="sm"
           onMouseDown={keepSelection}
-          onClick={() => alignText("center")}
+          onClick={() => runWithSelection(() => alignText("center"))}
           className={cn(editor.isActive({ textAlign: "center" }) && "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900")}
         >
           Center
@@ -372,7 +446,7 @@ export default function RichTextEditor({ value, onChange }: Props) {
           variant="secondary"
           size="sm"
           onMouseDown={keepSelection}
-          onClick={() => alignText("right")}
+          onClick={() => runWithSelection(() => alignText("right"))}
           className={cn(editor.isActive({ textAlign: "right" }) && "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900")}
         >
           Right
@@ -386,7 +460,7 @@ export default function RichTextEditor({ value, onChange }: Props) {
               key={c.name}
               type="button"
               onMouseDown={keepSelection}
-              onClick={() => setTextColor(c.value)}
+              onClick={() => runWithSelection(() => setTextColor(c.value))}
               className={cn(
                 "h-9 w-9 rounded-xl border border-zinc-200 bg-white transition dark:border-zinc-800 dark:bg-zinc-950",
                 (editor.getAttributes("textStyle").color ?? "") === c.value &&
@@ -415,10 +489,10 @@ export default function RichTextEditor({ value, onChange }: Props) {
               onChange={(e) => {
                 const v = String(e.target.value || "");
                 if (!v) {
-                  clearTextStyleAttr(["fontSize"]);
+                  runWithSelection(() => clearTextStyleAttr(["fontSize"]));
                   return;
                 }
-                setTextStyleAttrs({ fontSize: v });
+                runWithSelection(() => setTextStyleAttrs({ fontSize: v }));
               }}
             >
               <option value="">Default</option>
@@ -445,7 +519,7 @@ export default function RichTextEditor({ value, onChange }: Props) {
               onMouseDown={keepSelection}
               onChange={(e) => {
                 const v = String(e.target.value || "");
-                setTextStyleAttrs({ backgroundColor: v });
+                runWithSelection(() => setTextStyleAttrs({ backgroundColor: v }));
               }}
               title="Background highlight"
             />
@@ -456,7 +530,7 @@ export default function RichTextEditor({ value, onChange }: Props) {
             variant="secondary"
             size="sm"
             onMouseDown={keepSelection}
-            onClick={() => clearTextStyleAttr(["backgroundColor"])}
+            onClick={() => runWithSelection(() => clearTextStyleAttr(["backgroundColor"]))}
           >
             Clear HL
           </Button>
@@ -466,7 +540,7 @@ export default function RichTextEditor({ value, onChange }: Props) {
             variant="secondary"
             size="sm"
             onMouseDown={keepSelection}
-            onClick={() => setTextStyleAttrs({ textShadow: "0 1px 10px rgba(0,0,0,0.35)" })}
+            onClick={() => runWithSelection(() => setTextStyleAttrs({ textShadow: "0 1px 10px rgba(0,0,0,0.35)" }))}
           >
             Shadow
           </Button>
@@ -476,7 +550,7 @@ export default function RichTextEditor({ value, onChange }: Props) {
             variant="secondary"
             size="sm"
             onMouseDown={keepSelection}
-            onClick={() => clearTextStyleAttr(["textShadow"])}
+            onClick={() => runWithSelection(() => clearTextStyleAttr(["textShadow"]))}
           >
             No Shadow
           </Button>
@@ -487,9 +561,11 @@ export default function RichTextEditor({ value, onChange }: Props) {
             size="sm"
             onMouseDown={keepSelection}
             onClick={() =>
-              setTextStyleAttrs({
-                gradientCss: "linear-gradient(90deg,#ef4444,#f59e0b,#22c55e,#3b82f6)",
-              })
+              runWithSelection(() =>
+                setTextStyleAttrs({
+                  gradientCss: "linear-gradient(90deg,#ef4444,#f59e0b,#22c55e,#3b82f6)",
+                })
+              )
             }
           >
             Gradient
@@ -500,7 +576,7 @@ export default function RichTextEditor({ value, onChange }: Props) {
             variant="secondary"
             size="sm"
             onMouseDown={keepSelection}
-            onClick={() => clearTextStyleAttr(["gradientCss"])}
+            onClick={() => runWithSelection(() => clearTextStyleAttr(["gradientCss"]))}
           >
             No Grad
           </Button>
@@ -510,7 +586,7 @@ export default function RichTextEditor({ value, onChange }: Props) {
             variant="secondary"
             size="sm"
             onMouseDown={keepSelection}
-            onClick={() => setTextStyleAttrs({ textTransform: "uppercase" })}
+            onClick={() => runWithSelection(() => setTextStyleAttrs({ textTransform: "uppercase" }))}
           >
             Upper
           </Button>
@@ -520,7 +596,7 @@ export default function RichTextEditor({ value, onChange }: Props) {
             variant="secondary"
             size="sm"
             onMouseDown={keepSelection}
-            onClick={() => setTextStyleAttrs({ textTransform: "lowercase" })}
+            onClick={() => runWithSelection(() => setTextStyleAttrs({ textTransform: "lowercase" }))}
           >
             Lower
           </Button>
@@ -530,7 +606,7 @@ export default function RichTextEditor({ value, onChange }: Props) {
             variant="secondary"
             size="sm"
             onMouseDown={keepSelection}
-            onClick={() => clearTextStyleAttr(["textTransform"])}
+            onClick={() => runWithSelection(() => clearTextStyleAttr(["textTransform"]))}
           >
             Normal
           </Button>
@@ -540,7 +616,7 @@ export default function RichTextEditor({ value, onChange }: Props) {
             variant="secondary"
             size="sm"
             onMouseDown={keepSelection}
-            onClick={() => setTextStyleAttrs({ fx: "blink" })}
+            onClick={() => runWithSelection(() => setTextStyleAttrs({ fx: "blink" }))}
           >
             Blink
           </Button>
@@ -550,7 +626,7 @@ export default function RichTextEditor({ value, onChange }: Props) {
             variant="secondary"
             size="sm"
             onMouseDown={keepSelection}
-            onClick={() => setTextStyleAttrs({ fx: "pulse" })}
+            onClick={() => runWithSelection(() => setTextStyleAttrs({ fx: "pulse" }))}
           >
             Pulse
           </Button>
@@ -560,7 +636,7 @@ export default function RichTextEditor({ value, onChange }: Props) {
             variant="secondary"
             size="sm"
             onMouseDown={keepSelection}
-            onClick={() => clearTextStyleAttr(["fx"])}
+            onClick={() => runWithSelection(() => clearTextStyleAttr(["fx"]))}
           >
             No FX
           </Button>
@@ -582,7 +658,7 @@ export default function RichTextEditor({ value, onChange }: Props) {
           variant="secondary"
           size="sm"
           onMouseDown={keepSelection}
-          onClick={() => alignSelectedImage("left")}
+          onClick={() => runWithSelection(() => alignSelectedImage("left"))}
           disabled={!editor.isActive("image")}
         >
           Img Left
@@ -593,7 +669,7 @@ export default function RichTextEditor({ value, onChange }: Props) {
           variant="secondary"
           size="sm"
           onMouseDown={keepSelection}
-          onClick={() => alignSelectedImage("center")}
+          onClick={() => runWithSelection(() => alignSelectedImage("center"))}
           disabled={!editor.isActive("image")}
         >
           Img Center
@@ -604,7 +680,7 @@ export default function RichTextEditor({ value, onChange }: Props) {
           variant="secondary"
           size="sm"
           onMouseDown={keepSelection}
-          onClick={() => alignSelectedImage("right")}
+          onClick={() => runWithSelection(() => alignSelectedImage("right"))}
           disabled={!editor.isActive("image")}
         >
           Img Right

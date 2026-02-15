@@ -2,11 +2,16 @@ export type MobileMenuVisibility = "all" | "mobile" | "desktop";
 
 export type MobileMenuItem = {
   id: string;
-  type: "category" | "link";
+  type: "category" | "link" | "page";
+  // label override (legacy: title)
   title: string;
+  // legacy/custom href (link type) or stored fallback
   href: string;
+  // reference id for category/page (legacy: categoryId)
+  refId?: string;
   categoryId?: string;
   includeChildren?: boolean;
+  openInNewTab?: boolean;
   enabled: boolean;
   visibility: MobileMenuVisibility;
   icon?: string;
@@ -17,6 +22,7 @@ export type MobileMenuItem = {
 
 export type MobileMenuConfig = {
   useDefaultMenu: boolean;
+  autoSyncCategories?: boolean;
   items: MobileMenuItem[];
   featuredBannerHtml?: string;
   promoBannerHtml?: string;
@@ -47,16 +53,20 @@ function normalizeItem(input: unknown, depth: number): MobileMenuItem | null {
   if (!isRecord(input) || depth > 20) return null;
 
   const id = readString(input.id).trim();
-  const type = input.type === "category" || input.type === "link" ? input.type : "link";
+  const type = input.type === "category" || input.type === "link" || input.type === "page" ? input.type : "link";
   const title = readString(input.title).trim();
   const href = readString(input.href).trim();
 
+  const refId = readOptionalString(input.refId)?.trim() || undefined;
   const categoryId = readOptionalString(input.categoryId)?.trim() || undefined;
   const includeChildren = readBool(input.includeChildren, false);
+  const openInNewTab = readBool(input.openInNewTab, false);
 
   if (!id) return null;
-  // Back-compat: allow category items to omit title/href when categoryId is provided.
-  if ((!title || !href) && !(type === "category" && categoryId)) return null;
+  // Back-compat: allow ref-based items to omit title/href when refId/categoryId is provided.
+  const effectiveRefId = refId || categoryId;
+  if ((!title || !href) && !effectiveRefId && type !== "link") return null;
+  if (type === "link" && (!title || !href)) return null;
 
   const childrenRaw = Array.isArray(input.children) ? input.children : [];
   const children = childrenRaw.map((c) => normalizeItem(c, depth + 1)).filter(Boolean) as MobileMenuItem[];
@@ -66,8 +76,10 @@ function normalizeItem(input: unknown, depth: number): MobileMenuItem | null {
     type,
     title,
     href,
+    refId,
     categoryId,
     includeChildren,
+    openInNewTab,
     enabled: readBool(input.enabled, true),
     visibility: readVisibility(input.visibility),
     icon: readString(input.icon).trim() || undefined,
@@ -80,6 +92,7 @@ function normalizeItem(input: unknown, depth: number): MobileMenuItem | null {
 export function normalizeMobileMenuConfig(input: unknown): MobileMenuConfig {
   const empty: MobileMenuConfig = {
     useDefaultMenu: true,
+    autoSyncCategories: true,
     items: [],
     featuredBannerHtml: "",
     promoBannerHtml: "",
@@ -93,6 +106,7 @@ export function normalizeMobileMenuConfig(input: unknown): MobileMenuConfig {
 
   return {
     useDefaultMenu: readBool(input.useDefaultMenu, true),
+    autoSyncCategories: readBool(input.autoSyncCategories, true),
     items,
     featuredBannerHtml: readString(input.featuredBannerHtml),
     promoBannerHtml: readString(input.promoBannerHtml),

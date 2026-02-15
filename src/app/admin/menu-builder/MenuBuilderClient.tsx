@@ -39,6 +39,13 @@ type AdminCategoryItem = {
   menuLabel?: string;
 };
 
+type AdminPageItem = {
+  id: string;
+  title: string;
+  slug: string;
+  isPublished: boolean;
+};
+
 type DragPayload = {
   id: string;
 };
@@ -47,6 +54,14 @@ type PreviewMode = "mobile" | "desktop";
 
 function cloneItems(items: MobileMenuItem[]): MobileMenuItem[] {
   return items.map((x) => ({ ...x, children: x.children ? cloneItems(x.children) : [] }));
+}
+
+function cloneItemWithNewIds(item: MobileMenuItem): MobileMenuItem {
+  return {
+    ...item,
+    id: uid("dup"),
+    children: Array.isArray(item.children) ? item.children.map(cloneItemWithNewIds) : [],
+  };
 }
 
 function findAndRemove(list: MobileMenuItem[], id: string): { item: MobileMenuItem | null; next: MobileMenuItem[] } {
@@ -127,32 +142,94 @@ function updateItem(list: MobileMenuItem[], id: string, patch: Partial<MobileMen
   return next;
 }
 
+function depthOf(item: MobileMenuItem, depth: number): number {
+  const children = Array.isArray(item.children) ? item.children : [];
+  if (children.length === 0) return depth;
+  return Math.max(...children.map((c) => depthOf(c, depth + 1)));
+}
+
+function maxDepth(list: MobileMenuItem[]): number {
+  if (!Array.isArray(list) || list.length === 0) return 0;
+  return Math.max(...list.map((it) => depthOf(it, 1)));
+}
+
+function containsId(item: MobileMenuItem, id: string): boolean {
+  if (item.id === id) return true;
+  for (const ch of item.children ?? []) {
+    if (containsId(ch, id)) return true;
+  }
+  return false;
+}
+
+function canNestUnder(args: { tree: MobileMenuItem[]; parentId: string; childId: string; max: number }) {
+  const { tree, parentId, childId, max } = args;
+
+  const find = (list: MobileMenuItem[], id: string): MobileMenuItem | null => {
+    for (const it of list) {
+      if (it.id === id) return it;
+      const found = find(it.children ?? [], id);
+      if (found) return found;
+    }
+    return null;
+  };
+
+  if (parentId === childId) return { ok: false as const, reason: "Cannot nest item into itself" };
+
+  const parent = find(tree, parentId);
+  const child = find(tree, childId);
+  if (!parent || !child) return { ok: false as const, reason: "Invalid items" };
+
+  if (containsId(child, parentId)) return { ok: false as const, reason: "Circular nesting blocked" };
+
+  const parentDepth = (() => {
+    const walk = (list: MobileMenuItem[], depth: number): number | null => {
+      for (const it of list) {
+        if (it.id === parentId) return depth;
+        const d = walk(it.children ?? [], depth + 1);
+        if (d !== null) return d;
+      }
+      return null;
+    };
+    return walk(tree, 1) ?? 1;
+  })();
+
+  const childDepth = depthOf(child, 1);
+  if (parentDepth + childDepth > max) return { ok: false as const, reason: `Max depth is ${max}` };
+
+  return { ok: true as const };
+}
+
 function ItemRow({
   item,
   depth,
   onPatch,
   onAddChild,
   onDragStart,
-  onDropBefore,
-  onDropAsChild,
+  onDropSmart,
+  selectedId,
+  onSelect,
 }: {
   item: MobileMenuItem;
   depth: number;
   onPatch: (id: string, patch: Partial<MobileMenuItem>) => void;
   onAddChild: (parentId: string) => void;
   onDragStart: (id: string) => void;
-  onDropBefore: (targetId: string) => void;
-  onDropAsChild: (parentId: string) => void;
+  onDropSmart: (targetId: string, mode: "before" | "child") => void;
+  selectedId: string;
+  onSelect: (id: string) => void;
 }) {
   const [open, setOpen] = useState(true);
+  const selected = item.id === selectedId;
 
   return (
     <div className="w-full">
       <div
         className={cn(
           "flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-surface p-3",
-          depth > 0 ? "ml-3" : ""
+          depth > 0 ? "ml-3" : "",
+          selected ? "ring-2 ring-foreground/20" : ""
         )}
+        onClick={() => onSelect(item.id)}
         draggable
         onDragStart={(e) => {
           const payload: DragPayload = { id: item.id };
@@ -170,7 +247,10 @@ function ItemRow({
           if (!raw) return;
           const parsed = JSON.parse(raw) as DragPayload;
           if (!parsed?.id || parsed.id === item.id) return;
-          onDropBefore(item.id);
+          const box = (e.currentTarget as HTMLElement).getBoundingClientRect();
+          const ratio = (e.clientX - box.left) / Math.max(1, box.width);
+          const mode: "before" | "child" = ratio > 0.72 ? "child" : "before";
+          onDropSmart(item.id, mode);
         }}
       >
         <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -204,6 +284,26 @@ function ItemRow({
           />
           Enabled
         </label>
+
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={Boolean(item.openInNewTab)}
+            onChange={(e) => onPatch(item.id, { openInNewTab: e.target.checked })}
+          />
+          New tab
+        </label>
+
+        {item.type === "category" ? (
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={typeof item.includeChildren === "boolean" ? item.includeChildren : false}
+              onChange={(e) => onPatch(item.id, { includeChildren: e.target.checked })}
+            />
+            Include children
+          </label>
+        ) : null}
 
         <label className="flex items-center gap-2 text-sm">
           <select
@@ -245,7 +345,7 @@ function ItemRow({
             if (!raw) return;
             const parsed = JSON.parse(raw) as DragPayload;
             if (!parsed?.id || parsed.id === item.id) return;
-            onDropAsChild(item.id);
+            onDropSmart(item.id, "child");
           }}
         >
           Add Child / Drop Here
@@ -262,8 +362,9 @@ function ItemRow({
               onPatch={onPatch}
               onAddChild={onAddChild}
               onDragStart={onDragStart}
-              onDropBefore={onDropBefore}
-              onDropAsChild={onDropAsChild}
+              onDropSmart={onDropSmart}
+              selectedId={selectedId}
+              onSelect={onSelect}
             />
           ))}
         </div>
@@ -277,12 +378,134 @@ export default function MenuBuilderClient() {
   const [saving, setSaving] = useState(false);
   const [cfg, setCfg] = useState<MobileMenuConfig>(() => normalizeMobileMenuConfig(null));
   const draggedIdRef = useRef<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string>("");
 
   const [previewMode, setPreviewMode] = useState<PreviewMode>("mobile");
 
   const [categories, setCategories] = useState<AdminCategoryItem[]>([]);
+  const [pages, setPages] = useState<AdminPageItem[]>([]);
   const [catPickId, setCatPickId] = useState<string>("");
   const [catIncludeChildren, setCatIncludeChildren] = useState(true);
+
+  const [leftOpenCats, setLeftOpenCats] = useState(true);
+  const [leftOpenPages, setLeftOpenPages] = useState(true);
+  const [leftOpenLinks, setLeftOpenLinks] = useState(true);
+
+  const [newLinkLabel, setNewLinkLabel] = useState("");
+  const [newLinkHref, setNewLinkHref] = useState("/");
+
+  function onSelect(id: string) {
+    setSelectedId(id);
+  }
+
+  function addPageRef(id: string) {
+    const p = pages.find((x) => x.id === id);
+    if (!p) return;
+    const it: MobileMenuItem = {
+      id: uid("page"),
+      type: "page",
+      title: "",
+      href: "",
+      refId: p.id,
+      openInNewTab: false,
+      enabled: true,
+      visibility: "all",
+      children: [],
+    };
+    setCfg((prev) => ({ ...prev, items: [...(prev.items as MobileMenuItem[]), it] }));
+  }
+
+  function addCustomLinkFromLeft() {
+    const t = newLinkLabel.trim();
+    const h = newLinkHref.trim();
+    if (!t || !h) {
+      toast.error("Enter label and href");
+      return;
+    }
+
+    const it: MobileMenuItem = {
+      id: uid("link"),
+      type: "link",
+      title: t,
+      href: h,
+      openInNewTab: false,
+      enabled: true,
+      visibility: "all",
+      children: [],
+    };
+
+    setCfg((prev) => ({ ...prev, items: [...(prev.items as MobileMenuItem[]), it] }));
+    setNewLinkLabel("");
+    setNewLinkHref("/");
+  }
+
+  function duplicateMenu() {
+    setCfg((prev) => ({ ...prev, items: (prev.items as MobileMenuItem[]).map(cloneItemWithNewIds) }));
+    toast.success("Menu duplicated");
+  }
+
+  function resetToDefault() {
+    setCfg((prev) => ({ ...prev, useDefaultMenu: true, items: [] }));
+    toast.success("Reset to default");
+  }
+
+  async function exportJson() {
+    const data = JSON.stringify(cfg.items ?? [], null, 2);
+    try {
+      await navigator.clipboard.writeText(data);
+      toast.success("Exported to clipboard");
+    } catch {
+      toast.error("Clipboard blocked");
+    }
+  }
+
+  function importJson() {
+    const raw = window.prompt("Paste menu JSON");
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      if (!Array.isArray(parsed)) {
+        toast.error("Invalid JSON");
+        return;
+      }
+      setCfg((prev) => ({ ...prev, useDefaultMenu: false, items: parsed as MobileMenuItem[] }));
+      toast.success("Imported");
+    } catch {
+      toast.error("Invalid JSON");
+    }
+  }
+
+  function dropSmart(targetId: string, mode: "before" | "child") {
+    const draggedId = draggedIdRef.current;
+    if (!draggedId) return;
+
+    setCfg((prev) => {
+      const list = prev.items as MobileMenuItem[];
+      const { item, next } = findAndRemove(list, draggedId);
+      if (!item) return prev;
+
+      if (mode === "child") {
+        const guard = canNestUnder({ tree: next, parentId: targetId, childId: draggedId, max: 3 });
+        if (!guard.ok) {
+          toast.error(guard.reason);
+          return prev;
+        }
+        const candidate = insertAsChild(next, targetId, item);
+        if (maxDepth(candidate) > 3) {
+          toast.error("Max depth is 3");
+          return prev;
+        }
+        return { ...prev, items: candidate };
+      }
+
+      const candidate = insertBefore(next, targetId, item);
+      if (maxDepth(candidate) > 3) {
+        toast.error("Max depth is 3");
+        return prev;
+      }
+      return { ...prev, items: candidate };
+    });
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -300,6 +523,12 @@ export default function MenuBuilderClient() {
         const cjson = (await cres.json().catch(() => null)) as unknown;
         const list = isRecord(cjson) && Array.isArray(cjson.items) ? (cjson.items as AdminCategoryItem[]) : [];
         if (!cancelled) setCategories(list);
+
+        const pres = await fetch("/api/admin/cms/pages?limit=50&page=1", { cache: "no-store" });
+        const pjson = (await pres.json().catch(() => null)) as unknown;
+        const pitems = isRecord(pjson) && Array.isArray(pjson.items) ? (pjson.items as AdminPageItem[]) : [];
+        const published = pitems.filter((p) => Boolean(p && p.isPublished));
+        if (!cancelled) setPages(published);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -348,6 +577,8 @@ export default function MenuBuilderClient() {
     };
     for (const r of categoryTree) walk(r);
 
+    const pagesById = new Map(pages.map((p) => [p.id, p]));
+
     const resolveList = (list: MobileMenuItem[], depth: number): MobileMenuItem[] => {
       if (!Array.isArray(list) || depth > 20) return [];
       const out: MobileMenuItem[] = [];
@@ -356,22 +587,24 @@ export default function MenuBuilderClient() {
         if (!raw || !raw.enabled) continue;
 
         if (raw.type === "category") {
-          const cid = (raw.categoryId || "").trim() || (raw.id.startsWith("cat_") ? raw.id.slice(4) : raw.id);
+          const cid = (raw.refId || "").trim() || (raw.categoryId || "").trim() || (raw.id.startsWith("cat_") ? raw.id.slice(4) : raw.id);
           const node = cid ? byId.get(cid) : undefined;
           if (!node || !node.isActive) continue;
 
           const title = String(node.menuLabel || node.name || "").trim();
           const href = `/category/${encodeURIComponent(String(node.slug || "").trim())}`;
-          const manualChildren = raw.includeChildren ? [] : resolveList(raw.children ?? [], depth + 1);
-          const autoChildren = raw.includeChildren
+          const include = typeof raw.includeChildren === "boolean" ? raw.includeChildren : (cfg.autoSyncCategories ?? true);
+          const manualChildren = include ? [] : resolveList(raw.children ?? [], depth + 1);
+          const autoChildren = include
             ? (node.children ?? []).filter((c) => c.isActive)
                 .map((c) => ({
                   id: `cat_${c.id}`,
                   type: "category" as const,
                   title: String(c.menuLabel || c.name || "").trim(),
                   href: `/category/${encodeURIComponent(String(c.slug || "").trim())}`,
+                  refId: c.id,
                   categoryId: c.id,
-                  includeChildren: true,
+                  includeChildren: undefined,
                   enabled: true,
                   visibility: "all" as const,
                   icon: typeof c.icon === "string" && c.icon.trim() ? c.icon.trim() : undefined,
@@ -389,6 +622,21 @@ export default function MenuBuilderClient() {
           continue;
         }
 
+        if (raw.type === "page") {
+          const pid = (raw.refId || "").trim();
+          const p = pid ? pagesById.get(pid) : undefined;
+          if (!p) continue;
+          const title = raw.title?.trim() ? raw.title.trim() : String(p.title || "").trim();
+          const href = `/p/${encodeURIComponent(String(p.slug || "").trim())}`;
+          out.push({
+            ...raw,
+            title,
+            href,
+            children: resolveList(raw.children ?? [], depth + 1),
+          });
+          continue;
+        }
+
         out.push({ ...raw, children: resolveList(raw.children ?? [], depth + 1) });
       }
 
@@ -396,7 +644,7 @@ export default function MenuBuilderClient() {
     };
 
     return resolveList(cfg.items as MobileMenuItem[], 0);
-  }, [cfg.useDefaultMenu, cfg.items, categoryTree]);
+  }, [cfg.useDefaultMenu, cfg.items, categoryTree, cfg.autoSyncCategories, pages]);
 
   const desktopPreviewItems = useMemo(() => {
     const walk = (list: MobileMenuItem[], depth: number): MobileMenuItem[] => {
@@ -413,9 +661,7 @@ export default function MenuBuilderClient() {
     const hasChildren = (item.children?.length ?? 0) > 0;
 
     return (
-      <div className={cn("w-full", depth > 0 ? "pl-4" : "")}
-        data-depth={depth}
-      >
+      <div className={cn("w-full", depth > 0 ? "pl-4" : "")} data-depth={depth}>
         <div className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-foreground hover:bg-muted/60">
           <span className="min-w-0 flex-1 truncate font-semibold">{item.title}</span>
           {item.badgeLabel?.trim() ? (
@@ -446,6 +692,7 @@ export default function MenuBuilderClient() {
         body: JSON.stringify({
           mobileMenu: {
             useDefaultMenu: cfg.useDefaultMenu,
+            autoSyncCategories: cfg.autoSyncCategories ?? true,
             featuredBannerHtml: cfg.featuredBannerHtml ?? "",
             promoBannerHtml: cfg.promoBannerHtml ?? "",
             items: cfg.items,
@@ -477,6 +724,7 @@ export default function MenuBuilderClient() {
       type: "link",
       title: "New Link",
       href: "/",
+      openInNewTab: false,
       enabled: true,
       visibility: "all",
       children: [],
@@ -497,8 +745,10 @@ export default function MenuBuilderClient() {
       type: "category",
       title: "",
       href: "",
+      refId: cid,
       categoryId: cid,
-      includeChildren: catIncludeChildren,
+      includeChildren: catIncludeChildren ? true : false,
+      openInNewTab: false,
       enabled: true,
       visibility: "all",
       children: [],
@@ -521,28 +771,6 @@ export default function MenuBuilderClient() {
     setCfg((prev) => ({ ...prev, items: insertAsChild(prev.items as MobileMenuItem[], parentId, it) }));
   }
 
-  function dropBefore(targetId: string) {
-    const dragged = draggedIdRef.current;
-    if (!dragged || dragged === targetId) return;
-
-    setCfg((prev) => {
-      const removed = findAndRemove(prev.items as MobileMenuItem[], dragged);
-      if (!removed.item) return prev;
-      return { ...prev, items: insertBefore(removed.next, targetId, removed.item) };
-    });
-  }
-
-  function dropAsChild(parentId: string) {
-    const dragged = draggedIdRef.current;
-    if (!dragged || dragged === parentId) return;
-
-    setCfg((prev) => {
-      const removed = findAndRemove(prev.items as MobileMenuItem[], dragged);
-      if (!removed.item) return prev;
-      return { ...prev, items: insertAsChild(removed.next, parentId, removed.item) };
-    });
-  }
-
   if (loading) {
     return (
       <div className="space-y-3">
@@ -554,7 +782,97 @@ export default function MenuBuilderClient() {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_420px]">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[320px_1fr_420px]">
+      <div className="space-y-4 rounded-3xl border border-border bg-surface p-4">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-sm font-semibold">Menu Sources</p>
+          <Button type="button" variant="ghost" size="sm" onClick={() => { setLeftOpenCats(true); setLeftOpenPages(true); setLeftOpenLinks(true); }}>
+            Expand
+          </Button>
+        </div>
+
+        <div className="rounded-2xl border border-border bg-background p-3">
+          <button type="button" className="flex w-full items-center justify-between text-sm font-semibold" onClick={() => setLeftOpenCats((v) => !v)}>
+            Categories
+            <span className="text-muted-foreground">{leftOpenCats ? "−" : "+"}</span>
+          </button>
+          {leftOpenCats ? (
+            <div className="mt-3 grid gap-2">
+              <select
+                className="h-9 w-full rounded-xl border border-border bg-background px-2 text-sm"
+                value={catPickId}
+                onChange={(e) => setCatPickId(e.target.value)}
+                disabled={cfg.useDefaultMenu}
+              >
+                <option value="">Select category...</option>
+                {categorySelectOptions.map((opt) => (
+                  <option key={opt.id} value={opt.id}>
+                    {"  ".repeat(opt.depth)}{opt.title}
+                  </option>
+                ))}
+              </select>
+
+              <label className="flex items-center gap-2 text-sm font-semibold">
+                <input
+                  type="checkbox"
+                  checked={catIncludeChildren}
+                  onChange={(e) => setCatIncludeChildren(e.target.checked)}
+                  disabled={cfg.useDefaultMenu}
+                />
+                Include children
+              </label>
+
+              <Button type="button" variant="secondary" onClick={addCategoryRef} disabled={cfg.useDefaultMenu}>
+                Add Category
+              </Button>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="rounded-2xl border border-border bg-background p-3">
+          <button type="button" className="flex w-full items-center justify-between text-sm font-semibold" onClick={() => setLeftOpenPages((v) => !v)}>
+            Pages
+            <span className="text-muted-foreground">{leftOpenPages ? "−" : "+"}</span>
+          </button>
+          {leftOpenPages ? (
+            <div className="mt-3 grid gap-2 max-h-[260px] overflow-auto">
+              {pages.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No published pages.</p>
+              ) : (
+                pages.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className="flex w-full items-center justify-between rounded-xl border border-border bg-surface px-3 py-2 text-sm font-semibold hover:bg-muted/60"
+                    onClick={() => addPageRef(p.id)}
+                    disabled={cfg.useDefaultMenu}
+                  >
+                    <span className="truncate">{p.title}</span>
+                    <span className="text-muted-foreground">Add</span>
+                  </button>
+                ))
+              )}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="rounded-2xl border border-border bg-background p-3">
+          <button type="button" className="flex w-full items-center justify-between text-sm font-semibold" onClick={() => setLeftOpenLinks((v) => !v)}>
+            Custom Link
+            <span className="text-muted-foreground">{leftOpenLinks ? "−" : "+"}</span>
+          </button>
+          {leftOpenLinks ? (
+            <div className="mt-3 grid gap-2">
+              <Input value={newLinkLabel} onChange={(e) => setNewLinkLabel(e.target.value)} className="h-9" placeholder="Label" />
+              <Input value={newLinkHref} onChange={(e) => setNewLinkHref(e.target.value)} className="h-9" placeholder="/path or https://..." />
+              <Button type="button" variant="secondary" onClick={addCustomLinkFromLeft} disabled={cfg.useDefaultMenu}>
+                Add Link
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -563,44 +881,25 @@ export default function MenuBuilderClient() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button type="button" variant="secondary" onClick={addCategoryRef} disabled={cfg.useDefaultMenu}>
-              Add Category
-            </Button>
             <Button type="button" variant="secondary" onClick={addTopLink}>
               Add Link
+            </Button>
+            <Button type="button" variant="ghost" onClick={duplicateMenu} disabled={cfg.useDefaultMenu}>
+              Duplicate
+            </Button>
+            <Button type="button" variant="ghost" onClick={resetToDefault}>
+              Reset
+            </Button>
+            <Button type="button" variant="ghost" onClick={importJson} disabled={cfg.useDefaultMenu}>
+              Import
+            </Button>
+            <Button type="button" variant="ghost" onClick={exportJson}>
+              Export
             </Button>
             <Button type="button" onClick={save} disabled={saving}>
               {saving ? "Saving..." : "Save"}
             </Button>
           </div>
-        </div>
-
-        <div className={cn("flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-surface p-4", cfg.useDefaultMenu ? "opacity-60" : "")}>
-          <div className="min-w-[220px] flex-1">
-            <select
-              className="h-9 w-full rounded-xl border border-border bg-background px-2 text-sm"
-              value={catPickId}
-              onChange={(e) => setCatPickId(e.target.value)}
-              disabled={cfg.useDefaultMenu}
-            >
-              <option value="">Select category...</option>
-              {categorySelectOptions.map((opt) => (
-                <option key={opt.id} value={opt.id}>
-                  {"  ".repeat(opt.depth)}{opt.title}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <label className="flex items-center gap-2 text-sm font-semibold">
-            <input
-              type="checkbox"
-              checked={catIncludeChildren}
-              onChange={(e) => setCatIncludeChildren(e.target.checked)}
-              disabled={cfg.useDefaultMenu}
-            />
-            Include subcategories automatically
-          </label>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-surface p-4">
@@ -613,8 +912,17 @@ export default function MenuBuilderClient() {
             Use Default Menu
           </label>
 
-          <div className={cn("min-w-0 flex-1", cfg.useDefaultMenu ? "opacity-60" : "")}
-          >
+          <label className={cn("flex items-center gap-2 text-sm font-semibold", cfg.useDefaultMenu ? "opacity-60" : "")}>
+            <input
+              type="checkbox"
+              checked={Boolean(cfg.autoSyncCategories ?? true)}
+              onChange={(e) => setCfg((prev) => ({ ...prev, autoSyncCategories: e.target.checked }))}
+              disabled={cfg.useDefaultMenu}
+            />
+            Auto-sync category children
+          </label>
+
+          <div className={cn("min-w-0 flex-1", cfg.useDefaultMenu ? "opacity-60" : "")}>
             <Input
               value={cfg.featuredBannerHtml ?? ""}
               onChange={(e) => setCfg((prev) => ({ ...prev, featuredBannerHtml: e.target.value }))}
@@ -624,8 +932,7 @@ export default function MenuBuilderClient() {
             />
           </div>
 
-          <div className={cn("min-w-0 flex-1", cfg.useDefaultMenu ? "opacity-60" : "")}
-          >
+          <div className={cn("min-w-0 flex-1", cfg.useDefaultMenu ? "opacity-60" : "")}>
             <Input
               value={cfg.promoBannerHtml ?? ""}
               onChange={(e) => setCfg((prev) => ({ ...prev, promoBannerHtml: e.target.value }))}
@@ -647,8 +954,9 @@ export default function MenuBuilderClient() {
               onDragStart={(id) => {
                 draggedIdRef.current = id;
               }}
-              onDropBefore={dropBefore}
-              onDropAsChild={dropAsChild}
+              onDropSmart={dropSmart}
+              selectedId={selectedId}
+              onSelect={onSelect}
             />
           ))}
         </div>

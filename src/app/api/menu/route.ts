@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { dbConnect } from "@/lib/db";
 import SiteSetting from "@/models/SiteSetting";
+import CmsPage from "@/models/CmsPage";
 import {
   buildCategoryTree,
   normalizeMobileMenuConfig,
@@ -43,7 +44,23 @@ export async function GET() {
   // Smart-sync: resolve category references against live category tree.
   const cats = await loadActiveCategoriesForMenu();
   const tree = buildCategoryTree(cats);
-  const resolved = resolveMenuItemsWithCategories({ items: cfg.items, tree });
+
+  const pages = (await CmsPage.find({ isPublished: true })
+    .select("title slug")
+    .lean()) as unknown as Array<{ _id: unknown; title?: unknown; slug?: unknown }>;
+  const pagesById = new Map(
+    (Array.isArray(pages) ? pages : []).map((p) => [
+      String(p._id),
+      { id: String(p._id), title: String(p.title ?? ""), slug: String(p.slug ?? "") },
+    ])
+  );
+
+  const resolved = resolveMenuItemsWithCategories({
+    items: cfg.items,
+    tree,
+    pagesById,
+    autoSyncCategories: cfg.autoSyncCategories ?? true,
+  });
 
   return NextResponse.json(
     { mobileMenu: { ...cfg, items: resolved } },

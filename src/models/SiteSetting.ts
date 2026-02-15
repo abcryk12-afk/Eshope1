@@ -168,11 +168,13 @@ const ShareSettingsSchema = new Schema(
 const MobileMenuItemSchema = new Schema(
   {
     id: { type: String, trim: true, maxlength: 80 },
-    type: { type: String, trim: true, enum: ["category", "link"], default: "link" },
+    type: { type: String, trim: true, enum: ["category", "link", "page"], default: "link" },
     title: { type: String, trim: true, maxlength: 120 },
     href: { type: String, trim: true, maxlength: 500 },
+    refId: { type: String, trim: true, maxlength: 60 },
     categoryId: { type: String, trim: true, maxlength: 60 },
     includeChildren: { type: Boolean, default: false },
+    openInNewTab: { type: Boolean, default: false },
     enabled: { type: Boolean, default: true },
     visibility: { type: String, trim: true, enum: ["all", "mobile", "desktop"], default: "all" },
     icon: { type: String, trim: true, maxlength: 80 },
@@ -186,8 +188,9 @@ const MobileMenuItemSchema = new Schema(
 const MobileMenuSettingsSchema = new Schema(
   {
     useDefaultMenu: { type: Boolean, default: true },
-    featuredBannerHtml: { type: String, trim: true, maxlength: 8000 },
-    promoBannerHtml: { type: String, trim: true, maxlength: 8000 },
+    autoSyncCategories: { type: Boolean, default: true },
+    featuredBannerHtml: { type: String, default: "" },
+    promoBannerHtml: { type: String, default: "" },
     items: { type: [MobileMenuItemSchema], default: [] },
     updatedAt: { type: Number, default: 0 },
   },
