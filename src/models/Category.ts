@@ -6,6 +6,9 @@ const CategorySchema = new Schema(
     slug: { type: String, required: true, unique: true, trim: true, index: true },
     isActive: { type: Boolean, default: true },
     sortOrder: { type: Number, default: 0 },
+    parentId: { type: Schema.Types.ObjectId, ref: "Category", default: null, index: true },
+    icon: { type: String, trim: true, maxlength: 80 },
+    menuLabel: { type: String, trim: true, maxlength: 80 },
   },
   { timestamps: true }
 );

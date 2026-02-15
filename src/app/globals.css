@@ -218,7 +218,43 @@ body {
 }
 
 .animate-announcement-pulse {
-  animation: announcementPulse 1200ms ease-in-out infinite;
+  animation: announcementPulse 900ms ease-in-out infinite;
+}
+
+.horizontal-scroll-container {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 8px;
+  scroll-behavior: smooth;
+  overscroll-behavior-x: contain;
+  scroll-padding-inline: 16px;
+  scrollbar-width: none;
+  touch-action: pan-y;
+}
+
+.horizontal-scroll-container::-webkit-scrollbar {
+  display: none;
+}
+
+.horizontal-scroll-container.is-dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.product-card {
+  flex: 0 0 48%;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+@media (min-width: 768px) {
+  .product-card {
+    flex-basis: 32%;
+  }
 }
 
 .announcement-bar [data-fx='blink'] {

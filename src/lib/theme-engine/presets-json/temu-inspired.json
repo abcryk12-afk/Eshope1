@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "name": "Temu Inspired",
+  "presetId": "temu-inspired",
+  "createdAt": 0,
+  "tokens": {
+    "colors": {
+      "primary": "#111827",
+      "accent": "#f97316",
+      "background": "#ffffff",
+      "surface": "#ffffff",
+      "muted": "#fef3c7",
+      "destructive": "#ef4444",
+      "success": "#16a34a"
+    },
+    "layout": {
+      "gridColumns": 5,
+      "cardGapPx": 10,
+      "sectionPaddingPx": 20,
+      "headerHeightPx": 74,
+      "footerStyle": "grid"
+    },
+    "radius": { "sm": 14, "md": 18, "lg": 24, "xl": 34 },
+    "components": {
+      "headerStyle": "marketplace",
+      "cardStyle": "shadow",
+      "buttonStyle": "gradient",
+      "footerStyle": "grid"
+    },
+    "marketplace": {
+      "enabled": true,
+      "compactGrid": true,
+      "discountBadges": true,
+      "flashSaleRibbons": true,
+      "stickyHeader": true,
+      "aggressiveCtas": true
+    },
+    "animations": {
+      "intensity": 1.2,
+      "cardLift": true,
+      "imageZoom": true
+    }
+  }
+}

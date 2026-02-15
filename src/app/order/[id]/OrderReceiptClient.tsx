@@ -143,6 +143,60 @@ export default function OrderReceiptClient({ orderId, email }: Props) {
   }, [orderId, query]);
 
   useEffect(() => {
+    if (!order) return;
+    if (typeof window === "undefined") return;
+
+    const w = window as unknown as {
+      __tracking?: {
+        enabled: boolean;
+        autoEventsEnabled: boolean;
+        trackMeta: (event: string, params?: Record<string, unknown>) => void;
+        trackGtag: (event: string, params?: Record<string, unknown>) => void;
+        trackAdsConversion: (params?: Record<string, unknown>) => void;
+      };
+    };
+
+    if (!w.__tracking?.enabled) return;
+    if (!w.__tracking.autoEventsEnabled) return;
+
+    const key = `shop.trk.purchase.${order.id}`;
+    const already = window.localStorage.getItem(key);
+    if (already === "1") return;
+
+    const items = (order.items ?? []).map((it) => ({
+      item_id: it.slug || it.title,
+      item_name: it.title,
+      price: it.unitPrice,
+      quantity: it.quantity,
+    }));
+
+    const value = Number(order.totalAmount ?? 0);
+    const currency = (order.currency ?? "PKR") as string;
+
+    w.__tracking.trackMeta("Purchase", {
+      currency,
+      value,
+      order_id: order.id,
+      contents: (order.items ?? []).map((it) => ({ id: it.slug || it.title, quantity: it.quantity, item_price: it.unitPrice })),
+    });
+
+    w.__tracking.trackGtag("purchase", {
+      transaction_id: order.id,
+      currency,
+      value,
+      items,
+    });
+
+    w.__tracking.trackAdsConversion({
+      transaction_id: order.id,
+      value,
+      currency,
+    });
+
+    window.localStorage.setItem(key, "1");
+  }, [order]);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function loadPayments() {

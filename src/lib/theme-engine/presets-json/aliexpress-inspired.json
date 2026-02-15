@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "name": "AliExpress Inspired",
+  "presetId": "aliexpress-commerce",
+  "createdAt": 0,
+  "tokens": {
+    "colors": {
+      "primary": "#111827",
+      "accent": "#ef4444",
+      "background": "#ffffff",
+      "surface": "#ffffff",
+      "muted": "#fff1f2",
+      "destructive": "#b91c1c",
+      "success": "#16a34a"
+    },
+    "layout": {
+      "gridColumns": 5,
+      "cardGapPx": 12,
+      "headerHeightPx": 76,
+      "footerStyle": "grid"
+    },
+    "radius": { "sm": 14, "md": 18, "lg": 24, "xl": 34 },
+    "components": {
+      "headerStyle": "marketplace",
+      "cardStyle": "shadow",
+      "buttonStyle": "gradient",
+      "footerStyle": "grid"
+    },
+    "marketplace": {
+      "enabled": true,
+      "compactGrid": true,
+      "discountBadges": true,
+      "flashSaleRibbons": true,
+      "stickyHeader": true,
+      "aggressiveCtas": true
+    }
+  }
+}

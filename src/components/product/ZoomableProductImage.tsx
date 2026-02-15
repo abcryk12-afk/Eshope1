@@ -176,6 +176,7 @@ export default function ZoomableProductImage({ src, alt, className }: Props) {
           src={src}
           alt={alt}
           fill
+          sizes="(max-width: 768px) 100vw, 50vw"
           priority
           className="select-none object-cover transition-transform duration-150"
           style={{

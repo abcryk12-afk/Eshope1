@@ -37,6 +37,14 @@ type ProductFormState = {
   isNonReturnable: boolean;
   isActive: boolean;
   variants: VariantForm[];
+  seoTitle: string;
+  seoDescription: string;
+  focusKeyword: string;
+  seoKeywords: string;
+  ogTitle: string;
+  ogDescription: string;
+  canonicalUrl: string;
+  noIndex: boolean;
 };
 
 type CategoryOption = {
@@ -108,6 +116,14 @@ function emptyState(): ProductFormState {
     isNonReturnable: false,
     isActive: true,
     variants: [],
+    seoTitle: "",
+    seoDescription: "",
+    focusKeyword: "",
+    seoKeywords: "",
+    ogTitle: "",
+    ogDescription: "",
+    canonicalUrl: "",
+    noIndex: false,
   };
 }
 
@@ -229,6 +245,8 @@ export default function ProductFormClient(props: ProductFormClientProps) {
       const images = readStringArray(p.images);
       const variantsRaw = Array.isArray(p.variants) ? p.variants : [];
 
+      const seo = isRecord(p.seo) ? p.seo : null;
+
       setForm({
         title: readString(p.title),
         slug: readString(p.slug),
@@ -243,6 +261,14 @@ export default function ProductFormClient(props: ProductFormClientProps) {
         isDigital: Boolean(p.isDigital ?? false),
         isNonReturnable: Boolean(p.isNonReturnable ?? false),
         isActive: Boolean(p.isActive ?? true),
+        seoTitle: readString(seo?.title),
+        seoDescription: readString(seo?.description),
+        focusKeyword: readString(seo?.focusKeyword),
+        seoKeywords: readString(seo?.keywords),
+        ogTitle: readString(seo?.ogTitle),
+        ogDescription: readString(seo?.ogDescription),
+        canonicalUrl: readString(seo?.canonicalUrl),
+        noIndex: Boolean(seo?.noIndex ?? false),
         variants:
           variantsRaw.length
             ? variantsRaw.map((vv): VariantForm => {
@@ -396,6 +422,16 @@ export default function ProductFormClient(props: ProductFormClientProps) {
       isNonReturnable: form.isNonReturnable,
       isActive: form.isActive,
       slug,
+      seo: {
+        title: form.seoTitle.trim() || undefined,
+        description: form.seoDescription.trim() || undefined,
+        focusKeyword: form.focusKeyword.trim() || undefined,
+        keywords: form.seoKeywords.trim() || undefined,
+        ogTitle: form.ogTitle.trim() || undefined,
+        ogDescription: form.ogDescription.trim() || undefined,
+        canonicalUrl: form.canonicalUrl.trim() || undefined,
+        noIndex: form.noIndex,
+      },
     };
 
     if (!payload.title || payload.title.length < 2) {
@@ -968,6 +1004,60 @@ export default function ProductFormClient(props: ProductFormClientProps) {
                   />
                   Published
                 </label>
+              </div>
+
+              <div className="rounded-3xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+                <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">SEO</h2>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Optional overrides. If empty, metadata is generated automatically from product data.
+                </p>
+
+                <div className="mt-4 space-y-3">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">SEO Title</label>
+                    <Input value={form.seoTitle} onChange={(e) => setField("seoTitle", e.target.value)} />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">SEO Description</label>
+                    <Input value={form.seoDescription} onChange={(e) => setField("seoDescription", e.target.value)} />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Focus Keyword</label>
+                    <Input value={form.focusKeyword} onChange={(e) => setField("focusKeyword", e.target.value)} />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">SEO Keywords</label>
+                    <Input value={form.seoKeywords} onChange={(e) => setField("seoKeywords", e.target.value)} placeholder="keyword1, keyword2" />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">OG Title</label>
+                    <Input value={form.ogTitle} onChange={(e) => setField("ogTitle", e.target.value)} />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">OG Description</label>
+                    <Input value={form.ogDescription} onChange={(e) => setField("ogDescription", e.target.value)} />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Custom Canonical</label>
+                    <Input value={form.canonicalUrl} onChange={(e) => setField("canonicalUrl", e.target.value)} placeholder="https://example.com/product/your-slug" />
+                  </div>
+
+                  <label className="flex items-center gap-3 text-sm text-zinc-700 dark:text-zinc-300">
+                    <input
+                      type="checkbox"
+                      checked={form.noIndex}
+                      onChange={(e) => setField("noIndex", e.target.checked)}
+                      className="h-4 w-4 rounded border-zinc-300"
+                    />
+                    NoIndex (do not index this product)
+                  </label>
+                </div>
               </div>
 
               <Button type="submit" disabled={saving} className="w-full">

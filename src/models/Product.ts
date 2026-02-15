@@ -35,6 +35,16 @@ const ProductSchema = new Schema(
     ratingAvg: { type: Number, default: 0, min: 0, max: 5 },
     ratingCount: { type: Number, default: 0, min: 0 },
     isActive: { type: Boolean, default: true },
+    seo: {
+      title: { type: String, trim: true, maxlength: 160 },
+      description: { type: String, trim: true, maxlength: 320 },
+      focusKeyword: { type: String, trim: true, maxlength: 120 },
+      keywords: { type: String, trim: true, maxlength: 500 },
+      ogTitle: { type: String, trim: true, maxlength: 160 },
+      ogDescription: { type: String, trim: true, maxlength: 320 },
+      canonicalUrl: { type: String, trim: true, maxlength: 400 },
+      noIndex: { type: Boolean, default: false },
+    },
   },
   { timestamps: true }
 );

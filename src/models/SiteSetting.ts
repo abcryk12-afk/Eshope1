@@ -117,6 +117,81 @@ const ReturnsSettingsSchema = new Schema(
   { _id: false }
  );
 
+const TrackingProviderGa4Schema = new Schema(
+  {
+    enabled: { type: Boolean, default: false },
+    measurementId: { type: String, trim: true, maxlength: 40 },
+    debug: { type: Boolean, default: false },
+  },
+  { _id: false }
+);
+
+const TrackingProviderGoogleAdsSchema = new Schema(
+  {
+    enabled: { type: Boolean, default: false },
+    conversionId: { type: String, trim: true, maxlength: 40 },
+    conversionLabel: { type: String, trim: true, maxlength: 80 },
+  },
+  { _id: false }
+);
+
+const MetaPixelEntrySchema = new Schema(
+  {
+    pixelId: { type: String, trim: true, maxlength: 40 },
+    enabled: { type: Boolean, default: true },
+  },
+  { _id: true }
+);
+
+const TrackingSettingsSchema = new Schema(
+  {
+    enabled: { type: Boolean, default: false },
+    autoEventsEnabled: { type: Boolean, default: true },
+    manualOverrideMode: { type: Boolean, default: false },
+    testEventMode: { type: Boolean, default: false },
+    ga4: { type: TrackingProviderGa4Schema, default: () => ({}) },
+    googleAds: { type: TrackingProviderGoogleAdsSchema, default: () => ({}) },
+    metaPixels: { type: [MetaPixelEntrySchema], default: [] },
+    updatedAt: { type: Number, default: 0 },
+  },
+  { _id: false }
+);
+
+const ShareSettingsSchema = new Schema(
+  {
+    enabled: { type: Boolean, default: false },
+    updatedAt: { type: Number, default: 0 },
+  },
+  { _id: false }
+);
+
+const MobileMenuItemSchema = new Schema(
+  {
+    id: { type: String, trim: true, maxlength: 80 },
+    type: { type: String, trim: true, enum: ["category", "link"], default: "link" },
+    title: { type: String, trim: true, maxlength: 120 },
+    href: { type: String, trim: true, maxlength: 500 },
+    enabled: { type: Boolean, default: true },
+    visibility: { type: String, trim: true, enum: ["all", "mobile", "desktop"], default: "all" },
+    icon: { type: String, trim: true, maxlength: 80 },
+    badgeLabel: { type: String, trim: true, maxlength: 20 },
+    featured: { type: Boolean, default: false },
+    children: { type: [Schema.Types.Mixed], default: [] },
+  },
+  { _id: false }
+);
+
+const MobileMenuSettingsSchema = new Schema(
+  {
+    useDefaultMenu: { type: Boolean, default: true },
+    featuredBannerHtml: { type: String, trim: true, maxlength: 8000 },
+    promoBannerHtml: { type: String, trim: true, maxlength: 8000 },
+    items: { type: [MobileMenuItemSchema], default: [] },
+    updatedAt: { type: Number, default: 0 },
+  },
+  { _id: false }
+);
+
  const ShippingEtaSchema = new Schema(
   {
     minDays: { type: Number, default: 3, min: 0, max: 60 },
@@ -355,6 +430,9 @@ const SiteSettingSchema = new Schema(
     globalSeoDescription: { type: String, trim: true, maxlength: 320 },
     branding: { type: BrandingSchema, default: () => ({}) },
     brandingUpdatedAt: { type: Number, default: 0 },
+    tracking: { type: TrackingSettingsSchema, default: () => ({}) },
+    share: { type: ShareSettingsSchema, default: () => ({}) },
+    mobileMenu: { type: MobileMenuSettingsSchema, default: () => ({}) },
     whatsAppSalesPhone: { type: String, trim: true, maxlength: 40 },
     whatsAppProductTemplate: { type: String, trim: true, maxlength: 5000 },
     whatsAppOrderTemplate: { type: String, trim: true, maxlength: 5000 },

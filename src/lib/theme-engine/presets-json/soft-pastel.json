@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "name": "Soft Pastel",
+  "presetId": "soft-pastel",
+  "createdAt": 0,
+  "tokens": {
+    "colors": {
+      "primary": "#1f2937",
+      "accent": "#fb7185",
+      "background": "#fff7ed",
+      "surface": "#ffffff",
+      "muted": "#fde68a",
+      "destructive": "#f43f5e",
+      "success": "#10b981"
+    },
+    "typography": {
+      "fontFamilyBase": "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Apple Color Emoji, Segoe UI Emoji",
+      "fontSizeBasePx": 16,
+      "fontScale": 1.07
+    },
+    "radius": { "sm": 14, "md": 18, "lg": 22, "xl": 34 },
+    "spacing": { "xs": 6, "sm": 10, "md": 14, "lg": 18, "xl": 28 },
+    "shadows": {
+      "sm": "0 1px 2px rgba(31,41,55,0.08)",
+      "md": "0 14px 34px rgba(31,41,55,0.12)",
+      "lg": "0 34px 80px rgba(31,41,55,0.14)"
+    },
+    "motion": { "fastMs": 130, "normalMs": 230, "slowMs": 440, "easeStandard": "cubic-bezier(0.2, 0, 0, 1)" }
+  }
+}

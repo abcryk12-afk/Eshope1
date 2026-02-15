@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "name": "Vibrant Commerce",
+  "presetId": "vibrant-commerce",
+  "createdAt": 0,
+  "tokens": {
+    "colors": {
+      "primary": "#111827",
+      "accent": "#f97316",
+      "background": "#ffffff",
+      "surface": "#ffffff",
+      "muted": "#ecfeff",
+      "destructive": "#dc2626",
+      "success": "#16a34a"
+    },
+    "typography": {
+      "fontFamilyBase": "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Apple Color Emoji, Segoe UI Emoji",
+      "fontSizeBasePx": 16,
+      "fontScale": 1.08
+    },
+    "radius": { "sm": 12, "md": 16, "lg": 22, "xl": 34 },
+    "spacing": { "xs": 4, "sm": 8, "md": 12, "lg": 18, "xl": 28 },
+    "shadows": {
+      "sm": "0 1px 2px rgba(17,24,39,0.08)",
+      "md": "0 16px 40px rgba(17,24,39,0.14)",
+      "lg": "0 40px 96px rgba(17,24,39,0.18)"
+    },
+    "motion": { "fastMs": 110, "normalMs": 210, "slowMs": 400, "easeStandard": "cubic-bezier(0.2, 0, 0, 1)" }
+  }
+}

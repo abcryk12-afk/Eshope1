@@ -5,7 +5,7 @@ import "./globals.css";
 
 import Providers from "@/app/providers";
 import AnnouncementBar from "@/components/layout/AnnouncementBar";
-import Header from "@/components/layout/Header";
+import HeaderGate from "@/components/layout/HeaderGate";
 import SiteFooter from "@/components/layout/SiteFooter";
 import { dbConnect } from "@/lib/db";
 import { absoluteUrl, buildOrganizationJsonLd, buildWebsiteJsonLd, safeJsonLdStringify } from "@/lib/seo";
@@ -152,7 +152,7 @@ export default async function RootLayout({
       >
         <Providers>
           <AnnouncementBar />
-          <Header />
+          <HeaderGate />
           {children}
           <SiteFooter />
         </Providers>

@@ -109,6 +109,7 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
             src={image}
             alt={product.title}
             fill
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
             className={cn(objectClass, "transition duration-500 group-hover:scale-[1.05]")}
             unoptimized
           />

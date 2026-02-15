@@ -8,12 +8,20 @@ import { store } from "@/store/store";
 import QuickCheckoutBar from "@/components/layout/QuickCheckoutBar";
 import FloatingWhatsAppButton from "@/components/layout/FloatingWhatsAppButton";
 import { WhatsAppContextProvider } from "@/components/layout/WhatsAppContext";
+import AdvancedSettingsProvider from "@/components/providers/AdvancedSettingsProvider";
+import TrackingProvider from "@/components/providers/TrackingProvider";
+import ThemeProvider from "@/components/providers/ThemeProvider";
 import { useAuthSync } from "@/hooks/useAuthSync";
 import { useCurrencySync } from "@/hooks/useCurrencySync";
+import { useAdvancedSettingsSync } from "@/hooks/useAdvancedSettingsSync";
 import { useLanguageSync } from "@/hooks/useLanguageSync";
 import { useThemeSync } from "@/hooks/useThemeSync";
+import { useThemeBuilderSync } from "@/hooks/useThemeBuilderSync";
+import { useProductCardEngineSync } from "@/hooks/useProductCardEngineSync";
 import { useLocalStorageSync } from "@/hooks/useLocalStorageSync";
 import { useDbSync } from "@/hooks/useDbSync";
+import { useFooterSync } from "@/hooks/useFooterSync";
+import { useHeaderSync } from "@/hooks/useHeaderSync";
 
 type ProvidersProps = {
   children: React.ReactNode;
@@ -24,6 +32,11 @@ function StoreEffects() {
   useCurrencySync();
   useLanguageSync();
   useThemeSync();
+  useThemeBuilderSync();
+  useAdvancedSettingsSync();
+  useProductCardEngineSync();
+  useFooterSync();
+  useHeaderSync();
   useLocalStorageSync();
   useDbSync();
 
@@ -35,12 +48,18 @@ export default function Providers({ children }: ProvidersProps) {
     <SessionProvider>
       <ReduxProvider store={store}>
         <StoreEffects />
-        <WhatsAppContextProvider>
-          {children}
-          <FloatingWhatsAppButton />
-          <QuickCheckoutBar />
-          <Toaster richColors position="top-right" closeButton />
-        </WhatsAppContextProvider>
+        <AdvancedSettingsProvider>
+          <TrackingProvider>
+            <ThemeProvider>
+              <WhatsAppContextProvider>
+                {children}
+                <FloatingWhatsAppButton />
+                <QuickCheckoutBar />
+                <Toaster richColors position="top-right" closeButton />
+              </WhatsAppContextProvider>
+            </ThemeProvider>
+          </TrackingProvider>
+        </AdvancedSettingsProvider>
       </ReduxProvider>
     </SessionProvider>
   );

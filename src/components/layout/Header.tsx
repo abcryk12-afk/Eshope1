@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Menu, Search, User2, X } from "lucide-react";
+import { Menu, Search, User2 } from "lucide-react";
 
 import { formatMoneyFromPkr } from "@/lib/currency";
 import { cn } from "@/lib/utils";
@@ -19,6 +19,8 @@ import MiniCartDrawer from "./MiniCartDrawer";
 import CurrencySwitcher from "./CurrencySwitcher";
 import LanguageSwitcher from "./LanguageSwitcher";
 import CartIconButton from "./CartIconButton";
+import MobileMenuDrawer, { type MobileMenuItem } from "./MobileMenuDrawer";
+import { useMobileMenu } from "@/hooks/useMobileMenu";
 
 type Suggestion = {
   _id?: string;
@@ -56,6 +58,26 @@ export default function Header() {
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [meta, setMeta] = useState<ProductsMeta | null>(null);
+
+  const { config: mobileMenuConfig } = useMobileMenu(mobileMenuOpen);
+
+  const defaultMenuItems: MobileMenuItem[] = useMemo(() => {
+    const cats = (meta?.categories ?? []).slice(0, 50);
+    return cats.map((c) => ({
+      id: `cat_${c.slug}`,
+      type: "category" as const,
+      title: c.name,
+      href: `/category/${encodeURIComponent(c.slug)}`,
+      enabled: true,
+      visibility: "all" as const,
+      children: [],
+    }));
+  }, [meta?.categories]);
+
+  const effectiveMenuItems: MobileMenuItem[] = useMemo(() => {
+    if (!mobileMenuConfig || mobileMenuConfig.useDefaultMenu) return defaultMenuItems;
+    return (mobileMenuConfig.items as MobileMenuItem[]) ?? [];
+  }, [mobileMenuConfig, defaultMenuItems]);
 
   const userLabel = useMemo(() => session?.user?.email ?? "Account", [session?.user?.email]);
 
@@ -425,83 +447,50 @@ export default function Header() {
         }}
       />
 
-      <AnimatePresence>
-        {mobileMenuOpen ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/40 px-4 py-6 backdrop-blur-sm md:hidden"
-            onClick={() => setMobileMenuOpen(false)}
-          >
-            <motion.div
-              initial={{ x: -24, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: -24, opacity: 0 }}
-              className="h-full w-full max-w-sm rounded-3xl bg-surface p-4 shadow-xl"
-              onClick={(e) => e.stopPropagation()}
+      <MobileMenuDrawer
+        open={mobileMenuOpen}
+        title="Menu"
+        items={effectiveMenuItems}
+        onClose={() => setMobileMenuOpen(false)}
+        rightHeader={
+          <div className="flex items-center gap-2">
+            <LanguageSwitcher variant="compact" />
+            <CurrencySwitcher variant="compact" />
+          </div>
+        }
+        topAccountSection={
+          <div className="grid gap-1">
+            <Link
+              href="/track-order"
+              className="block rounded-xl px-3 py-2 text-sm font-semibold text-foreground hover:bg-muted"
+              onClick={() => setMobileMenuOpen(false)}
             >
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-foreground">
-                  Menu
-                </span>
-                <div className="flex items-center gap-2">
-                  <LanguageSwitcher variant="compact" />
-                  <CurrencySwitcher variant="compact" />
-                </div>
-                <button
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl hover:bg-muted"
-                  onClick={() => setMobileMenuOpen(false)}
-                  aria-label="Close menu"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
+              Track Order
+            </Link>
 
-              <div className="mt-4 space-y-1">
-                <Link
-                  href="/track-order"
-                  className="block rounded-xl px-3 py-2 text-sm font-semibold text-foreground hover:bg-muted"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Track Order
-                </Link>
-
-                {session?.user ? (
-                  <button
-                    type="button"
-                    className="block w-full rounded-xl px-3 py-2 text-left text-sm font-semibold text-foreground hover:bg-muted"
-                    onClick={async () => {
-                      setMobileMenuOpen(false);
-                      await onSignOut();
-                    }}
-                  >
-                    Sign out
-                  </button>
-                ) : (
-                  <Link
-                    href="/login"
-                    className="block rounded-xl px-3 py-2 text-sm font-semibold text-foreground hover:bg-muted"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Sign in
-                  </Link>
-                )}
-                {(meta?.categories ?? []).slice(0, 12).map((c) => (
-                  <Link
-                    key={c.slug}
-                    href={`/category/${encodeURIComponent(c.slug)}`}
-                    className="block rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    {c.name}
-                  </Link>
-                ))}
-              </div>
-            </motion.div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+            {session?.user ? (
+              <button
+                type="button"
+                className="block w-full rounded-xl px-3 py-2 text-left text-sm font-semibold text-foreground hover:bg-muted"
+                onClick={async () => {
+                  setMobileMenuOpen(false);
+                  await onSignOut();
+                }}
+              >
+                Sign out
+              </button>
+            ) : (
+              <Link
+                href="/login"
+                className="block rounded-xl px-3 py-2 text-sm font-semibold text-foreground hover:bg-muted"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Sign in
+              </Link>
+            )}
+          </div>
+        }
+      />
     </>
   );
 }

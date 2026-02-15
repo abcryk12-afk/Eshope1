@@ -5,6 +5,8 @@ import { motion } from "framer-motion";
 import { AlertTriangle, Package, Receipt, ShoppingCart, Users } from "lucide-react";
 
 import Skeleton from "@/components/ui/Skeleton";
+import { formatMoneyFromPkr } from "@/lib/currency";
+import { useAppSelector } from "@/store/hooks";
 
 type SalesPoint = {
   date: string;
@@ -59,6 +61,7 @@ function Stat({ title, value, icon }: { title: string; value: string; icon: Reac
 export default function AdminDashboardClient() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<Overview | null>(null);
+  const currency = useAppSelector((s) => s.currency);
 
   useEffect(() => {
     let cancelled = false;
@@ -121,7 +124,7 @@ export default function AdminDashboardClient() {
           <>
             <Stat
               title="Total Sales"
-              value={`$${data.cards.totalSales.toFixed(2)}`}
+              value={formatMoneyFromPkr(data.cards.totalSales, currency.selected, currency.pkrPerUsd)}
               icon={<Receipt className="h-4 w-4" />}
             />
             <Stat
@@ -166,7 +169,7 @@ export default function AdminDashboardClient() {
                   animate={{ height: `${Math.max(6, (p.sales / maxSales) * 100)}%` }}
                   transition={{ type: "spring", damping: 20, stiffness: 180 }}
                   className="w-full rounded-xl bg-zinc-900/90 dark:bg-zinc-50/90"
-                  title={`${p.date}  $${p.sales.toFixed(2)}  (${p.orders} orders)`}
+                  title={`${p.date}  ${formatMoneyFromPkr(p.sales, currency.selected, currency.pkrPerUsd)}  (${p.orders} orders)`}
                 />
               ))}
             </div>
@@ -254,7 +257,7 @@ export default function AdminDashboardClient() {
                       {o.isPaid ? "Yes" : "No"}
                     </td>
                     <td className="py-3 text-right font-semibold text-zinc-900 dark:text-zinc-50">
-                      ${o.totalAmount.toFixed(2)}
+                      {formatMoneyFromPkr(o.totalAmount, currency.selected, currency.pkrPerUsd)}
                     </td>
                   </tr>
                 ))}

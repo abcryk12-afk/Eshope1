@@ -446,7 +446,14 @@ export default function QuickViewModal({ open, slug, onClose }: QuickViewModalPr
                         style={{ borderRadius: "var(--radius-md)" }}
                         aria-label={`View image ${idx + 1}`}
                       >
-                        <Image src={src} alt="" fill className="object-cover" unoptimized />
+                        <Image
+                          src={src}
+                          alt={`${product?.title ?? "Product"} image ${idx + 1}`}
+                          fill
+                          sizes="56px"
+                          className="object-cover"
+                          unoptimized
+                        />
                       </button>
                     ))}
                   </div>

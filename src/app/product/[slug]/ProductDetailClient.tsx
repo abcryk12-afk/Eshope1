@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Heart, Minus, Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -14,10 +14,11 @@ import { useWhatsAppContext } from "@/components/layout/WhatsAppContext";
 import { cn } from "@/lib/utils";
 import Skeleton from "@/components/ui/Skeleton";
 import { StarRatingDisplay } from "@/components/ui/StarRating";
-import ProductCard from "@/components/product/ProductCard";
+import ProductCardGate from "@/components/product/ProductCardGate";
 import ProductGrid from "@/components/product/ProductGrid";
 import ZoomableProductImage from "@/components/product/ZoomableProductImage";
 import AddToCartButton from "@/components/product/AddToCartButton";
+import ProductShare from "@/components/product/ProductShare";
 import { useStorefrontSettings } from "@/hooks/useStorefrontSettings";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { addToCart } from "@/store/slices/cartSlice";
@@ -359,6 +360,60 @@ export default function ProductDetailClient({ slug }: Props) {
     };
   }, [slug]);
 
+  const hasFiredViewContentRef = useRef<string>("");
+
+  const shareEnabled = useMemo(() => {
+    if (typeof window === "undefined") return false;
+    const w = window as unknown as { __tracking?: { shareEnabled?: boolean } };
+    return Boolean(w.__tracking?.shareEnabled);
+  }, []);
+
+  useEffect(() => {
+    if (!product) return;
+    if (typeof window === "undefined") return;
+
+    const w = window as unknown as {
+      __tracking?: {
+        enabled: boolean;
+        autoEventsEnabled: boolean;
+        trackMeta: (event: string, params?: Record<string, unknown>) => void;
+        trackGtag: (event: string, params?: Record<string, unknown>) => void;
+      };
+    };
+
+    if (!w.__tracking?.enabled) return;
+    if (!w.__tracking.autoEventsEnabled) return;
+
+    const key = String(product._id);
+    if (hasFiredViewContentRef.current === key) return;
+    hasFiredViewContentRef.current = key;
+
+    const price = typeof product.basePrice === "number" ? product.basePrice : undefined;
+    const image = Array.isArray(product.images) && product.images[0] ? product.images[0] : undefined;
+
+    w.__tracking.trackMeta("ViewContent", {
+      content_ids: [product._id],
+      content_type: "product",
+      content_name: product.title,
+      value: price,
+      contents: [{ id: product._id, quantity: 1, item_price: price }],
+    });
+
+    w.__tracking.trackGtag("view_item", {
+      items: [
+        {
+          item_id: product._id,
+          item_name: product.title,
+          item_category: product.category,
+          price,
+          item_variant: selectedVariantId ?? undefined,
+          item_brand: undefined,
+          item_image: image,
+        },
+      ],
+    });
+  }, [product, selectedVariantId]);
+
   useEffect(() => {
     if (!product) return;
 
@@ -541,16 +596,14 @@ export default function ProductDetailClient({ slug }: Props) {
   if (loading) {
     return (
       <div className="min-h-screen bg-zinc-50 px-4 py-10 dark:bg-black">
-        <div className="mx-auto w-full max-w-5xl">
+        <div className="mx-auto w-full max-w-6xl px-4 py-8">
           <Skeleton className="h-8 w-56" />
-          <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
+          <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-[1fr_380px]">
             <Skeleton className="aspect-square w-full rounded-3xl" />
             <div>
               <Skeleton className="h-10 w-3/4" />
               <Skeleton className="mt-3 h-5 w-1/2" />
               <Skeleton className="mt-6 h-11 w-full rounded-2xl" />
-              <Skeleton className="mt-3 h-11 w-full rounded-2xl" />
-              <Skeleton className="mt-8 h-28 w-full" />
             </div>
           </div>
         </div>
@@ -565,9 +618,7 @@ export default function ProductDetailClient({ slug }: Props) {
           <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
             Product not found
           </h1>
-          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-            This product may be unavailable.
-          </p>
+          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">This product may be unavailable.</p>
           <Link href="/" className="mt-6 inline-flex text-sm font-semibold text-zinc-900 hover:underline dark:text-zinc-50">
             Back to products
           </Link>
@@ -624,10 +675,9 @@ export default function ProductDetailClient({ slug }: Props) {
               }}
               role="group"
               aria-label="Product images"
+              data-product-main-image="true"
             >
-              {mainImage ? (
-                <ZoomableProductImage src={mainImage} alt={product.title} className="absolute inset-0" />
-              ) : null}
+              {mainImage ? <ZoomableProductImage src={mainImage} alt={product.title} className="absolute inset-0" /> : null}
 
               {canSlideImages ? (
                 <>
@@ -663,7 +713,7 @@ export default function ProductDetailClient({ slug }: Props) {
 
             {activeImages.length > 1 ? (
               <div className="mt-3 flex flex-wrap gap-2">
-                {activeImages.slice(0, 8).map((src, idx) => (
+                {activeImages.slice(0, 6).map((src, idx) => (
                   <button
                     key={`${src}:${idx}`}
                     type="button"
@@ -675,124 +725,157 @@ export default function ProductDetailClient({ slug }: Props) {
                     )}
                     aria-label={`View image ${idx + 1}`}
                   >
-                    <Image src={src} alt="" fill className="object-cover" unoptimized />
+                    <Image
+                      src={src}
+                      alt={`${product.title} image ${idx + 1}`}
+                      fill
+                      sizes="56px"
+                      className="object-cover"
+                      unoptimized
+                    />
                   </button>
                 ))}
               </div>
             ) : null}
           </div>
 
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{product.category}</p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-              {product.title}
-            </h1>
-
-            <div className="mt-2 flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
-              {product.ratingCount > 0 ? (
-                <>
-                  <StarRatingDisplay value={product.ratingAvg} size="sm" />
-                  <span className="font-semibold text-zinc-900 dark:text-zinc-50">{product.ratingAvg.toFixed(1)}</span>
-                  <span>({product.ratingCount} reviews)</span>
-                </>
+          <div className="min-w-0 space-y-6">
+            <div>
+              {product.categorySlug ? (
+                <Link
+                  href={`/category/${encodeURIComponent(product.categorySlug)}`}
+                  className="text-xs font-semibold uppercase tracking-wide text-zinc-500 hover:underline"
+                >
+                  {product.category}
+                </Link>
               ) : (
-                <>
-                  <StarRatingDisplay value={0} size="sm" />
-                  <span>No reviews yet</span>
-                </>
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{product.category}</p>
               )}
+              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">{product.title}</h1>
 
-              {Number(product.soldCount ?? 0) > 0 ? (
-                <span className="truncate">• {formatCompactNumber(Number(product.soldCount ?? 0))} sold</span>
-              ) : null}
-            </div>
-
-            <div className="mt-4 flex items-baseline justify-between gap-4">
-              <p className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-                {formatMoneyFromPkr(unitPrice, currency.selected, currency.pkrPerUsd)}
-              </p>
-              <p className="text-sm text-zinc-500">
-                {selectedVariant
-                  ? `${selectedVariant.stock} in stock`
-                  : typeof product.stock === "number"
-                    ? `${product.stock} in stock`
-                    : ""}
-              </p>
-            </div>
-
-            {showLowStock ? (
-              <p className="mt-2 text-sm font-semibold text-amber-700 dark:text-amber-300">
-                Only {availableStock} left in stock
-              </p>
-            ) : null}
-
-            {storefrontSettings ? (
-              <div className="mt-3 space-y-1 text-sm text-zinc-600 dark:text-zinc-400">
-                <p>
-                  {shippingFeeValues.allFree
-                    ? "Free delivery"
-                    : `Delivery from ${new Intl.NumberFormat("en-PK", {
-                        style: "currency",
-                        currency: "PKR",
-                        maximumFractionDigits: 0,
-                      }).format(shippingFeeValues.minFee)} (varies by city)`}
-                </p>
-                {shippingFeeValues.etaText ? <p>{shippingFeeValues.etaText}</p> : null}
-              </div>
-            ) : null}
-
-            {(product.variants ?? []).length > 0 ? (
-              <div className="mt-5">
-                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Variant</p>
-                <select
-                  value={selectedVariantId ?? ""}
-                  onChange={(e) => setSelectedVariantId(e.target.value)}
-                  className="mt-2 h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
-                >
-                  {(product.variants ?? []).map((v) => (
-                    <option key={v._id} value={v._id}>
-                      {v.size} / {v.color} - {formatMoneyFromPkr(v.price, currency.selected, currency.pkrPerUsd)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ) : null}
-
-            <div className="mt-5 flex items-center gap-2">
-              <div className="inline-flex items-center rounded-2xl border border-zinc-200 p-1 dark:border-zinc-800">
-                <button
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-900"
-                  onClick={() => setQty((q) => Math.max(1, q - 1))}
-                  aria-label="Decrease"
-                >
-                  <Minus className="h-4 w-4" />
-                </button>
-                <span className="w-10 text-center text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                  {qty}
-                </span>
-                <button
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-900"
-                  onClick={() => setQty((q) => Math.min(99, q + 1))}
-                  aria-label="Increase"
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
-              </div>
-
-              <AddToCartButton
-                canAdd={canAdd}
-                getImageEl={() => document.querySelector<HTMLElement>("[data-product-main-image='true']")}
-                onAdd={add}
-                className={cn(
-                  "h-11 flex-1 rounded-2xl bg-zinc-900 px-4 text-sm font-semibold text-white hover:bg-zinc-800",
-                  "dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+              <div className="mt-2 flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+                {product.ratingCount > 0 ? (
+                  <>
+                    <StarRatingDisplay value={product.ratingAvg} size="sm" />
+                    <span className="font-semibold text-zinc-900 dark:text-zinc-50">{product.ratingAvg.toFixed(1)}</span>
+                    <span>({product.ratingCount} reviews)</span>
+                  </>
+                ) : (
+                  <>
+                    <StarRatingDisplay value={0} size="sm" />
+                    <span>No reviews yet</span>
+                  </>
                 )}
-              />
+
+                {Number(product.soldCount ?? 0) > 0 ? (
+                  <span className="truncate">• {formatCompactNumber(Number(product.soldCount ?? 0))} sold</span>
+                ) : null}
+              </div>
+
+              <div className="mt-4 flex items-baseline justify-between gap-4">
+                <p className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+                  {formatMoneyFromPkr(unitPrice, currency.selected, currency.pkrPerUsd)}
+                </p>
+                <p className="text-sm text-zinc-500">
+                  {selectedVariant
+                    ? `${selectedVariant.stock} in stock`
+                    : typeof product.stock === "number"
+                      ? `${product.stock} in stock`
+                      : ""}
+                </p>
+              </div>
+
+              {showLowStock ? (
+                <p className="mt-2 text-sm font-semibold text-amber-700 dark:text-amber-300">Only {availableStock} left in stock</p>
+              ) : null}
+
+              {storefrontSettings ? (
+                <div className="mt-3 space-y-1 text-sm text-zinc-600 dark:text-zinc-400">
+                  <p>
+                    {shippingFeeValues.allFree
+                      ? "Free delivery"
+                      : `Delivery from ${new Intl.NumberFormat("en-PK", { style: "currency", currency: "PKR", maximumFractionDigits: 0 }).format(
+                          shippingFeeValues.minFee
+                        )} (varies by city)`}
+                  </p>
+                  {shippingFeeValues.etaText ? <p>{shippingFeeValues.etaText}</p> : null}
+                </div>
+              ) : null}
+
+              {(product.variants ?? []).length > 0 ? (
+                <div className="mt-5">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Variant</p>
+                  <select
+                    value={selectedVariantId ?? ""}
+                    onChange={(e) => setSelectedVariantId(e.target.value)}
+                    className="mt-2 h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+                  >
+                    {(product.variants ?? []).map((v) => (
+                      <option key={v._id} value={v._id}>
+                        {v.size} / {v.color} - {formatMoneyFromPkr(v.price, currency.selected, currency.pkrPerUsd)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
+
+              <div className="mt-5 flex items-center gap-2">
+                <div className="inline-flex items-center rounded-2xl border border-zinc-200 p-1 dark:border-zinc-800">
+                  <button
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-900"
+                    onClick={() => setQty((q) => Math.max(1, q - 1))}
+                    aria-label="Decrease"
+                    type="button"
+                  >
+                    <Minus className="h-4 w-4" />
+                  </button>
+                  <span className="w-10 text-center text-sm font-semibold text-zinc-900 dark:text-zinc-50">{qty}</span>
+                  <button
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-900"
+                    onClick={() => setQty((q) => Math.min(99, q + 1))}
+                    aria-label="Increase"
+                    type="button"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <AddToCartButton
+                  canAdd={canAdd}
+                  getImageEl={() => document.querySelector<HTMLElement>("[data-product-main-image='true']")}
+                  onAdd={add}
+                  className={cn(
+                    "h-11 flex-1 rounded-2xl bg-zinc-900 px-4 text-sm font-semibold text-white hover:bg-zinc-800",
+                    "dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                  )}
+                />
+
+                <button
+                  type="button"
+                  onClick={buyNow}
+                  disabled={!canAdd}
+                  className={cn(
+                    "h-11 rounded-2xl bg-accent px-5 text-sm font-semibold text-accent-foreground",
+                    "hover:bg-accent-hover",
+                    !canAdd && "pointer-events-none opacity-50"
+                  )}
+                >
+                  Buy now
+                </button>
+              </div>
             </div>
+
+            {shareEnabled ? (
+              <ProductShare
+                name={product.title}
+                image={product.images?.[0]}
+                priceText={formatMoneyFromPkr(product.basePrice ?? 0, currency.selected, currency.pkrPerUsd)}
+              />
+            ) : null}
 
             <div
               className={cn(
-                "mt-6 text-sm leading-6 text-zinc-600 dark:text-zinc-400",
+                "text-sm leading-6 text-zinc-600 dark:text-zinc-400",
                 "[&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-2xl",
                 "[&_a]:underline [&_a]:underline-offset-2",
                 "[&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5",
@@ -822,24 +905,20 @@ export default function ProductDetailClient({ slug }: Props) {
 
             <div className="mt-4">
               <ProductGrid>
-              {loadingRelated
-                ? Array.from({ length: 4 }).map((_, idx) => (
-                    <div
-                      key={idx}
-                      className="rounded-3xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950"
-                    >
-                      <Skeleton className="aspect-square w-full rounded-2xl" />
-                      <Skeleton className="mt-3 h-4 w-3/4" />
-                      <Skeleton className="mt-2 h-4 w-1/2" />
-                    </div>
-                  ))
-                : related.map((p) => (
-                    <ProductCard
-                      key={p._id}
-                      product={p}
-                      onQuickView={() => router.push(`/product/${p.slug}`)}
-                    />
-                  ))}
+                {loadingRelated
+                  ? Array.from({ length: 4 }).map((_, idx) => (
+                      <div
+                        key={idx}
+                        className="rounded-3xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950"
+                      >
+                        <Skeleton className="aspect-square w-full rounded-2xl" />
+                        <Skeleton className="mt-3 h-4 w-3/4" />
+                        <Skeleton className="mt-2 h-4 w-1/2" />
+                      </div>
+                    ))
+                  : related.map((p) => (
+                      <ProductCardGate key={p._id} product={p} onQuickView={() => router.push(`/product/${p.slug}`)} />
+                    ))}
               </ProductGrid>
             </div>
           </div>
@@ -851,11 +930,7 @@ export default function ProductDetailClient({ slug }: Props) {
             <div className="mt-4">
               <ProductGrid>
                 {recentlyViewed.map((p) => (
-                  <ProductCard
-                    key={p._id}
-                    product={p}
-                    onQuickView={() => router.push(`/product/${p.slug}`)}
-                  />
+                  <ProductCardGate key={p._id} product={p} onQuickView={() => router.push(`/product/${p.slug}`)} />
                 ))}
               </ProductGrid>
             </div>

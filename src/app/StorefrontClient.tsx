@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { cn } from "@/lib/utils";
-import ProductCard from "@/components/product/ProductCard";
+import ProductCardGate from "@/components/product/ProductCardGate";
 import ProductGrid from "@/components/product/ProductGrid";
 import SuperDealsSection from "@/components/deals/SuperDealsSection";
 import HomeBanners from "@/components/home/HomeBanners";
@@ -591,11 +591,7 @@ export default function StorefrontClient({
               ) : (
                 <ProductGrid>
                   {items.map((p) => (
-                    <ProductCard
-                      key={p._id}
-                      product={p}
-                      onQuickView={() => setQuickViewSlug(p.slug)}
-                    />
+                    <ProductCardGate key={p._id} product={p} onQuickView={() => setQuickViewSlug(p.slug)} />
                   ))}
                 </ProductGrid>
               )}

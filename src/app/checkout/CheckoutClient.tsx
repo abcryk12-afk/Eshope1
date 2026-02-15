@@ -201,6 +201,47 @@ export default function CheckoutClient() {
     return true;
   }, [quote, shipping, guestEmailOk, currency.selected, currency.pkrPerUsd]);
 
+  const hasFiredInitiateCheckoutRef = useRef(false);
+
+  useEffect(() => {
+    if (step !== "payment") return;
+    if (!quote) return;
+    if (hasFiredInitiateCheckoutRef.current) return;
+    if (typeof window === "undefined") return;
+
+    const w = window as unknown as {
+      __tracking?: {
+        enabled: boolean;
+        autoEventsEnabled: boolean;
+        trackMeta: (event: string, params?: Record<string, unknown>) => void;
+        trackGtag: (event: string, params?: Record<string, unknown>) => void;
+      };
+    };
+
+    if (!w.__tracking?.enabled) return;
+    if (!w.__tracking.autoEventsEnabled) return;
+
+    hasFiredInitiateCheckoutRef.current = true;
+
+    const items = quote.items.map((i) => ({
+      item_id: i.productId,
+      item_name: i.title,
+      item_category: undefined,
+      price: i.unitPrice,
+      quantity: i.quantity,
+    }));
+
+    w.__tracking.trackMeta("InitiateCheckout", {
+      value: quote.totalAmount,
+      contents: quote.items.map((i) => ({ id: i.productId, quantity: i.quantity, item_price: i.unitPrice })),
+    });
+
+    w.__tracking.trackGtag("begin_checkout", {
+      value: quote.totalAmount,
+      items,
+    });
+  }, [step, quote]);
+
   function continueToPayment() {
     if (!shippingOk) {
       toast.error("Please complete your shipping details");

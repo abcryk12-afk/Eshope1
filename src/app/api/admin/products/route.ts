@@ -69,6 +69,18 @@ const ProductUpsertSchema = z.object({
   isNonReturnable: z.boolean().optional().default(false),
   isActive: z.boolean().optional().default(true),
   slug: z.string().trim().min(2).max(160).optional(),
+  seo: z
+    .object({
+      title: z.string().trim().max(160).optional(),
+      description: z.string().trim().max(320).optional(),
+      focusKeyword: z.string().trim().max(120).optional(),
+      keywords: z.string().trim().max(500).optional(),
+      ogTitle: z.string().trim().max(160).optional(),
+      ogDescription: z.string().trim().max(320).optional(),
+      canonicalUrl: z.string().trim().max(400).optional(),
+      noIndex: z.boolean().optional(),
+    })
+    .optional(),
 });
 
 async function requireAdmin() {

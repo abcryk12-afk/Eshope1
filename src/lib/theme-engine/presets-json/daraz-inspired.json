@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "name": "Daraz Inspired",
+  "presetId": "daraz-marketplace",
+  "createdAt": 0,
+  "tokens": {
+    "colors": {
+      "primary": "#111827",
+      "accent": "#f57224",
+      "background": "#ffffff",
+      "surface": "#ffffff",
+      "muted": "#fff7ed",
+      "destructive": "#dc2626",
+      "success": "#16a34a"
+    },
+    "layout": {
+      "gridColumns": 5,
+      "cardGapPx": 12,
+      "headerHeightPx": 78,
+      "footerStyle": "mega"
+    },
+    "components": {
+      "headerStyle": "marketplace",
+      "cardStyle": "bordered",
+      "buttonStyle": "solid",
+      "footerStyle": "mega"
+    },
+    "marketplace": {
+      "enabled": true,
+      "compactGrid": true,
+      "discountBadges": true,
+      "flashSaleRibbons": true,
+      "stickyHeader": true,
+      "aggressiveCtas": true
+    },
+    "animations": {
+      "intensity": 1.15,
+      "cardLift": true,
+      "imageZoom": true
+    }
+  }
+}

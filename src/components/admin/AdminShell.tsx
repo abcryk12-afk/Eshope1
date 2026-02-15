@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import { BarChart3, Boxes, CreditCard, Folder, LayoutDashboard, LogOut, Palette, Settings, Star, Store, Tag, Undo2, Users } from "lucide-react";
+import { BarChart3, Boxes, CreditCard, Folder, LayoutDashboard, LogOut, Palette, Search, Settings, Star, Store, Tag, Undo2, Users } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { signOutFirebaseIfConfigured } from "@/lib/firebaseClient";
@@ -23,6 +23,7 @@ const nav: NavItem[] = [
   { href: "/admin", label: "Overview", icon: <LayoutDashboard className="h-4 w-4" /> },
   { href: "/admin/products", label: "Products", icon: <Boxes className="h-4 w-4" /> },
   { href: "/admin/categories", label: "Categories", icon: <Folder className="h-4 w-4" /> },
+  { href: "/admin/menu-builder", label: "Menu Builder", icon: <LayoutDashboard className="h-4 w-4" /> },
   { href: "/admin/orders", label: "Orders", icon: <BarChart3 className="h-4 w-4" /> },
   { href: "/admin/returns", label: "Returns", icon: <Undo2 className="h-4 w-4" /> },
   { href: "/admin/reviews", label: "Reviews", icon: <Star className="h-4 w-4" /> },
@@ -32,9 +33,15 @@ const nav: NavItem[] = [
   { href: "/admin/cms/deals", label: "Deals", icon: <Tag className="h-4 w-4" /> },
   { href: "/admin/inventory", label: "Inventory", icon: <Boxes className="h-4 w-4" /> },
   { href: "/admin/reports", label: "Reports", icon: <BarChart3 className="h-4 w-4" /> },
+  { href: "/admin/seo-health", label: "SEO Health", icon: <Search className="h-4 w-4" /> },
   { href: "/admin/cms", label: "CMS", icon: <LayoutDashboard className="h-4 w-4" /> },
   { href: "/admin/logs", label: "Logs", icon: <LayoutDashboard className="h-4 w-4" /> },
   { href: "/admin/settings/appearance", label: "Appearance", icon: <Palette className="h-4 w-4" /> },
+  { href: "/admin/theme-builder", label: "Theme Builder", icon: <Palette className="h-4 w-4" /> },
+  { href: "/admin/header-builder", label: "Header Builder", icon: <LayoutDashboard className="h-4 w-4" /> },
+  { href: "/admin/footer-builder", label: "Footer Builder", icon: <LayoutDashboard className="h-4 w-4" /> },
+  { href: "/admin/product-card-builder", label: "Product Card Builder", icon: <LayoutDashboard className="h-4 w-4" /> },
+  { href: "/admin/tracking-pixels", label: "Tracking & Pixels", icon: <LayoutDashboard className="h-4 w-4" /> },
   { href: "/admin/settings/branding", label: "Branding", icon: <Store className="h-4 w-4" /> },
   { href: "/admin/settings/storefront", label: "Storefront", icon: <Settings className="h-4 w-4" /> },
   { href: "/admin/settings/payments", label: "Payments", icon: <CreditCard className="h-4 w-4" /> },

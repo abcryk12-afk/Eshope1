@@ -26,7 +26,7 @@ async function getProductForSeo(slug: string) {
 
   const doc = await Product.findOne({ slug, isActive: true })
     .select(
-      "title slug description images basePrice compareAtPrice stock variants brand storeName ratingAvg ratingCount category categorySlug"
+      "title slug description images basePrice compareAtPrice stock variants brand storeName ratingAvg ratingCount category categorySlug seo"
     )
     .lean();
 
@@ -46,14 +46,31 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         title?: string;
         description?: string;
         images?: string[];
+        seo?: {
+          title?: string;
+          description?: string;
+          ogTitle?: string;
+          ogDescription?: string;
+          canonicalUrl?: string;
+          noIndex?: boolean;
+        };
       }
     | null;
 
   const baseTitle = p?.title?.trim() || "";
-  const title = baseTitle ? baseTitle : siteName;
-  const description = p?.description
-    ? truncate(stripHtmlToText(p.description), 160)
-    : settings.description?.trim() || "";
+  const fallbackTitle = baseTitle ? baseTitle : siteName;
+
+  const seoTitle = p?.seo?.title?.trim() || "";
+  const seoDescription = p?.seo?.description?.trim() || "";
+  const ogTitleOverride = p?.seo?.ogTitle?.trim() || "";
+  const ogDescriptionOverride = p?.seo?.ogDescription?.trim() || "";
+
+  const title = seoTitle || fallbackTitle;
+  const description = seoDescription
+    ? seoDescription
+    : p?.description
+      ? truncate(stripHtmlToText(p.description), 160)
+      : settings.description?.trim() || "";
 
   const ogImages = (Array.isArray(p?.images) ? p?.images : [])
     .map(normalizeImageUrl)
@@ -61,24 +78,35 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     .slice(0, 5)
     .map((url) => ({ url }));
 
+  const canonicalOverride = p?.seo?.canonicalUrl?.trim() || "";
+  const finalCanonical = canonicalOverride ? canonicalOverride : canonical;
+  const noIndex = Boolean(p?.seo?.noIndex);
+
+  const ogTitle = ogTitleOverride || `${title} | ${siteName}`;
+  const ogDescription = ogDescriptionOverride || description;
+
   return {
-    title: baseTitle ? title : { absolute: siteName },
+    title: title ? title : { absolute: siteName },
     description,
     alternates: {
-      canonical,
+      canonical: finalCanonical,
+    },
+    robots: {
+      index: !noIndex,
+      follow: true,
     },
     openGraph: {
-      title: baseTitle ? `${title} | ${siteName}` : siteName,
-      description,
-      url: canonical,
+      title: ogTitle,
+      description: ogDescription,
+      url: finalCanonical,
       siteName,
       type: "website",
       images: ogImages.length ? ogImages : settings.ogImageUrl ? [{ url: settings.ogImageUrl }] : undefined,
     },
     twitter: {
       card: "summary_large_image",
-      title: baseTitle ? `${title} | ${siteName}` : siteName,
-      description,
+      title: ogTitle,
+      description: ogDescription,
       images: ogImages.length
         ? ogImages.map((i) => i.url)
         : settings.ogImageUrl
