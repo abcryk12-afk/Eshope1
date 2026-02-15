@@ -8,6 +8,7 @@ import {
   treeToMenuItems,
 } from "@/lib/mobileMenu";
 import { loadActiveCategoriesForMenu } from "@/lib/mobileMenu.server";
+import { resolveMenuItemsWithCategories } from "@/lib/mobileMenuResolve.server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -39,8 +40,13 @@ export async function GET() {
     );
   }
 
+  // Smart-sync: resolve category references against live category tree.
+  const cats = await loadActiveCategoriesForMenu();
+  const tree = buildCategoryTree(cats);
+  const resolved = resolveMenuItemsWithCategories({ items: cfg.items, tree });
+
   return NextResponse.json(
-    { mobileMenu: cfg },
+    { mobileMenu: { ...cfg, items: resolved } },
     { headers: { "Cache-Control": "no-store, max-age=0" } }
   );
 }

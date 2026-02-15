@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import * as LucideIcons from "lucide-react";
@@ -15,6 +15,8 @@ export type MobileMenuItem = {
   type: "category" | "link";
   title: string;
   href: string;
+  categoryId?: string;
+  includeChildren?: boolean;
   enabled: boolean;
   visibility: MobileMenuVisibility;
   icon?: string;
@@ -165,6 +167,22 @@ export default function MobileMenuDrawer({
 }: Props) {
   const normalized = useMemo(() => normalizeItems(items), [items]);
 
+  useEffect(() => {
+    if (!open) return;
+
+    const body = document.body;
+    const prevOverflow = body.style.overflow;
+    const prevTouchAction = body.style.touchAction;
+
+    body.style.overflow = "hidden";
+    body.style.touchAction = "none";
+
+    return () => {
+      body.style.overflow = prevOverflow;
+      body.style.touchAction = prevTouchAction;
+    };
+  }, [open]);
+
   return (
     <AnimatePresence>
       {open ? (
@@ -192,7 +210,7 @@ export default function MobileMenuDrawer({
             initial={{ x: -24, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: -24, opacity: 0 }}
-            transition={{ type: "spring", damping: 28, stiffness: 320 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
             drag="x"
             dragConstraints={{ left: 0, right: 0 }}
             dragElastic={0.08}

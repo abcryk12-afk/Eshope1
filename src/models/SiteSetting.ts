@@ -171,6 +171,8 @@ const MobileMenuItemSchema = new Schema(
     type: { type: String, trim: true, enum: ["category", "link"], default: "link" },
     title: { type: String, trim: true, maxlength: 120 },
     href: { type: String, trim: true, maxlength: 500 },
+    categoryId: { type: String, trim: true, maxlength: 60 },
+    includeChildren: { type: Boolean, default: false },
     enabled: { type: Boolean, default: true },
     visibility: { type: String, trim: true, enum: ["all", "mobile", "desktop"], default: "all" },
     icon: { type: String, trim: true, maxlength: 80 },

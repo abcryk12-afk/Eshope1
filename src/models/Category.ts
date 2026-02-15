@@ -7,6 +7,7 @@ const CategorySchema = new Schema(
     isActive: { type: Boolean, default: true },
     sortOrder: { type: Number, default: 0 },
     parentId: { type: Schema.Types.ObjectId, ref: "Category", default: null, index: true },
+    level: { type: Number, default: 0, index: true },
     icon: { type: String, trim: true, maxlength: 80 },
     menuLabel: { type: String, trim: true, maxlength: 80 },
   },

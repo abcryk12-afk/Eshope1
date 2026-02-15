@@ -5,6 +5,8 @@ export type MobileMenuItem = {
   type: "category" | "link";
   title: string;
   href: string;
+  categoryId?: string;
+  includeChildren?: boolean;
   enabled: boolean;
   visibility: MobileMenuVisibility;
   icon?: string;
@@ -33,6 +35,10 @@ function readBool(v: unknown, fallback: boolean) {
   return typeof v === "boolean" ? v : fallback;
 }
 
+function readOptionalString(v: unknown) {
+  return typeof v === "string" ? v : undefined;
+}
+
 function readVisibility(v: unknown): MobileMenuVisibility {
   return v === "mobile" || v === "desktop" || v === "all" ? v : "all";
 }
@@ -45,7 +51,12 @@ function normalizeItem(input: unknown, depth: number): MobileMenuItem | null {
   const title = readString(input.title).trim();
   const href = readString(input.href).trim();
 
-  if (!id || !title || !href) return null;
+  const categoryId = readOptionalString(input.categoryId)?.trim() || undefined;
+  const includeChildren = readBool(input.includeChildren, false);
+
+  if (!id) return null;
+  // Back-compat: allow category items to omit title/href when categoryId is provided.
+  if ((!title || !href) && !(type === "category" && categoryId)) return null;
 
   const childrenRaw = Array.isArray(input.children) ? input.children : [];
   const children = childrenRaw.map((c) => normalizeItem(c, depth + 1)).filter(Boolean) as MobileMenuItem[];
@@ -55,6 +66,8 @@ function normalizeItem(input: unknown, depth: number): MobileMenuItem | null {
     type,
     title,
     href,
+    categoryId,
+    includeChildren,
     enabled: readBool(input.enabled, true),
     visibility: readVisibility(input.visibility),
     icon: readString(input.icon).trim() || undefined,

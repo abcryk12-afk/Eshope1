@@ -233,7 +233,7 @@ body {
   overscroll-behavior-x: contain;
   scroll-padding-inline: 16px;
   scrollbar-width: none;
-  touch-action: pan-y;
+  touch-action: pan-x;
 }
 
 .horizontal-scroll-container::-webkit-scrollbar {
@@ -246,15 +246,11 @@ body {
 }
 
 .product-card {
-  flex: 0 0 48%;
+  flex: 0 0 auto;
+  width: 160px;
+  min-width: 160px;
   scroll-snap-align: start;
   scroll-snap-stop: always;
-}
-
-@media (min-width: 768px) {
-  .product-card {
-    flex-basis: 32%;
-  }
 }
 
 .announcement-bar [data-fx='blink'] {

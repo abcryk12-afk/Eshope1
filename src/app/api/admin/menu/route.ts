@@ -15,17 +15,37 @@ const ADMIN_ROLE_SET = new Set(["staff", "admin", "super_admin"]);
 const VisibilitySchema = z.enum(["all", "mobile", "desktop"]);
 
 const MenuItemSchema: z.ZodTypeAny = z.lazy(() =>
-  z.object({
+  z
+  .object({
     id: z.string().trim().min(1).max(80),
     type: z.enum(["category", "link"]),
-    title: z.string().trim().min(1).max(120),
-    href: z.string().trim().min(1).max(500),
+    title: z.string().trim().max(120).optional().default(""),
+    href: z.string().trim().max(500).optional().default(""),
+    categoryId: z.string().trim().max(60).optional().default(""),
+    includeChildren: z.boolean().optional().default(false),
     enabled: z.boolean(),
     visibility: VisibilitySchema,
     icon: z.string().trim().max(80).optional().default(""),
     badgeLabel: z.string().trim().max(20).optional().default(""),
     featured: z.boolean().optional().default(false),
     children: z.array(MenuItemSchema).optional().default([]),
+  })
+  .superRefine((val, ctx) => {
+    const t = String(val.title || "").trim();
+    const h = String(val.href || "").trim();
+    const cid = String(val.categoryId || "").trim();
+
+    if (val.type === "link") {
+      if (!t || !h) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Link items must have title and href" });
+      }
+      return;
+    }
+
+    // category
+    if (!cid && (!t || !h)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Category items must have categoryId or title+href" });
+    }
   })
 );
 

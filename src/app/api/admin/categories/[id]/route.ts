@@ -18,7 +18,40 @@ const UpsertSchema = z.object({
   slug: z.string().trim().min(2).max(120).optional(),
   isActive: z.boolean().optional().default(true),
   sortOrder: z.number().int().optional().default(0),
+  parentId: z.string().trim().min(1).optional().nullable().default(null),
 });
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null;
+}
+
+function readParentId(v: unknown): string {
+  if (!isRecord(v)) return "";
+  const raw = v.parentId;
+  return raw ? String(raw) : "";
+}
+
+function readLevel(v: unknown): number {
+  if (!isRecord(v)) return 0;
+  const raw = v.level;
+  return typeof raw === "number" && Number.isFinite(raw) ? raw : 0;
+}
+
+async function wouldCreateCycle(id: string, parentId: string | null) {
+  if (!parentId) return false;
+  if (parentId === id) return true;
+
+  let cur: string | null = parentId;
+  for (let i = 0; i < 30; i++) {
+    const doc = (await Category.findById(cur).select("parentId").lean()) as unknown;
+    const pid = readParentId(doc);
+    if (!pid) return false;
+    if (pid === id) return true;
+    cur = pid;
+  }
+
+  return true;
+}
 
 async function requireAdmin() {
   const session = await getServerSession(authOptions);
@@ -66,6 +99,18 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   await dbConnect();
 
+  const nextParentId = parsed.data.parentId || null;
+  if (await wouldCreateCycle(id, nextParentId)) {
+    return NextResponse.json({ message: "Invalid parent category" }, { status: 400 });
+  }
+
+  let level = 0;
+  if (nextParentId) {
+    const parent = (await Category.findById(nextParentId).select("level").lean()) as unknown;
+    const parentLevel = readLevel(parent);
+    level = Math.max(0, Math.min(20, Math.trunc(parentLevel + 1)));
+  }
+
   const slug = slugify(parsed.data.slug ?? parsed.data.name);
 
   if (!slug) {
@@ -85,6 +130,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         slug,
         isActive: parsed.data.isActive,
         sortOrder: parsed.data.sortOrder,
+        parentId: nextParentId,
+        level,
       },
     },
     { new: true }

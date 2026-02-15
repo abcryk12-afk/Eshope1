@@ -8,7 +8,13 @@ import Input from "@/components/ui/Input";
 import Skeleton from "@/components/ui/Skeleton";
 import MobileMenuDrawer, { type MobileMenuItem } from "@/components/layout/MobileMenuDrawer";
 import { cn } from "@/lib/utils";
-import { normalizeMobileMenuConfig, type MobileMenuConfig } from "@/lib/mobileMenu";
+import {
+  buildCategoryTree,
+  normalizeMobileMenuConfig,
+  type CategoryTreeNode,
+  type DbCategory,
+  type MobileMenuConfig,
+} from "@/lib/mobileMenu";
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null;
@@ -22,9 +28,22 @@ function readVisibility(v: string): "all" | "mobile" | "desktop" {
   return v === "mobile" || v === "desktop" || v === "all" ? v : "all";
 }
 
+type AdminCategoryItem = {
+  _id: string;
+  name: string;
+  slug: string;
+  isActive: boolean;
+  sortOrder: number;
+  parentId?: string | null;
+  icon?: string;
+  menuLabel?: string;
+};
+
 type DragPayload = {
   id: string;
 };
+
+type PreviewMode = "mobile" | "desktop";
 
 function cloneItems(items: MobileMenuItem[]): MobileMenuItem[] {
   return items.map((x) => ({ ...x, children: x.children ? cloneItems(x.children) : [] }));
@@ -259,6 +278,12 @@ export default function MenuBuilderClient() {
   const [cfg, setCfg] = useState<MobileMenuConfig>(() => normalizeMobileMenuConfig(null));
   const draggedIdRef = useRef<string | null>(null);
 
+  const [previewMode, setPreviewMode] = useState<PreviewMode>("mobile");
+
+  const [categories, setCategories] = useState<AdminCategoryItem[]>([]);
+  const [catPickId, setCatPickId] = useState<string>("");
+  const [catIncludeChildren, setCatIncludeChildren] = useState(true);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -270,6 +295,11 @@ export default function MenuBuilderClient() {
         const mobileMenu = isRecord(json) && isRecord(json.mobileMenu) ? json.mobileMenu : null;
         const normalized = normalizeMobileMenuConfig(mobileMenu);
         if (!cancelled) setCfg(normalized);
+
+        const cres = await fetch("/api/admin/categories", { cache: "no-store" });
+        const cjson = (await cres.json().catch(() => null)) as unknown;
+        const list = isRecord(cjson) && Array.isArray(cjson.items) ? (cjson.items as AdminCategoryItem[]) : [];
+        if (!cancelled) setCategories(list);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -282,9 +312,130 @@ export default function MenuBuilderClient() {
     };
   }, []);
 
-  const previewItems = useMemo(() => {
-    return cfg.useDefaultMenu ? [] : (cfg.items as MobileMenuItem[]);
-  }, [cfg.useDefaultMenu, cfg.items]);
+  const categoryTree = useMemo(() => {
+    const dbCats: DbCategory[] = categories.map((c) => ({
+      _id: c._id,
+      name: c.name,
+      slug: c.slug,
+      parentId: c.parentId ?? null,
+      icon: c.icon,
+      menuLabel: c.menuLabel,
+      isActive: Boolean(c.isActive),
+      sortOrder: typeof c.sortOrder === "number" ? c.sortOrder : 0,
+    }));
+    return buildCategoryTree(dbCats);
+  }, [categories]);
+
+  const categorySelectOptions = useMemo(() => {
+    const out: Array<{ id: string; title: string; depth: number }> = [];
+    const walk = (list: CategoryTreeNode[], depth: number) => {
+      for (const n of list) {
+        out.push({ id: n.id, title: n.menuLabel || n.name, depth });
+        walk(n.children ?? [], depth + 1);
+      }
+    };
+    walk(categoryTree, 0);
+    return out;
+  }, [categoryTree]);
+
+  const resolvedPreviewItems = useMemo(() => {
+    if (cfg.useDefaultMenu) return [] as MobileMenuItem[];
+
+    const byId = new Map<string, CategoryTreeNode>();
+    const walk = (n: CategoryTreeNode) => {
+      byId.set(String(n.id), n);
+      for (const ch of n.children ?? []) walk(ch);
+    };
+    for (const r of categoryTree) walk(r);
+
+    const resolveList = (list: MobileMenuItem[], depth: number): MobileMenuItem[] => {
+      if (!Array.isArray(list) || depth > 20) return [];
+      const out: MobileMenuItem[] = [];
+
+      for (const raw of list) {
+        if (!raw || !raw.enabled) continue;
+
+        if (raw.type === "category") {
+          const cid = (raw.categoryId || "").trim() || (raw.id.startsWith("cat_") ? raw.id.slice(4) : raw.id);
+          const node = cid ? byId.get(cid) : undefined;
+          if (!node || !node.isActive) continue;
+
+          const title = String(node.menuLabel || node.name || "").trim();
+          const href = `/category/${encodeURIComponent(String(node.slug || "").trim())}`;
+          const manualChildren = raw.includeChildren ? [] : resolveList(raw.children ?? [], depth + 1);
+          const autoChildren = raw.includeChildren
+            ? (node.children ?? []).filter((c) => c.isActive)
+                .map((c) => ({
+                  id: `cat_${c.id}`,
+                  type: "category" as const,
+                  title: String(c.menuLabel || c.name || "").trim(),
+                  href: `/category/${encodeURIComponent(String(c.slug || "").trim())}`,
+                  categoryId: c.id,
+                  includeChildren: true,
+                  enabled: true,
+                  visibility: "all" as const,
+                  icon: typeof c.icon === "string" && c.icon.trim() ? c.icon.trim() : undefined,
+                  children: [],
+                }))
+            : [];
+
+          out.push({
+            ...raw,
+            title,
+            href,
+            icon: raw.icon?.trim() ? raw.icon : node.icon,
+            children: [...autoChildren, ...manualChildren],
+          });
+          continue;
+        }
+
+        out.push({ ...raw, children: resolveList(raw.children ?? [], depth + 1) });
+      }
+
+      return out;
+    };
+
+    return resolveList(cfg.items as MobileMenuItem[], 0);
+  }, [cfg.useDefaultMenu, cfg.items, categoryTree]);
+
+  const desktopPreviewItems = useMemo(() => {
+    const walk = (list: MobileMenuItem[], depth: number): MobileMenuItem[] => {
+      if (!Array.isArray(list) || depth > 20) return [];
+      return list
+        .filter((x) => Boolean(x) && x.enabled)
+        .filter((x) => x.visibility !== "mobile")
+        .map((x) => ({ ...x, children: walk(x.children ?? [], depth + 1) }));
+    };
+    return walk(resolvedPreviewItems, 0);
+  }, [resolvedPreviewItems]);
+
+  function DesktopPreviewNode({ item, depth }: { item: MobileMenuItem; depth: number }) {
+    const hasChildren = (item.children?.length ?? 0) > 0;
+
+    return (
+      <div className={cn("w-full", depth > 0 ? "pl-4" : "")}
+        data-depth={depth}
+      >
+        <div className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-foreground hover:bg-muted/60">
+          <span className="min-w-0 flex-1 truncate font-semibold">{item.title}</span>
+          {item.badgeLabel?.trim() ? (
+            <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-foreground">
+              {item.badgeLabel}
+            </span>
+          ) : null}
+          {hasChildren ? <span className="shrink-0 text-muted-foreground">›</span> : null}
+        </div>
+
+        {hasChildren ? (
+          <div className="grid gap-1">
+            {item.children!.map((ch) => (
+              <DesktopPreviewNode key={ch.id} item={ch} depth={depth + 1} />
+            ))}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
 
   async function save() {
     setSaving(true);
@@ -326,6 +477,28 @@ export default function MenuBuilderClient() {
       type: "link",
       title: "New Link",
       href: "/",
+      enabled: true,
+      visibility: "all",
+      children: [],
+    };
+
+    setCfg((prev) => ({ ...prev, items: [...(prev.items as MobileMenuItem[]), it] }));
+  }
+
+  function addCategoryRef() {
+    const cid = String(catPickId || "").trim();
+    if (!cid) {
+      toast.error("Select a category");
+      return;
+    }
+
+    const it: MobileMenuItem = {
+      id: uid("cat"),
+      type: "category",
+      title: "",
+      href: "",
+      categoryId: cid,
+      includeChildren: catIncludeChildren,
       enabled: true,
       visibility: "all",
       children: [],
@@ -390,6 +563,9 @@ export default function MenuBuilderClient() {
           </div>
 
           <div className="flex items-center gap-2">
+            <Button type="button" variant="secondary" onClick={addCategoryRef} disabled={cfg.useDefaultMenu}>
+              Add Category
+            </Button>
             <Button type="button" variant="secondary" onClick={addTopLink}>
               Add Link
             </Button>
@@ -397,6 +573,34 @@ export default function MenuBuilderClient() {
               {saving ? "Saving..." : "Save"}
             </Button>
           </div>
+        </div>
+
+        <div className={cn("flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-surface p-4", cfg.useDefaultMenu ? "opacity-60" : "")}>
+          <div className="min-w-[220px] flex-1">
+            <select
+              className="h-9 w-full rounded-xl border border-border bg-background px-2 text-sm"
+              value={catPickId}
+              onChange={(e) => setCatPickId(e.target.value)}
+              disabled={cfg.useDefaultMenu}
+            >
+              <option value="">Select category...</option>
+              {categorySelectOptions.map((opt) => (
+                <option key={opt.id} value={opt.id}>
+                  {"  ".repeat(opt.depth)}{opt.title}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <label className="flex items-center gap-2 text-sm font-semibold">
+            <input
+              type="checkbox"
+              checked={catIncludeChildren}
+              onChange={(e) => setCatIncludeChildren(e.target.checked)}
+              disabled={cfg.useDefaultMenu}
+            />
+            Include subcategories automatically
+          </label>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-surface p-4">
@@ -451,41 +655,77 @@ export default function MenuBuilderClient() {
       </div>
 
       <div className="rounded-3xl border border-border bg-surface p-4">
-        <p className="text-sm font-semibold">Live Preview</p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-sm font-semibold">Live Preview</p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className={cn(
+                "h-9 rounded-xl border border-border px-3 text-sm font-semibold",
+                previewMode === "mobile" ? "bg-background" : "bg-surface"
+              )}
+              onClick={() => setPreviewMode("mobile")}
+            >
+              Mobile
+            </button>
+            <button
+              type="button"
+              className={cn(
+                "h-9 rounded-xl border border-border px-3 text-sm font-semibold",
+                previewMode === "desktop" ? "bg-background" : "bg-surface"
+              )}
+              onClick={() => setPreviewMode("desktop")}
+            >
+              Desktop
+            </button>
+          </div>
+        </div>
         <div className="mt-3 rounded-3xl border border-border bg-background p-3">
-          <div className="mx-auto w-[360px] max-w-full">
-            <div className="rounded-[28px] border border-border bg-background shadow-sm">
-              <div className="px-4 py-3 text-sm font-semibold">Preview Device</div>
-              <div className="relative h-[620px] overflow-hidden">
-                <MobileMenuDrawer
-                  open
-                  title="Menu"
-                  items={previewItems}
-                  onClose={() => void 0}
-                  topAccountSection={
-                    <div className="rounded-2xl border border-border bg-surface p-3">
-                      <p className="text-sm font-semibold">Account</p>
-                      <p className="mt-1 text-xs text-muted-foreground">Pinned section preview</p>
-                    </div>
-                  }
-                  topFeaturedBanner={
-                    cfg.featuredBannerHtml?.trim() ? (
+          {previewMode === "mobile" ? (
+            <div className="mx-auto w-[360px] max-w-full">
+              <div className="rounded-[28px] border border-border bg-background shadow-sm">
+                <div className="px-4 py-3 text-sm font-semibold">Preview Device</div>
+                <div className="relative h-[620px] overflow-hidden">
+                  <MobileMenuDrawer
+                    open
+                    title="Menu"
+                    items={resolvedPreviewItems}
+                    onClose={() => void 0}
+                    topAccountSection={
                       <div className="rounded-2xl border border-border bg-surface p-3">
-                        <div className="text-sm" dangerouslySetInnerHTML={{ __html: cfg.featuredBannerHtml }} />
+                        <p className="text-sm font-semibold">Account</p>
+                        <p className="mt-1 text-xs text-muted-foreground">Pinned section preview</p>
                       </div>
-                    ) : null
-                  }
-                  topPromoBanner={
-                    cfg.promoBannerHtml?.trim() ? (
-                      <div className="rounded-2xl border border-border bg-surface p-3">
-                        <div className="text-sm" dangerouslySetInnerHTML={{ __html: cfg.promoBannerHtml }} />
-                      </div>
-                    ) : null
-                  }
-                />
+                    }
+                    topFeaturedBanner={
+                      cfg.featuredBannerHtml?.trim() ? (
+                        <div className="rounded-2xl border border-border bg-surface p-3">
+                          <div className="text-sm" dangerouslySetInnerHTML={{ __html: cfg.featuredBannerHtml }} />
+                        </div>
+                      ) : null
+                    }
+                    topPromoBanner={
+                      cfg.promoBannerHtml?.trim() ? (
+                        <div className="rounded-2xl border border-border bg-surface p-3">
+                          <div className="text-sm" dangerouslySetInnerHTML={{ __html: cfg.promoBannerHtml }} />
+                        </div>
+                      ) : null
+                    }
+                  />
+                </div>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="rounded-3xl border border-border bg-background p-4">
+              <div className="grid grid-cols-1 gap-2">
+                {desktopPreviewItems.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No desktop items.</p>
+                ) : (
+                  desktopPreviewItems.map((it) => <DesktopPreviewNode key={it.id} item={it} depth={0} />)
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         <p className="mt-3 text-xs text-muted-foreground">Default menu preview uses live categories on storefront.</p>
