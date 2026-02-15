@@ -113,7 +113,9 @@ export default function CategoryCarousel<T>({
     const dx = Math.abs(e.clientX - start.x);
     const dy = Math.abs(e.clientY - start.y);
 
-    if (dx > 5 && dx > dy) {
+    const threshold = e.pointerType === "touch" ? 10 : 6;
+
+    if (dx > threshold && dx > dy) {
       swipeBlockClickRef.current = true;
     }
   }
@@ -127,6 +129,9 @@ export default function CategoryCarousel<T>({
     if (!swipeBlockClickRef.current) return;
     e.preventDefault();
     e.stopPropagation();
+
+    // Ensure the next tap/click works normally.
+    swipeBlockClickRef.current = false;
   }
 
   return (
