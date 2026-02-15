@@ -234,6 +234,10 @@ body {
   scroll-padding-inline: 16px;
   scrollbar-width: none;
   touch-action: pan-x;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  will-change: scroll-position;
+  contain: content;
 }
 
 .horizontal-scroll-container::-webkit-scrollbar {
@@ -251,6 +255,8 @@ body {
   min-width: 160px;
   scroll-snap-align: start;
   scroll-snap-stop: always;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
 }
 
 .announcement-bar [data-fx='blink'] {
