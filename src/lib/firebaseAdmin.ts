@@ -13,9 +13,7 @@ function normalizePrivateKey(raw: string) {
   const withoutCarriageReturns = withoutWrappingQuotes.split("\r").join("");
 
   // If stored with literal "\\n" sequences inside .env.local, convert to real newlines.
-  return withoutCarriageReturns.includes("\\n")
-    ? withoutCarriageReturns.split("\\n").join("\n")
-    : withoutCarriageReturns;
+  return withoutCarriageReturns.replace(/\\n/g, "\n");
 }
 
 function readServiceAccountFromSplitEnv() {
@@ -55,6 +53,14 @@ export function getFirebaseAdminAuth() {
     const serviceAccount = readServiceAccount();
 
     if (serviceAccount) {
+      // TEMP diagnostics (safe): helps confirm production env is wired correctly.
+      // Do NOT log the private key contents.
+      console.log("[firebaseAdmin] init", {
+        projectId: Boolean((serviceAccount as admin.ServiceAccount).projectId),
+        clientEmail: Boolean((serviceAccount as admin.ServiceAccount).clientEmail),
+        privateKeyLength: String((serviceAccount as admin.ServiceAccount).privateKey ?? "").length,
+      });
+
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
       });

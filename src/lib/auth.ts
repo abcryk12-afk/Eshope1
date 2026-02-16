@@ -182,6 +182,31 @@ export const authOptions: NextAuthOptions = {
     signIn: "/login",
   },
   callbacks: {
+    async redirect({ url, baseUrl }) {
+      const envBaseUrl = (process.env.NEXTAUTH_URL ?? "").trim();
+      const finalBase = envBaseUrl || baseUrl;
+
+      if (!envBaseUrl) {
+        console.warn("[auth] NEXTAUTH_URL is missing; falling back to request baseUrl", { baseUrl });
+      }
+      if (!process.env.NEXTAUTH_SECRET || !String(process.env.NEXTAUTH_SECRET).trim()) {
+        console.warn("[auth] NEXTAUTH_SECRET is missing/empty; auth cookies/signing may break");
+      }
+
+      // Allow relative callback URLs.
+      if (url.startsWith("/")) return `${finalBase}${url}`;
+
+      // Only allow same-origin absolute URLs; otherwise, force to base.
+      try {
+        const u = new URL(url);
+        const b = new URL(finalBase);
+        if (u.origin === b.origin) return url;
+      } catch {
+        // ignore
+      }
+
+      return finalBase;
+    },
     async jwt({ token, user }) {
       if (user) {
         token.id = (user as { id: string }).id;
