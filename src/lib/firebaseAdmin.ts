@@ -6,14 +6,27 @@ function isRecord(v: unknown): v is Record<string, unknown> {
 
 function normalizePrivateKey(raw: string) {
   const trimmed = raw.trim();
-  const withoutWrappingQuotes =
-    trimmed.startsWith('"') && trimmed.endsWith('"') ? trimmed.slice(1, -1) : trimmed;
 
-  // Normalize Windows CRLF to LF without touching the actual key content.
-  const withoutCarriageReturns = withoutWrappingQuotes.split("\r").join("");
+  const stripWrappingQuotes = (v: string) => {
+    const t = v.trim();
+    if ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'"))) {
+      return t.slice(1, -1);
+    }
+    return t;
+  };
 
-  // If stored with literal "\\n" sequences inside .env.local, convert to real newlines.
-  return withoutCarriageReturns.replace(/\\n/g, "\n");
+  const withoutWrappingQuotes = stripWrappingQuotes(trimmed);
+
+  // 1) Remove actual CR characters (Windows line endings)
+  const withoutActualCarriageReturns = withoutWrappingQuotes.split("\r").join("");
+
+  // 2) Convert literal escaped CRLF/CR sequences ("\\r\\n" or "\\r")
+  const withoutEscapedCarriageReturns = withoutActualCarriageReturns
+    .replace(/\\r\\n/g, "\n")
+    .replace(/\\r/g, "");
+
+  // 3) Convert literal "\\n" sequences to real newlines
+  return withoutEscapedCarriageReturns.replace(/\\n/g, "\n");
 }
 
 function readServiceAccountFromSplitEnv() {
@@ -59,6 +72,15 @@ export function getFirebaseAdminAuth() {
         projectId: Boolean((serviceAccount as admin.ServiceAccount).projectId),
         clientEmail: Boolean((serviceAccount as admin.ServiceAccount).clientEmail),
         privateKeyLength: String((serviceAccount as admin.ServiceAccount).privateKey ?? "").length,
+        privateKeyHasBegin: String((serviceAccount as admin.ServiceAccount).privateKey ?? "").includes(
+          "-----BEGIN PRIVATE KEY-----"
+        ),
+        privateKeyHasEnd: String((serviceAccount as admin.ServiceAccount).privateKey ?? "").includes(
+          "-----END PRIVATE KEY-----"
+        ),
+        privateKeyLines: String((serviceAccount as admin.ServiceAccount).privateKey ?? "")
+          .split("\n")
+          .filter(Boolean).length,
       });
 
       admin.initializeApp({

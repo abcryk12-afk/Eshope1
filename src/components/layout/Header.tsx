@@ -305,7 +305,7 @@ export default function Header() {
 
           <div
             className={cn(
-              "relative flex w-full max-w-xl items-center gap-2",
+              "relative flex flex-1 min-w-0 max-w-xl items-center gap-2",
               branding?.logoAlignment === "center" ? "flex-1" : "ml-auto"
             )}
           >
@@ -398,7 +398,7 @@ export default function Header() {
             </div>
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="flex shrink-0 items-center gap-1">
             <LanguageSwitcher className="hidden md:flex" variant="compact" />
             <CurrencySwitcher className="hidden md:flex" variant="compact" />
 
