@@ -51,7 +51,11 @@ export default function TrackOrderClient() {
   const [data, setData] = useState<TrackResponse["order"] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const canSubmit = useMemo(() => orderId.trim().length >= 6 && phone.trim().length >= 3, [orderId, phone]);
+  const canSubmit = useMemo(() => {
+    const oidOk = orderId.trim().length >= 6;
+    const phoneOk = phone.trim().length >= 3;
+    return oidOk || phoneOk;
+  }, [orderId, phone]);
 
   async function submit() {
     if (!canSubmit) return;
@@ -62,7 +66,7 @@ export default function TrackOrderClient() {
     const res = await fetch("/api/orders/track", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ orderId, phone }),
+      body: JSON.stringify({ orderId: orderId.trim(), phone: phone.trim() }),
     }).catch(() => null);
 
     const json = res ? ((await res.json().catch(() => null)) as unknown) : null;
