@@ -48,6 +48,7 @@ function readSmtpConfig(): SmtpConfig {
 }
 
 let cachedTransporter: Transporter | null = null;
+let cachedVerify: Promise<boolean> | null = null;
 
 export function getMailerTransporter() {
   if (cachedTransporter) return cachedTransporter;
@@ -69,6 +70,23 @@ export function getMailerTransporter() {
     },
   });
 
+  cachedVerify = cachedTransporter
+    .verify()
+    .then(() => {
+      console.log("[mailer] SMTP verify ok", {
+        host: cfg.host,
+        port: cfg.port,
+        secure: cfg.secure,
+        user: cfg.user,
+        fromEmail: cfg.fromEmail,
+      });
+      return true;
+    })
+    .catch((err: unknown) => {
+      console.error("[mailer] SMTP verify failed", err);
+      return false;
+    });
+
   return cachedTransporter;
 }
 
@@ -83,15 +101,36 @@ export async function sendMail(args: {
 
   const transporter = getMailerTransporter();
 
-  return transporter.sendMail({
-    from: {
-      name: cfg.fromName,
-      address: cfg.fromEmail,
-    },
-    to: args.to,
-    subject: args.subject,
-    html: args.html,
-    text: args.text,
-    replyTo: args.replyTo,
-  });
+  if (cachedVerify) {
+    const ok = await cachedVerify;
+    if (!ok) {
+      throw new Error("SMTP verification failed (check SMTP_* env and server outbound mail access)");
+    }
+  }
+
+  try {
+    return await transporter.sendMail({
+      from: {
+        name: cfg.fromName,
+        address: cfg.fromEmail,
+      },
+      to: args.to,
+      subject: args.subject,
+      html: args.html,
+      text: args.text,
+      replyTo: args.replyTo,
+    });
+  } catch (err: unknown) {
+    console.error("[mailer] sendMail failed", {
+      to: args.to,
+      subject: args.subject,
+      host: cfg.host,
+      port: cfg.port,
+      secure: cfg.secure,
+      user: cfg.user,
+      fromEmail: cfg.fromEmail,
+      err,
+    });
+    throw err;
+  }
 }
