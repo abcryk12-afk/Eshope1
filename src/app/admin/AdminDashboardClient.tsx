@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { AlertTriangle, Package, Receipt, ShoppingCart, Users } from "lucide-react";
+import { Activity, AlertTriangle, Eye, Package, Receipt, ShoppingCart, UserCheck, Users } from "lucide-react";
 
 import Skeleton from "@/components/ui/Skeleton";
 import { formatMoneyFromPkr } from "@/lib/currency";
@@ -42,6 +42,16 @@ type Overview = {
   lowStock: LowStockItem[];
 };
 
+type AnalyticsOverview = {
+  cards: {
+    dailyVisitors: number;
+    totalVisitors: number;
+    uniqueVisitors: number;
+    activeUsers: number;
+    pageViews: number;
+  };
+};
+
 function Stat({ title, value, icon }: { title: string; value: string; icon: React.ReactNode }) {
   return (
     <div className="rounded-3xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
@@ -61,6 +71,8 @@ function Stat({ title, value, icon }: { title: string; value: string; icon: Reac
 export default function AdminDashboardClient() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<Overview | null>(null);
+  const [analytics, setAnalytics] = useState<AnalyticsOverview | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const currency = useAppSelector((s) => s.currency);
 
   useEffect(() => {
@@ -87,6 +99,33 @@ export default function AdminDashboardClient() {
     }
 
     load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      setAnalyticsLoading(true);
+
+      const res = await fetch("/api/admin/analytics/overview", { cache: "no-store" }).catch(() => null);
+      if (cancelled) return;
+
+      if (!res || !res.ok) {
+        setAnalytics(null);
+        setAnalyticsLoading(false);
+        return;
+      }
+
+      const json = (await res.json().catch(() => null)) as AnalyticsOverview | null;
+      setAnalytics(json);
+      setAnalyticsLoading(false);
+    }
+
+    void load();
 
     return () => {
       cancelled = true;
@@ -142,6 +181,28 @@ export default function AdminDashboardClient() {
               value={String(data.cards.totalUsers)}
               icon={<Users className="h-4 w-4" />}
             />
+          </>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        {analyticsLoading || !analytics ? (
+          Array.from({ length: 5 }).map((_, i) => (
+            <div
+              key={i}
+              className="rounded-3xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950"
+            >
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="mt-4 h-8 w-32" />
+            </div>
+          ))
+        ) : (
+          <>
+            <Stat title="Daily Visitors" value={String(analytics.cards.dailyVisitors)} icon={<Users className="h-4 w-4" />} />
+            <Stat title="Total Visitors" value={String(analytics.cards.totalVisitors)} icon={<UserCheck className="h-4 w-4" />} />
+            <Stat title="Unique (30d)" value={String(analytics.cards.uniqueVisitors)} icon={<Users className="h-4 w-4" />} />
+            <Stat title="Active (5m)" value={String(analytics.cards.activeUsers)} icon={<Activity className="h-4 w-4" />} />
+            <Stat title="Page Views" value={String(analytics.cards.pageViews)} icon={<Eye className="h-4 w-4" />} />
           </>
         )}
       </div>

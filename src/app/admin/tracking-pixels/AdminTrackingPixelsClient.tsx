@@ -20,9 +20,11 @@ type ApiPayload = {
     autoEventsEnabled: boolean;
     manualOverrideMode: boolean;
     testEventMode: boolean;
+    gtm: { enabled: boolean; containerId: string };
     ga4: { enabled: boolean; measurementId: string; debug: boolean };
     googleAds: { enabled: boolean; conversionId: string; conversionLabel: string };
     metaPixels: MetaPixelEntry[];
+    metaCapi: { enabled: boolean; accessToken: string; apiVersion: string };
   };
   share: { enabled: boolean };
 };
@@ -46,9 +48,11 @@ function normalize(json: unknown): ApiPayload {
       autoEventsEnabled: true,
       manualOverrideMode: false,
       testEventMode: false,
+      gtm: { enabled: false, containerId: "" },
       ga4: { enabled: false, measurementId: "", debug: false },
       googleAds: { enabled: false, conversionId: "", conversionLabel: "" },
       metaPixels: [],
+      metaCapi: { enabled: false, accessToken: "", apiVersion: "v18.0" },
     },
     share: { enabled: false },
   };
@@ -56,8 +60,10 @@ function normalize(json: unknown): ApiPayload {
   if (!isRecord(json)) return empty;
 
   const t = isRecord(json.tracking) ? json.tracking : {};
+  const gtm = isRecord(t.gtm) ? t.gtm : {};
   const ga4 = isRecord(t.ga4) ? t.ga4 : {};
   const ads = isRecord(t.googleAds) ? t.googleAds : {};
+  const capi = isRecord(t.metaCapi) ? t.metaCapi : {};
   const share = isRecord(json.share) ? json.share : {};
 
   const metaRaw = Array.isArray(t.metaPixels) ? t.metaPixels : [];
@@ -78,6 +84,10 @@ function normalize(json: unknown): ApiPayload {
       autoEventsEnabled: readBool(t.autoEventsEnabled, empty.tracking.autoEventsEnabled),
       manualOverrideMode: readBool(t.manualOverrideMode, empty.tracking.manualOverrideMode),
       testEventMode: readBool(t.testEventMode, empty.tracking.testEventMode),
+      gtm: {
+        enabled: readBool(gtm.enabled, empty.tracking.gtm.enabled),
+        containerId: readString(gtm.containerId).trim(),
+      },
       ga4: {
         enabled: readBool(ga4.enabled, empty.tracking.ga4.enabled),
         measurementId: readString(ga4.measurementId).trim(),
@@ -89,6 +99,11 @@ function normalize(json: unknown): ApiPayload {
         conversionLabel: readString(ads.conversionLabel).trim(),
       },
       metaPixels,
+      metaCapi: {
+        enabled: readBool(capi.enabled, empty.tracking.metaCapi.enabled),
+        accessToken: readString(capi.accessToken),
+        apiVersion: readString(capi.apiVersion).trim() || "v18.0",
+      },
     },
     share: { enabled: readBool(share.enabled, empty.share.enabled) },
   };
@@ -136,6 +151,20 @@ export default function AdminTrackingPixelsClient() {
 
   function setGa4<K extends keyof ApiPayload["tracking"]["ga4"]>(key: K, value: ApiPayload["tracking"]["ga4"][K]) {
     setState((prev) => ({ ...prev, tracking: { ...prev.tracking, ga4: { ...prev.tracking.ga4, [key]: value } } }));
+  }
+
+  function setGtm<K extends keyof ApiPayload["tracking"]["gtm"]>(key: K, value: ApiPayload["tracking"]["gtm"][K]) {
+    setState((prev) => ({ ...prev, tracking: { ...prev.tracking, gtm: { ...prev.tracking.gtm, [key]: value } } }));
+  }
+
+  function setMetaCapi<K extends keyof ApiPayload["tracking"]["metaCapi"]>(
+    key: K,
+    value: ApiPayload["tracking"]["metaCapi"][K]
+  ) {
+    setState((prev) => ({
+      ...prev,
+      tracking: { ...prev.tracking, metaCapi: { ...prev.tracking.metaCapi, [key]: value } },
+    }));
   }
 
   function setAds<K extends keyof ApiPayload["tracking"]["googleAds"]>(key: K, value: ApiPayload["tracking"]["googleAds"][K]) {
@@ -189,11 +218,20 @@ export default function AdminTrackingPixelsClient() {
           metaPixels: state.tracking.metaPixels
             .map((p) => ({ ...p, pixelId: p.pixelId.trim() }))
             .filter((p) => p.pixelId),
+          gtm: {
+            ...state.tracking.gtm,
+            containerId: state.tracking.gtm.containerId.trim(),
+          },
           ga4: { ...state.tracking.ga4, measurementId: state.tracking.ga4.measurementId.trim() },
           googleAds: {
             ...state.tracking.googleAds,
             conversionId: state.tracking.googleAds.conversionId.trim(),
             conversionLabel: state.tracking.googleAds.conversionLabel.trim(),
+          },
+          metaCapi: {
+            ...state.tracking.metaCapi,
+            apiVersion: state.tracking.metaCapi.apiVersion.trim() || "v18.0",
+            accessToken: state.tracking.metaCapi.accessToken,
           },
         },
         share: { enabled: state.share.enabled },
@@ -280,6 +318,23 @@ export default function AdminTrackingPixelsClient() {
                   Test event mode
                 </label>
               </div>
+
+            </div>
+
+            <div className="rounded-3xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+              <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Google Tag Manager (GTM)</h2>
+
+              <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                <label className="flex items-center gap-3 text-sm text-zinc-700 dark:text-zinc-300">
+                  <input type="checkbox" checked={state.tracking.gtm.enabled} onChange={(e) => setGtm("enabled", e.target.checked)} className="h-4 w-4 rounded border-zinc-300" />
+                  Enable GTM
+                </label>
+
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Container ID</label>
+                  <Input value={state.tracking.gtm.containerId} onChange={(e) => setGtm("containerId", e.target.value)} placeholder="GTM-XXXXXXX" />
+                </div>
+              </div>
             </div>
 
             <div className="rounded-3xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
@@ -358,6 +413,30 @@ export default function AdminTrackingPixelsClient() {
                   ))}
                 </div>
               )}
+            </div>
+
+            <div className="rounded-3xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+              <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Meta Conversions API (CAPI)</h2>
+              <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                Server-side events for better attribution. Use the same Meta Pixel ID(s) above.
+              </p>
+
+              <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                <label className="flex items-center gap-3 text-sm text-zinc-700 dark:text-zinc-300">
+                  <input type="checkbox" checked={state.tracking.metaCapi.enabled} onChange={(e) => setMetaCapi("enabled", e.target.checked)} className="h-4 w-4 rounded border-zinc-300" />
+                  Enable Meta CAPI
+                </label>
+
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Access Token</label>
+                  <Input value={state.tracking.metaCapi.accessToken} onChange={(e) => setMetaCapi("accessToken", e.target.value)} placeholder="EAAB..." />
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">API Version</label>
+                  <Input value={state.tracking.metaCapi.apiVersion} onChange={(e) => setMetaCapi("apiVersion", e.target.value)} placeholder="v18.0" />
+                </div>
+              </div>
             </div>
           </div>
 

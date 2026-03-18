@@ -23,6 +23,13 @@ const BodySchema = z.object({
     autoEventsEnabled: z.boolean().optional().default(true),
     manualOverrideMode: z.boolean().optional().default(false),
     testEventMode: z.boolean().optional().default(false),
+    gtm: z
+      .object({
+        enabled: z.boolean().optional().default(false),
+        containerId: z.string().trim().max(40).optional().default(""),
+      })
+      .optional()
+      .default({ enabled: false, containerId: "" }),
     ga4: z
       .object({
         enabled: z.boolean().optional().default(false),
@@ -40,6 +47,14 @@ const BodySchema = z.object({
       .optional()
       .default({ enabled: false, conversionId: "", conversionLabel: "" }),
     metaPixels: z.array(MetaPixelEntrySchema).optional().default([]),
+    metaCapi: z
+      .object({
+        enabled: z.boolean().optional().default(false),
+        accessToken: z.string().trim().max(400).optional().default(""),
+        apiVersion: z.string().trim().max(20).optional().default("v18.0"),
+      })
+      .optional()
+      .default({ enabled: false, accessToken: "", apiVersion: "v18.0" }),
   }),
   share: z
     .object({
@@ -85,8 +100,10 @@ async function requireAdmin() {
 function readTracking(doc: unknown) {
   const root = isRecord(doc) ? doc : null;
   const tracking = root && isRecord(root.tracking) ? root.tracking : {};
+  const gtm = isRecord(tracking.gtm) ? tracking.gtm : {};
   const ga4 = isRecord(tracking.ga4) ? tracking.ga4 : {};
   const googleAds = isRecord(tracking.googleAds) ? tracking.googleAds : {};
+  const metaCapi = isRecord(tracking.metaCapi) ? tracking.metaCapi : {};
   const share = root && isRecord(root.share) ? root.share : {};
 
   return {
@@ -96,6 +113,10 @@ function readTracking(doc: unknown) {
       manualOverrideMode: typeof tracking.manualOverrideMode === "boolean" ? tracking.manualOverrideMode : false,
       testEventMode: typeof tracking.testEventMode === "boolean" ? tracking.testEventMode : false,
       updatedAt: typeof tracking.updatedAt === "number" ? tracking.updatedAt : 0,
+      gtm: {
+        enabled: typeof gtm.enabled === "boolean" ? gtm.enabled : false,
+        containerId: typeof gtm.containerId === "string" ? gtm.containerId.trim() : "",
+      },
       ga4: {
         enabled: typeof ga4.enabled === "boolean" ? ga4.enabled : false,
         measurementId: typeof ga4.measurementId === "string" ? ga4.measurementId.trim() : "",
@@ -107,6 +128,11 @@ function readTracking(doc: unknown) {
         conversionLabel: typeof googleAds.conversionLabel === "string" ? googleAds.conversionLabel.trim() : "",
       },
       metaPixels: normalizeMetaPixels(tracking.metaPixels),
+      metaCapi: {
+        enabled: typeof metaCapi.enabled === "boolean" ? metaCapi.enabled : false,
+        accessToken: typeof metaCapi.accessToken === "string" ? metaCapi.accessToken : "",
+        apiVersion: typeof metaCapi.apiVersion === "string" ? metaCapi.apiVersion.trim() : "v18.0",
+      },
     },
     share: {
       enabled: typeof share.enabled === "boolean" ? share.enabled : false,
@@ -146,6 +172,17 @@ export async function PUT(req: NextRequest) {
     enabled: p.enabled,
   }));
 
+  const gtm = {
+    enabled: parsed.data.tracking.gtm.enabled,
+    containerId: parsed.data.tracking.gtm.containerId,
+  };
+
+  const metaCapi = {
+    enabled: parsed.data.tracking.metaCapi.enabled,
+    accessToken: parsed.data.tracking.metaCapi.accessToken,
+    apiVersion: parsed.data.tracking.metaCapi.apiVersion,
+  };
+
   const doc = (await SiteSetting.findOneAndUpdate(
     { key: "global" },
     {
@@ -156,9 +193,11 @@ export async function PUT(req: NextRequest) {
           autoEventsEnabled: parsed.data.tracking.autoEventsEnabled,
           manualOverrideMode: parsed.data.tracking.manualOverrideMode,
           testEventMode: parsed.data.tracking.testEventMode,
+          gtm,
           ga4: parsed.data.tracking.ga4,
           googleAds: parsed.data.tracking.googleAds,
           metaPixels,
+          metaCapi,
           updatedAt: now,
         },
         share: {

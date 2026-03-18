@@ -532,6 +532,8 @@ export default function ProductDetailClient({ slug }: Props) {
   const showLowStock =
     typeof availableStock === "number" && availableStock > 0 && availableStock <= Number(lowStockThreshold ?? 0);
 
+  const buyNowEnabled = storefrontSettings?.cartUx?.buyNowEnabled ?? true;
+
   const shippingFeeValues = useMemo(() => {
     const s = storefrontSettings?.shipping;
     if (!s) return { allFree: true, minFee: 0, etaText: "" };
@@ -851,18 +853,20 @@ export default function ProductDetailClient({ slug }: Props) {
                   )}
                 />
 
-                <button
-                  type="button"
-                  onClick={buyNow}
-                  disabled={!canAdd}
-                  className={cn(
-                    "h-11 rounded-2xl bg-accent px-5 text-sm font-semibold text-accent-foreground",
-                    "hover:bg-accent-hover",
-                    !canAdd && "pointer-events-none opacity-50"
-                  )}
-                >
-                  Buy now
-                </button>
+                {buyNowEnabled ? (
+                  <button
+                    type="button"
+                    onClick={buyNow}
+                    disabled={!canAdd}
+                    className={cn(
+                      "h-11 rounded-2xl bg-accent px-5 text-sm font-semibold text-accent-foreground",
+                      "hover:bg-accent-hover",
+                      !canAdd && "pointer-events-none opacity-50"
+                    )}
+                  >
+                    Buy now
+                  </button>
+                ) : null}
               </div>
             </div>
 
@@ -987,18 +991,20 @@ export default function ProductDetailClient({ slug }: Props) {
             Add
           </button>
 
-          <button
-            type="button"
-            onClick={buyNow}
-            disabled={!canAdd}
-            className={cn(
-              "h-11 rounded-2xl bg-accent px-5 text-sm font-semibold text-accent-foreground",
-              "hover:bg-accent-hover",
-              !canAdd && "pointer-events-none opacity-50"
-            )}
-          >
-            Buy now
-          </button>
+          {buyNowEnabled ? (
+            <button
+              type="button"
+              onClick={buyNow}
+              disabled={!canAdd}
+              className={cn(
+                "h-11 rounded-2xl bg-accent px-5 text-sm font-semibold text-accent-foreground",
+                "hover:bg-accent-hover",
+                !canAdd && "pointer-events-none opacity-50"
+              )}
+            >
+              Buy now
+            </button>
+          ) : null}
         </div>
       </div>
     </div>

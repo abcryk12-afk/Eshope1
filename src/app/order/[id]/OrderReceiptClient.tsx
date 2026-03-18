@@ -21,7 +21,7 @@ type PaymentAccount = {
 type PaymentsSettings = {
   codEnabled: boolean;
   manual: { enabled: boolean; instructions: string; accounts: PaymentAccount[] };
-  online: { enabled: boolean; provider: string; instructions: string };
+  online: { enabled: boolean; provider: string; instructions: string; kind?: string };
 };
 
 type PaymentsApiResponse = { payments: PaymentsSettings };

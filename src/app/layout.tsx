@@ -16,11 +16,15 @@ import SiteSetting from "@/models/SiteSetting";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+  display: "swap",
+  preload: true,
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  display: "swap",
+  preload: true,
 });
 
 export async function generateMetadata(): Promise<Metadata> {

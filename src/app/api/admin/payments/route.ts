@@ -27,14 +27,57 @@ const ManualSchema = z
   .optional()
   .default({ enabled: true, instructions: "", accounts: [] });
 
+const ProviderSchema = z
+  .object({
+    enabled: z.boolean().optional().default(false),
+    provider: z.string().trim().max(60).optional().default(""),
+    instructions: z.string().trim().max(2000).optional().default(""),
+    publicKey: z.string().trim().max(400).optional().default(""),
+    secretKey: z.string().trim().max(400).optional().default(""),
+    webhookSecret: z.string().trim().max(400).optional().default(""),
+  })
+  .optional()
+  .default({ enabled: false, provider: "", instructions: "", publicKey: "", secretKey: "", webhookSecret: "" });
+
 const OnlineSchema = z
   .object({
     enabled: z.boolean().optional().default(false),
     provider: z.string().trim().max(60).optional().default(""),
     instructions: z.string().trim().max(2000).optional().default(""),
+    kind: z.string().trim().max(40).optional().default(""),
+    publicKey: z.string().trim().max(400).optional().default(""),
+    secretKey: z.string().trim().max(400).optional().default(""),
+    webhookSecret: z.string().trim().max(400).optional().default(""),
+    activeKind: z.string().trim().max(40).optional().default(""),
+    providers: z
+      .object({
+        stripe: ProviderSchema,
+        jazzcash: ProviderSchema,
+        easypaisa: ProviderSchema,
+      })
+      .optional()
+      .default({
+        stripe: { enabled: false, provider: "", instructions: "", publicKey: "", secretKey: "", webhookSecret: "" },
+        jazzcash: { enabled: false, provider: "", instructions: "", publicKey: "", secretKey: "", webhookSecret: "" },
+        easypaisa: { enabled: false, provider: "", instructions: "", publicKey: "", secretKey: "", webhookSecret: "" },
+      }),
   })
   .optional()
-  .default({ enabled: false, provider: "", instructions: "" });
+  .default({
+    enabled: false,
+    provider: "",
+    instructions: "",
+    kind: "",
+    publicKey: "",
+    secretKey: "",
+    webhookSecret: "",
+    activeKind: "",
+    providers: {
+      stripe: { enabled: false, provider: "", instructions: "", publicKey: "", secretKey: "", webhookSecret: "" },
+      jazzcash: { enabled: false, provider: "", instructions: "", publicKey: "", secretKey: "", webhookSecret: "" },
+      easypaisa: { enabled: false, provider: "", instructions: "", publicKey: "", secretKey: "", webhookSecret: "" },
+    },
+  });
 
 const BodySchema = z.object({
   codEnabled: z.boolean().optional().default(true),
@@ -76,6 +119,11 @@ function normalizePayments(v: unknown) {
   const root = isRecord(v) ? v : {};
   const manual = isRecord(root.manual) ? root.manual : {};
   const online = isRecord(root.online) ? root.online : {};
+  const providers = isRecord(online.providers) ? (online.providers as Record<string, unknown>) : {};
+
+  const stripe = isRecord(providers.stripe) ? (providers.stripe as Record<string, unknown>) : {};
+  const jazzcash = isRecord(providers.jazzcash) ? (providers.jazzcash as Record<string, unknown>) : {};
+  const easypaisa = isRecord(providers.easypaisa) ? (providers.easypaisa as Record<string, unknown>) : {};
 
   return {
     codEnabled: readBool(root.codEnabled, true),
@@ -88,6 +136,37 @@ function normalizePayments(v: unknown) {
       enabled: readBool(online.enabled, false),
       provider: readString(online.provider, ""),
       instructions: readString(online.instructions, ""),
+      kind: readString(online.kind, ""),
+      publicKey: readString(online.publicKey, ""),
+      secretKey: readString(online.secretKey, ""),
+      webhookSecret: readString(online.webhookSecret, ""),
+      activeKind: readString(online.activeKind, ""),
+      providers: {
+        stripe: {
+          enabled: readBool(stripe.enabled, false),
+          provider: readString(stripe.provider, ""),
+          instructions: readString(stripe.instructions, ""),
+          publicKey: readString(stripe.publicKey, ""),
+          secretKey: readString(stripe.secretKey, ""),
+          webhookSecret: readString(stripe.webhookSecret, ""),
+        },
+        jazzcash: {
+          enabled: readBool(jazzcash.enabled, false),
+          provider: readString(jazzcash.provider, ""),
+          instructions: readString(jazzcash.instructions, ""),
+          publicKey: readString(jazzcash.publicKey, ""),
+          secretKey: readString(jazzcash.secretKey, ""),
+          webhookSecret: readString(jazzcash.webhookSecret, ""),
+        },
+        easypaisa: {
+          enabled: readBool(easypaisa.enabled, false),
+          provider: readString(easypaisa.provider, ""),
+          instructions: readString(easypaisa.instructions, ""),
+          publicKey: readString(easypaisa.publicKey, ""),
+          secretKey: readString(easypaisa.secretKey, ""),
+          webhookSecret: readString(easypaisa.webhookSecret, ""),
+        },
+      },
     },
   };
 }

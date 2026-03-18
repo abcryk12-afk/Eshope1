@@ -29,6 +29,16 @@ type PaymentsSettings = {
     enabled: boolean;
     provider: string;
     instructions: string;
+    kind?: string;
+    publicKey?: string;
+    secretKey?: string;
+    webhookSecret?: string;
+    activeKind?: string;
+    providers?: {
+      stripe?: { enabled?: boolean; provider?: string; instructions?: string; publicKey?: string; secretKey?: string; webhookSecret?: string };
+      jazzcash?: { enabled?: boolean; provider?: string; instructions?: string; publicKey?: string; secretKey?: string; webhookSecret?: string };
+      easypaisa?: { enabled?: boolean; provider?: string; instructions?: string; publicKey?: string; secretKey?: string; webhookSecret?: string };
+    };
   };
 };
 
@@ -38,7 +48,21 @@ function emptySettings(): PaymentsSettings {
   return {
     codEnabled: true,
     manual: { enabled: true, instructions: "", accounts: [] },
-    online: { enabled: false, provider: "", instructions: "" },
+    online: {
+      enabled: false,
+      provider: "",
+      instructions: "",
+      kind: "",
+      publicKey: "",
+      secretKey: "",
+      webhookSecret: "",
+      activeKind: "",
+      providers: {
+        stripe: { enabled: false, provider: "", instructions: "", publicKey: "", secretKey: "", webhookSecret: "" },
+        jazzcash: { enabled: false, provider: "", instructions: "", publicKey: "", secretKey: "", webhookSecret: "" },
+        easypaisa: { enabled: false, provider: "", instructions: "", publicKey: "", secretKey: "", webhookSecret: "" },
+      },
+    },
   };
 }
 
@@ -341,6 +365,183 @@ export default function AdminPaymentsSettingsClient() {
                 placeholder="e.g. Stripe, JazzCash, Easypaisa"
               />
             </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Kind</label>
+              <Input
+                value={settings.online.kind ?? ""}
+                onChange={(e) =>
+                  setSettings((s) => (s ? { ...s, online: { ...s.online, kind: e.target.value } } : s))
+                }
+                placeholder="e.g. stripe, jazzcash, easypaisa"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Active kind</label>
+              <Input
+                value={settings.online.activeKind ?? ""}
+                onChange={(e) =>
+                  setSettings((s) => (s ? { ...s, online: { ...s.online, activeKind: e.target.value } } : s))
+                }
+                placeholder="stripe | jazzcash | easypaisa"
+              />
+            </div>
+          </div>
+
+          <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Public key</label>
+              <Input
+                value={settings.online.publicKey ?? ""}
+                onChange={(e) =>
+                  setSettings((s) => (s ? { ...s, online: { ...s.online, publicKey: e.target.value } } : s))
+                }
+                placeholder="Optional (client-side key)"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Secret key</label>
+              <Input
+                value={settings.online.secretKey ?? ""}
+                onChange={(e) =>
+                  setSettings((s) => (s ? { ...s, online: { ...s.online, secretKey: e.target.value } } : s))
+                }
+                placeholder="Optional (server-side)"
+              />
+            </div>
+
+            <div className="space-y-2 md:col-span-2">
+              <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Webhook secret</label>
+              <Input
+                value={settings.online.webhookSecret ?? ""}
+                onChange={(e) =>
+                  setSettings((s) => (s ? { ...s, online: { ...s.online, webhookSecret: e.target.value } } : s))
+                }
+                placeholder="Used to verify incoming webhook signatures"
+              />
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+            {(["stripe", "jazzcash", "easypaisa"] as const).map((k) => {
+              const p = settings.online.providers?.[k] ?? {};
+              return (
+                <div key={k} className="rounded-3xl border border-zinc-200 p-4 dark:border-zinc-800">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">{k}</p>
+                    <label className="flex items-center gap-3 text-sm text-zinc-700 dark:text-zinc-300">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(p.enabled)}
+                        onChange={(e) =>
+                          setSettings((s) =>
+                            s
+                              ? {
+                                  ...s,
+                                  online: {
+                                    ...s.online,
+                                    providers: {
+                                      ...(s.online.providers ?? {}),
+                                      [k]: { ...(s.online.providers?.[k] ?? {}), enabled: e.target.checked },
+                                    },
+                                  },
+                                }
+                              : s
+                          )
+                        }
+                        className="h-4 w-4 rounded border-zinc-300"
+                      />
+                      Enabled
+                    </label>
+                  </div>
+
+                  <div className="mt-3 space-y-3">
+                    <Input
+                      value={String(p.provider ?? "")}
+                      onChange={(e) =>
+                        setSettings((s) =>
+                          s
+                            ? {
+                                ...s,
+                                online: {
+                                  ...s.online,
+                                  providers: {
+                                    ...(s.online.providers ?? {}),
+                                    [k]: { ...(s.online.providers?.[k] ?? {}), provider: e.target.value },
+                                  },
+                                },
+                              }
+                            : s
+                        )
+                      }
+                      placeholder="Provider label / number"
+                    />
+                    <Input
+                      value={String(p.publicKey ?? "")}
+                      onChange={(e) =>
+                        setSettings((s) =>
+                          s
+                            ? {
+                                ...s,
+                                online: {
+                                  ...s.online,
+                                  providers: {
+                                    ...(s.online.providers ?? {}),
+                                    [k]: { ...(s.online.providers?.[k] ?? {}), publicKey: e.target.value },
+                                  },
+                                },
+                              }
+                            : s
+                        )
+                      }
+                      placeholder="Public key (optional)"
+                    />
+                    <Input
+                      value={String(p.secretKey ?? "")}
+                      onChange={(e) =>
+                        setSettings((s) =>
+                          s
+                            ? {
+                                ...s,
+                                online: {
+                                  ...s.online,
+                                  providers: {
+                                    ...(s.online.providers ?? {}),
+                                    [k]: { ...(s.online.providers?.[k] ?? {}), secretKey: e.target.value },
+                                  },
+                                },
+                              }
+                            : s
+                        )
+                      }
+                      placeholder="Secret key (server-side)"
+                    />
+                    <Input
+                      value={String(p.webhookSecret ?? "")}
+                      onChange={(e) =>
+                        setSettings((s) =>
+                          s
+                            ? {
+                                ...s,
+                                online: {
+                                  ...s.online,
+                                  providers: {
+                                    ...(s.online.providers ?? {}),
+                                    [k]: { ...(s.online.providers?.[k] ?? {}), webhookSecret: e.target.value },
+                                  },
+                                },
+                              }
+                            : s
+                        )
+                      }
+                      placeholder="Webhook secret"
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           <div className="mt-3 space-y-2">

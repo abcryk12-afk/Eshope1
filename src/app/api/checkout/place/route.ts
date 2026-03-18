@@ -76,6 +76,54 @@ function normalizePayments(v: unknown) {
   };
 }
 
+function readString(v: unknown) {
+  return typeof v === "string" ? v.trim() : "";
+}
+
+async function createStripeCheckoutSession(params: {
+  secretKey: string;
+  orderId: string;
+  orderTotalAmountUsd: number;
+  currency: "USD";
+  successUrl: string;
+  cancelUrl: string;
+}) {
+  const body = new URLSearchParams();
+  body.set("mode", "payment");
+  body.set("client_reference_id", params.orderId);
+  body.set("success_url", params.successUrl);
+  body.set("cancel_url", params.cancelUrl);
+  body.set("metadata[order_id]", params.orderId);
+
+  body.set("line_items[0][price_data][currency]", params.currency.toLowerCase());
+  body.set("line_items[0][price_data][product_data][name]", `Order ${params.orderId}`);
+  body.set("line_items[0][price_data][unit_amount]", String(Math.round(params.orderTotalAmountUsd * 100)));
+  body.set("line_items[0][quantity]", "1");
+
+  const res = await fetch("https://api.stripe.com/v1/checkout/sessions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${params.secretKey}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body,
+  });
+
+  const json = (await res.json().catch(() => null)) as unknown;
+  if (!res.ok || !isRecord(json)) {
+    const msg = isRecord(json) && typeof json.error === "object" && json.error !== null
+      ? String((json.error as Record<string, unknown>).message ?? "")
+      : "Stripe session create failed";
+    throw new Error(msg || "Stripe session create failed");
+  }
+
+  const id = readString((json as Record<string, unknown>).id);
+  const url = readString((json as Record<string, unknown>).url);
+  if (!id || !url) throw new Error("Stripe session create failed");
+
+  return { id, url };
+}
+
 type ComputedItem = {
   productId: string;
   variantId: string;
@@ -532,7 +580,31 @@ export async function POST(req: NextRequest) {
 
   let order;
   try {
-    const paymentStatus = parsed.data.paymentMethod === "manual" ? "Pending" : "Unpaid";
+    const paymentStatus =
+      parsed.data.paymentMethod === "manual" ? "Pending" : parsed.data.paymentMethod === "online" ? "Pending" : "Unpaid";
+
+    const onlineKind = (() => {
+      const p = settingsRoot?.payments;
+      if (!p || typeof p !== "object") return "";
+      const online = (p as Record<string, unknown>).online;
+      if (!online || typeof online !== "object") return "";
+
+      const rec = online as Record<string, unknown>;
+      const activeKind = String(rec.activeKind ?? "").trim().toLowerCase();
+      const legacyKind = String(rec.kind ?? rec.provider ?? "").trim().toLowerCase();
+      const kind = (activeKind || legacyKind).trim();
+
+      const providers = rec.providers;
+      if (kind && providers && typeof providers === "object") {
+        const cfg = (providers as Record<string, unknown>)[kind];
+        if (cfg && typeof cfg === "object") {
+          const enabled = (cfg as Record<string, unknown>).enabled;
+          if (typeof enabled === "boolean" && !enabled) return "";
+        }
+      }
+
+      return kind;
+    })();
     const payload: Record<string, unknown> = {
       items: computed.map((i) => ({
         productId: i.productId,
@@ -548,6 +620,9 @@ export async function POST(req: NextRequest) {
       })),
       shippingAddress: parsed.data.shippingAddress,
       paymentMethod: parsed.data.paymentMethod,
+      paymentProvider: parsed.data.paymentMethod === "online" ? (onlineKind || "online") : null,
+      paymentProviderRef: null,
+      paymentProviderMeta: null,
       currency,
       pkrPerUsd,
       paymentStatus,
@@ -583,6 +658,75 @@ export async function POST(req: NextRequest) {
         : "Could not create order";
 
     return NextResponse.json({ message }, { status: 500 });
+  }
+
+  const onlineCfg = (() => {
+    const p = settingsRoot?.payments;
+    if (!p || typeof p !== "object") return null;
+    const online = (p as Record<string, unknown>).online;
+    if (!online || typeof online !== "object") return null;
+    return online as Record<string, unknown>;
+  })();
+
+  const onlineProviders = onlineCfg && typeof onlineCfg.providers === "object" && onlineCfg.providers !== null
+    ? (onlineCfg.providers as Record<string, unknown>)
+    : {};
+  const activeKind = readString(onlineCfg?.activeKind).toLowerCase();
+  const legacyKind = readString(onlineCfg?.kind ?? onlineCfg?.provider).toLowerCase();
+  const onlineKind = (activeKind || legacyKind).trim();
+  const providerCfg = onlineKind && typeof onlineProviders[onlineKind] === "object" && onlineProviders[onlineKind] !== null
+    ? (onlineProviders[onlineKind] as Record<string, unknown>)
+    : null;
+  const onlineSecretKey = providerCfg ? readString(providerCfg.secretKey) : readString(onlineCfg?.secretKey);
+
+  if (parsed.data.paymentMethod === "online" && onlineKind === "stripe") {
+    if (currency !== "USD") {
+      return NextResponse.json({ message: "Stripe payments are only available for USD orders" }, { status: 400 });
+    }
+
+    if (!onlineSecretKey) {
+      return NextResponse.json({ message: "Stripe secret key is not configured" }, { status: 400 });
+    }
+
+    try {
+      const origin = new URL(req.url).origin;
+      const orderId = order._id.toString();
+      const emailQuery = guestEmail ? `?email=${encodeURIComponent(guestEmail)}` : "";
+      const successUrl = `${origin}/order/${encodeURIComponent(orderId)}${emailQuery}`;
+      const cancelUrl = `${origin}/checkout`;
+
+      const rate = typeof pkrPerUsd === "number" && Number.isFinite(pkrPerUsd) && pkrPerUsd > 0 ? pkrPerUsd : 0;
+      if (!rate) {
+        return NextResponse.json({ message: "Exchange rate is required" }, { status: 400 });
+      }
+
+      const totalUsd = Math.max(0, totalAmount / rate);
+
+      const session = await createStripeCheckoutSession({
+        secretKey: onlineSecretKey,
+        orderId,
+        orderTotalAmountUsd: totalUsd,
+        currency: "USD",
+        successUrl,
+        cancelUrl,
+      });
+
+      await Order.updateOne(
+        { _id: order._id },
+        {
+          $set: {
+            paymentProvider: "stripe",
+            paymentProviderRef: session.id,
+            paymentProviderMeta: { checkoutUrl: session.url },
+          },
+        }
+      );
+
+      return NextResponse.json({ orderId, checkoutUrl: session.url });
+    } catch (err: unknown) {
+      console.error("[checkout/place] stripe checkout session failed", err);
+      return NextResponse.json({ message: "Could not start Stripe checkout" }, { status: 500 });
+    }
   }
 
   if (couponCode) {

@@ -50,6 +50,8 @@ export type StorefrontLayoutSettings = {
 export type CartUxSettings = {
   quickCheckoutEnabled: boolean;
   quickCheckoutAutoHideSeconds: number;
+  onePageCheckoutEnabled: boolean;
+  buyNowEnabled: boolean;
 };
 
 export type AnnouncementBarMode = "static" | "slide" | "fade" | "marquee_ltr" | "marquee_rtl";
@@ -440,6 +442,9 @@ export function normalizeStorefrontSettings(doc: unknown): StorefrontSettings {
   const cartUx = isRecord(root.cartUx) ? root.cartUx : {};
   const quickCheckoutEnabled = typeof cartUx.quickCheckoutEnabled === "boolean" ? cartUx.quickCheckoutEnabled : true;
   const quickCheckoutAutoHideSeconds = clampInt(readNumber(cartUx.quickCheckoutAutoHideSeconds, 4), 1, 30);
+  const onePageCheckoutEnabled =
+    typeof cartUx.onePageCheckoutEnabled === "boolean" ? cartUx.onePageCheckoutEnabled : false;
+  const buyNowEnabled = typeof cartUx.buyNowEnabled === "boolean" ? cartUx.buyNowEnabled : true;
 
   const announcementBar = normalizeAnnouncementBarSettings(
     (root as Record<string, unknown>).announcementBar
@@ -516,7 +521,7 @@ export function normalizeStorefrontSettings(doc: unknown): StorefrontSettings {
       },
       listingHeader: { showSearch, showFilters, spacing, showSort, enableLayoutSwitcher },
     },
-    cartUx: { quickCheckoutEnabled, quickCheckoutAutoHideSeconds },
+    cartUx: { quickCheckoutEnabled, quickCheckoutAutoHideSeconds, onePageCheckoutEnabled, buyNowEnabled },
     announcementBar,
     announcements,
     branding: {

@@ -12,6 +12,7 @@ import Input from "@/components/ui/Input";
 import Skeleton from "@/components/ui/Skeleton";
 import { formatMoneyFromPkr } from "@/lib/currency";
 import { cn } from "@/lib/utils";
+import { useStorefrontSettings } from "@/hooks/useStorefrontSettings";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { clearCart, removeFromCart, setCartItemQuantity } from "@/store/slices/cartSlice";
 
@@ -69,7 +70,7 @@ type PaymentAccount = {
 type PaymentsSettings = {
   codEnabled: boolean;
   manual: { enabled: boolean; instructions: string; accounts: PaymentAccount[] };
-  online: { enabled: boolean; provider: string; instructions: string };
+  online: { enabled: boolean; provider: string; instructions: string; kind?: string };
 };
 
 type PaymentsApiResponse = { payments: PaymentsSettings };
@@ -89,6 +90,9 @@ export default function CheckoutClient() {
   const dispatch = useAppDispatch();
   const { data: session } = useSession();
   const isGuest = !session?.user?.id;
+
+  const { settings: storefrontSettings } = useStorefrontSettings();
+  const onePageCheckoutEnabled = storefrontSettings?.cartUx?.onePageCheckoutEnabled ?? false;
 
   const cartItems = useAppSelector((s) => s.cart.items);
   const currency = useAppSelector((s) => s.currency);
@@ -204,7 +208,7 @@ export default function CheckoutClient() {
   const hasFiredInitiateCheckoutRef = useRef(false);
 
   useEffect(() => {
-    if (step !== "payment") return;
+    if (!onePageCheckoutEnabled && step !== "payment") return;
     if (!quote) return;
     if (hasFiredInitiateCheckoutRef.current) return;
     if (typeof window === "undefined") return;
@@ -240,7 +244,12 @@ export default function CheckoutClient() {
       value: quote.totalAmount,
       items,
     });
-  }, [step, quote]);
+  }, [onePageCheckoutEnabled, step, quote]);
+
+  useEffect(() => {
+    if (!onePageCheckoutEnabled) return;
+    setStep("payment");
+  }, [onePageCheckoutEnabled]);
 
   function continueToPayment() {
     if (!shippingOk) {
@@ -441,7 +450,7 @@ export default function CheckoutClient() {
     });
 
     const data = (await res.json().catch(() => null)) as
-      | { orderId?: string; message?: string }
+      | { orderId?: string; checkoutUrl?: string; message?: string }
       | null;
 
     setPlacing(false);
@@ -454,6 +463,12 @@ export default function CheckoutClient() {
     dispatch(clearCart());
     toast.success("Order placed");
     const orderId = data?.orderId;
+
+    const checkoutUrl = typeof data?.checkoutUrl === "string" ? data.checkoutUrl.trim() : "";
+    if (checkoutUrl) {
+      window.location.assign(checkoutUrl);
+      return;
+    }
 
     if (orderId) {
       if (isGuest) {
@@ -513,49 +528,51 @@ export default function CheckoutClient() {
           </Link>
         </div>
 
-        <div className="mt-4 flex items-center gap-2 text-sm">
-          <button
-            type="button"
-            onClick={() => setStep("shipping")}
-            className={cn(
-              "rounded-full border px-3 py-1 font-semibold",
-              step === "shipping"
-                ? "border-foreground bg-muted text-foreground"
-                : "border-border bg-surface text-muted-foreground"
-            )}
-          >
-            1. Shipping
-          </button>
-          <span className="text-muted-foreground">→</span>
-          <button
-            type="button"
-            onClick={() => {
-              if (step === "shipping") {
-                continueToPayment();
-                return;
-              }
-              setStep("payment");
-            }}
-            className={cn(
-              "rounded-full border px-3 py-1 font-semibold",
-              step === "payment"
-                ? "border-foreground bg-muted text-foreground"
-                : "border-border bg-surface text-muted-foreground",
-              step === "shipping" && !shippingOk && "opacity-60"
-            )}
-            disabled={step === "shipping" && !shippingOk}
-          >
-            2. Payment
-          </button>
-        </div>
+        {!onePageCheckoutEnabled ? (
+          <div className="mt-4 flex items-center gap-2 text-sm">
+            <button
+              type="button"
+              onClick={() => setStep("shipping")}
+              className={cn(
+                "rounded-full border px-3 py-1 font-semibold",
+                step === "shipping"
+                  ? "border-foreground bg-muted text-foreground"
+                  : "border-border bg-surface text-muted-foreground"
+              )}
+            >
+              1. Shipping
+            </button>
+            <span className="text-muted-foreground">→</span>
+            <button
+              type="button"
+              onClick={() => {
+                if (step === "shipping") {
+                  continueToPayment();
+                  return;
+                }
+                setStep("payment");
+              }}
+              className={cn(
+                "rounded-full border px-3 py-1 font-semibold",
+                step === "payment"
+                  ? "border-foreground bg-muted text-foreground"
+                  : "border-border bg-surface text-muted-foreground",
+                step === "shipping" && !shippingOk && "opacity-60"
+              )}
+              disabled={step === "shipping" && !shippingOk}
+            >
+              2. Payment
+            </button>
+          </div>
+        ) : null}
 
         <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_380px]">
           <div className="rounded-3xl border border-border bg-surface p-5">
             <h2 className="text-sm font-semibold text-foreground">
-              {step === "shipping" ? "Shipping" : "Payment"}
+              {onePageCheckoutEnabled ? "Checkout" : step === "shipping" ? "Shipping" : "Payment"}
             </h2>
 
-            {step === "shipping" ? (
+            {step === "shipping" || onePageCheckoutEnabled ? (
               <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                 {isGuest ? (
                   <div className="space-y-2 md:col-span-2">
@@ -646,8 +663,9 @@ export default function CheckoutClient() {
               </div>
             )}
 
-            {step === "payment" ? (
-              <div className="mt-6">
+            {step === "payment" || onePageCheckoutEnabled ? (
+              <div className={cn("mt-6", onePageCheckoutEnabled && "pt-2")}
+              >
                 <h2 className="text-sm font-semibold text-foreground">Payment method</h2>
 
               <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -1009,7 +1027,11 @@ export default function CheckoutClient() {
                 </div>
               </div>
 
-              {step === "shipping" ? (
+              {onePageCheckoutEnabled ? (
+                <Button type="button" variant="accent" className="w-full" disabled={!canPlace || placing} onClick={placeOrder}>
+                  {placing ? "Placing order..." : "Place order"}
+                </Button>
+              ) : step === "shipping" ? (
                 <Button type="button" variant="accent" className="w-full" disabled={!shippingOk || placing} onClick={continueToPayment}>
                   Continue to payment
                 </Button>

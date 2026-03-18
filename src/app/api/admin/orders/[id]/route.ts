@@ -180,8 +180,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   if (parsed.data.paymentProofAction) {
     const method = String((current as unknown as { paymentMethod?: string }).paymentMethod ?? "");
-    if (method !== "manual") {
-      return NextResponse.json({ message: "Payment proof actions are only for manual payments" }, { status: 400 });
+    if (method !== "manual" && method !== "online") {
+      return NextResponse.json({ message: "Payment proof actions are only for manual or online payments" }, { status: 400 });
     }
 
     const hasReceipt = Boolean(String((current as unknown as { paymentReceiptUrl?: string }).paymentReceiptUrl ?? "").trim());
@@ -202,9 +202,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         await createUserMessage({
           userId: currentUserId,
           relatedOrderId: id,
-          type: "payment_manual_approved",
-          title: "Manual payment approved",
-          body: `Your manual payment for order #${id.slice(-6)} has been approved.`,
+          type: method === "online" ? "payment_online_approved" : "payment_manual_approved",
+          title: method === "online" ? "Online payment approved" : "Manual payment approved",
+          body: `Your ${method === "online" ? "online" : "manual"} payment for order #${id.slice(-6)} has been approved.`,
         });
       }
     }
@@ -222,9 +222,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         await createUserMessage({
           userId: currentUserId,
           relatedOrderId: id,
-          type: "payment_manual_rejected",
-          title: "Manual payment rejected",
-          body: `Your manual payment for order #${id.slice(-6)} was rejected.${reason ? ` Reason: ${reason}` : ""}`,
+          type: method === "online" ? "payment_online_rejected" : "payment_manual_rejected",
+          title: method === "online" ? "Online payment rejected" : "Manual payment rejected",
+          body: `Your ${method === "online" ? "online" : "manual"} payment for order #${id.slice(-6)} was rejected.${reason ? ` Reason: ${reason}` : ""}`,
         });
       }
     }

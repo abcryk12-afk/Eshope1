@@ -41,11 +41,25 @@ type StorefrontLayout = {
 type CartUx = {
   quickCheckoutEnabled: boolean;
   quickCheckoutAutoHideSeconds: number;
+  onePageCheckoutEnabled: boolean;
+  buyNowEnabled: boolean;
+};
+
+type Performance = {
+  apiCacheEnabled: boolean;
+  apiCacheSMaxAgeSeconds: number;
+  apiCacheStaleWhileRevalidateSeconds: number;
+  productApiCacheEnabled: boolean;
+  productApiCacheSMaxAgeSeconds: number;
+  productApiCacheStaleWhileRevalidateSeconds: number;
+  deferTrackingScripts: boolean;
+  fontDisplaySwapEnabled: boolean;
 };
 
 type ApiResponse = {
   storefrontLayout: StorefrontLayout;
   cartUx: CartUx;
+  performance: Performance;
 };
 
 function clampInt(n: unknown, min: number, max: number, fallback: number) {
@@ -75,7 +89,17 @@ function emptySettings(): ApiResponse {
         enableLayoutSwitcher: false,
       },
     },
-    cartUx: { quickCheckoutEnabled: true, quickCheckoutAutoHideSeconds: 4 },
+    cartUx: { quickCheckoutEnabled: true, quickCheckoutAutoHideSeconds: 4, onePageCheckoutEnabled: false, buyNowEnabled: true },
+    performance: {
+      apiCacheEnabled: false,
+      apiCacheSMaxAgeSeconds: 60,
+      apiCacheStaleWhileRevalidateSeconds: 300,
+      productApiCacheEnabled: false,
+      productApiCacheSMaxAgeSeconds: 20,
+      productApiCacheStaleWhileRevalidateSeconds: 60,
+      deferTrackingScripts: false,
+      fontDisplaySwapEnabled: true,
+    },
   };
 }
 
@@ -96,6 +120,7 @@ function normalizeResponse(json: unknown): ApiResponse {
     : {};
 
   const cartUx = (root.cartUx && typeof root.cartUx === "object") ? (root.cartUx as Record<string, unknown>) : {};
+  const perf = (root.performance && typeof root.performance === "object") ? (root.performance as Record<string, unknown>) : {};
 
   return {
     storefrontLayout: {
@@ -141,6 +166,19 @@ function normalizeResponse(json: unknown): ApiResponse {
     cartUx: {
       quickCheckoutEnabled: typeof cartUx.quickCheckoutEnabled === "boolean" ? cartUx.quickCheckoutEnabled : true,
       quickCheckoutAutoHideSeconds: clampInt(cartUx.quickCheckoutAutoHideSeconds, 1, 30, 4),
+      onePageCheckoutEnabled:
+        typeof cartUx.onePageCheckoutEnabled === "boolean" ? cartUx.onePageCheckoutEnabled : false,
+      buyNowEnabled: typeof cartUx.buyNowEnabled === "boolean" ? cartUx.buyNowEnabled : true,
+    },
+    performance: {
+      apiCacheEnabled: typeof perf.apiCacheEnabled === "boolean" ? perf.apiCacheEnabled : false,
+      apiCacheSMaxAgeSeconds: clampInt(perf.apiCacheSMaxAgeSeconds, 0, 3600, 60),
+      apiCacheStaleWhileRevalidateSeconds: clampInt(perf.apiCacheStaleWhileRevalidateSeconds, 0, 86400, 300),
+      productApiCacheEnabled: typeof perf.productApiCacheEnabled === "boolean" ? perf.productApiCacheEnabled : false,
+      productApiCacheSMaxAgeSeconds: clampInt(perf.productApiCacheSMaxAgeSeconds, 0, 600, 20),
+      productApiCacheStaleWhileRevalidateSeconds: clampInt(perf.productApiCacheStaleWhileRevalidateSeconds, 0, 3600, 60),
+      deferTrackingScripts: typeof perf.deferTrackingScripts === "boolean" ? perf.deferTrackingScripts : false,
+      fontDisplaySwapEnabled: typeof perf.fontDisplaySwapEnabled === "boolean" ? perf.fontDisplaySwapEnabled : true,
     },
   };
 }
@@ -783,7 +821,227 @@ export default function AdminStorefrontSettingsClient() {
             </div>
           </div>
         </div>
+
+        <div className="rounded-3xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Checkout</h2>
+              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Control one-page checkout and product Buy Now button.</p>
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-3">
+            <label className="flex items-center justify-between gap-3 rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300">
+              <div>
+                <div className="font-medium text-zinc-900 dark:text-zinc-50">One-page checkout</div>
+                <div className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-400">Shipping + payment in one screen.</div>
+              </div>
+              <input
+                type="checkbox"
+                checked={settings.cartUx.onePageCheckoutEnabled}
+                onChange={(e) =>
+                  setSettings((s) =>
+                    s ? { ...s, cartUx: { ...s.cartUx, onePageCheckoutEnabled: e.target.checked } } : s
+                  )
+                }
+                className="h-4 w-4 rounded border-zinc-300"
+              />
+            </label>
+
+            <label className="flex items-center justify-between gap-3 rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300">
+              <div>
+                <div className="font-medium text-zinc-900 dark:text-zinc-50">Buy Now button</div>
+                <div className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-400">Show the Buy Now button on product pages.</div>
+              </div>
+              <input
+                type="checkbox"
+                checked={settings.cartUx.buyNowEnabled}
+                onChange={(e) =>
+                  setSettings((s) => (s ? { ...s, cartUx: { ...s.cartUx, buyNowEnabled: e.target.checked } } : s))
+                }
+                className="h-4 w-4 rounded border-zinc-300"
+              />
+            </label>
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Performance</h2>
+              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Control safe caching for public storefront APIs.</p>
+            </div>
+
+            <label className="flex items-center gap-3 text-sm text-zinc-700 dark:text-zinc-300">
+              <input
+                type="checkbox"
+                checked={settings.performance.apiCacheEnabled}
+                onChange={(e) =>
+                  setSettings((s) =>
+                    s ? { ...s, performance: { ...s.performance, apiCacheEnabled: e.target.checked } } : s
+                  )
+                }
+                className="h-4 w-4 rounded border-zinc-300"
+              />
+              API cache
+            </label>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">CDN max-age (s)</label>
+              <Input
+                type="number"
+                min={0}
+                max={3600}
+                value={settings.performance.apiCacheSMaxAgeSeconds}
+                onChange={(e) =>
+                  setSettings((s) =>
+                    s
+                      ? {
+                          ...s,
+                          performance: {
+                            ...s.performance,
+                            apiCacheSMaxAgeSeconds: clampInt(e.target.value, 0, 3600, 60),
+                          },
+                        }
+                      : s
+                  )
+                }
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Stale-while-revalidate (s)</label>
+              <Input
+                type="number"
+                min={0}
+                max={86400}
+                value={settings.performance.apiCacheStaleWhileRevalidateSeconds}
+                onChange={(e) =>
+                  setSettings((s) =>
+                    s
+                      ? {
+                          ...s,
+                          performance: {
+                            ...s.performance,
+                            apiCacheStaleWhileRevalidateSeconds: clampInt(e.target.value, 0, 86400, 300),
+                          },
+                        }
+                      : s
+                  )
+                }
+              />
+            </div>
+
+            <div className="md:col-span-2 mt-2" />
+
+            <label className="flex items-center justify-between gap-3 rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300 md:col-span-2">
+              <div>
+                <div className="font-medium text-zinc-900 dark:text-zinc-50">Product API cache</div>
+                <div className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-400">Caches /api/products and /api/products/[slug] with a short TTL.</div>
+              </div>
+              <input
+                type="checkbox"
+                checked={settings.performance.productApiCacheEnabled}
+                onChange={(e) =>
+                  setSettings((s) =>
+                    s
+                      ? { ...s, performance: { ...s.performance, productApiCacheEnabled: e.target.checked } }
+                      : s
+                  )
+                }
+                className="h-4 w-4 rounded border-zinc-300"
+              />
+            </label>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Product CDN max-age (s)</label>
+              <Input
+                type="number"
+                min={0}
+                max={600}
+                value={settings.performance.productApiCacheSMaxAgeSeconds}
+                onChange={(e) =>
+                  setSettings((s) =>
+                    s
+                      ? {
+                          ...s,
+                          performance: {
+                            ...s.performance,
+                            productApiCacheSMaxAgeSeconds: clampInt(e.target.value, 0, 600, 20),
+                          },
+                        }
+                      : s
+                  )
+                }
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Product SWR (s)</label>
+              <Input
+                type="number"
+                min={0}
+                max={3600}
+                value={settings.performance.productApiCacheStaleWhileRevalidateSeconds}
+                onChange={(e) =>
+                  setSettings((s) =>
+                    s
+                      ? {
+                          ...s,
+                          performance: {
+                            ...s.performance,
+                            productApiCacheStaleWhileRevalidateSeconds: clampInt(e.target.value, 0, 3600, 60),
+                          },
+                        }
+                      : s
+                  )
+                }
+              />
+            </div>
+
+            <label className="flex items-center justify-between gap-3 rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300 md:col-span-2">
+              <div>
+                <div className="font-medium text-zinc-900 dark:text-zinc-50">Defer tracking scripts</div>
+                <div className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-400">Loads GA/Meta scripts after page load to reduce INP/LCP impact.</div>
+              </div>
+              <input
+                type="checkbox"
+                checked={settings.performance.deferTrackingScripts}
+                onChange={(e) =>
+                  setSettings((s) =>
+                    s
+                      ? { ...s, performance: { ...s.performance, deferTrackingScripts: e.target.checked } }
+                      : s
+                  )
+                }
+                className="h-4 w-4 rounded border-zinc-300"
+              />
+            </label>
+
+            <label className="flex items-center justify-between gap-3 rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300 md:col-span-2">
+              <div>
+                <div className="font-medium text-zinc-900 dark:text-zinc-50">Font display swap</div>
+                <div className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-400">Prevents invisible text while fonts load.</div>
+              </div>
+              <input
+                type="checkbox"
+                checked={settings.performance.fontDisplaySwapEnabled}
+                onChange={(e) =>
+                  setSettings((s) =>
+                    s
+                      ? { ...s, performance: { ...s.performance, fontDisplaySwapEnabled: e.target.checked } }
+                      : s
+                  )
+                }
+                className="h-4 w-4 rounded border-zinc-300"
+              />
+            </label>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
+

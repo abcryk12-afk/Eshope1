@@ -135,6 +135,23 @@ const TrackingProviderGoogleAdsSchema = new Schema(
   { _id: false }
 );
 
+ const TrackingProviderGtmSchema = new Schema(
+  {
+    enabled: { type: Boolean, default: false },
+    containerId: { type: String, trim: true, maxlength: 40 },
+  },
+  { _id: false }
+ );
+
+ const TrackingProviderMetaCapiSchema = new Schema(
+  {
+    enabled: { type: Boolean, default: false },
+    accessToken: { type: String, trim: true, maxlength: 400 },
+    apiVersion: { type: String, trim: true, maxlength: 20, default: "v18.0" },
+  },
+  { _id: false }
+ );
+
 const MetaPixelEntrySchema = new Schema(
   {
     pixelId: { type: String, trim: true, maxlength: 40 },
@@ -151,7 +168,9 @@ const TrackingSettingsSchema = new Schema(
     testEventMode: { type: Boolean, default: false },
     ga4: { type: TrackingProviderGa4Schema, default: () => ({}) },
     googleAds: { type: TrackingProviderGoogleAdsSchema, default: () => ({}) },
+    gtm: { type: TrackingProviderGtmSchema, default: () => ({}) },
     metaPixels: { type: [MetaPixelEntrySchema], default: [] },
+    metaCapi: { type: TrackingProviderMetaCapiSchema, default: () => ({}) },
     updatedAt: { type: Number, default: 0 },
   },
   { _id: false }
@@ -283,6 +302,23 @@ const CartUxSettingsSchema = new Schema(
   {
     quickCheckoutEnabled: { type: Boolean, default: true },
     quickCheckoutAutoHideSeconds: { type: Number, default: 4, min: 1, max: 30 },
+    onePageCheckoutEnabled: { type: Boolean, default: false },
+    buyNowEnabled: { type: Boolean, default: true },
+  },
+  { _id: false }
+);
+
+const PerformanceSettingsSchema = new Schema(
+  {
+    apiCacheEnabled: { type: Boolean, default: false },
+    apiCacheSMaxAgeSeconds: { type: Number, default: 60, min: 0, max: 3600 },
+    apiCacheStaleWhileRevalidateSeconds: { type: Number, default: 300, min: 0, max: 86400 },
+    productApiCacheEnabled: { type: Boolean, default: false },
+    productApiCacheSMaxAgeSeconds: { type: Number, default: 20, min: 0, max: 600 },
+    productApiCacheStaleWhileRevalidateSeconds: { type: Number, default: 60, min: 0, max: 3600 },
+    deferTrackingScripts: { type: Boolean, default: false },
+    fontDisplaySwapEnabled: { type: Boolean, default: true },
+    updatedAt: { type: Number, default: 0 },
   },
   { _id: false }
 );
@@ -446,6 +482,7 @@ const SiteSettingSchema = new Schema(
     shipping: { type: ShippingSettingsSchema, default: () => ({}) },
     storefrontLayout: { type: StorefrontLayoutSchema, default: () => ({}) },
     cartUx: { type: CartUxSettingsSchema, default: () => ({}) },
+    performance: { type: PerformanceSettingsSchema, default: () => ({}) },
     announcementBar: { type: AnnouncementBarSettingsSchema, default: () => ({}) },
     announcements: { type: [AnnouncementItemSchema], default: [] },
     payments: {
@@ -459,6 +496,37 @@ const SiteSettingSchema = new Schema(
         enabled: { type: Boolean, default: false },
         provider: { type: String, trim: true, maxlength: 60 },
         instructions: { type: String, trim: true, maxlength: 2000 },
+        kind: { type: String, trim: true, maxlength: 40 },
+        publicKey: { type: String, trim: true, maxlength: 400 },
+        secretKey: { type: String, trim: true, maxlength: 400 },
+        webhookSecret: { type: String, trim: true, maxlength: 400 },
+        activeKind: { type: String, trim: true, maxlength: 40 },
+        providers: {
+          stripe: {
+            enabled: { type: Boolean, default: false },
+            provider: { type: String, trim: true, maxlength: 60 },
+            instructions: { type: String, trim: true, maxlength: 2000 },
+            publicKey: { type: String, trim: true, maxlength: 400 },
+            secretKey: { type: String, trim: true, maxlength: 400 },
+            webhookSecret: { type: String, trim: true, maxlength: 400 },
+          },
+          jazzcash: {
+            enabled: { type: Boolean, default: false },
+            provider: { type: String, trim: true, maxlength: 60 },
+            instructions: { type: String, trim: true, maxlength: 2000 },
+            publicKey: { type: String, trim: true, maxlength: 400 },
+            secretKey: { type: String, trim: true, maxlength: 400 },
+            webhookSecret: { type: String, trim: true, maxlength: 400 },
+          },
+          easypaisa: {
+            enabled: { type: Boolean, default: false },
+            provider: { type: String, trim: true, maxlength: 60 },
+            instructions: { type: String, trim: true, maxlength: 2000 },
+            publicKey: { type: String, trim: true, maxlength: 400 },
+            secretKey: { type: String, trim: true, maxlength: 400 },
+            webhookSecret: { type: String, trim: true, maxlength: 400 },
+          },
+        },
       },
     },
     theme: {

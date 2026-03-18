@@ -27,12 +27,15 @@ function normalizeMetaPixels(input: unknown) {
 export async function GET() {
   await dbConnect();
 
-  const doc = (await SiteSetting.findOne({ key: "global" }).select("tracking share").lean()) as unknown;
+  const doc = (await SiteSetting.findOne({ key: "global" }).select("tracking share performance").lean()) as unknown;
   const root = isRecord(doc) ? doc : null;
   const tracking = root && isRecord(root.tracking) ? root.tracking : {};
+  const gtm = isRecord((tracking as Record<string, unknown>).gtm) ? ((tracking as Record<string, unknown>).gtm as Record<string, unknown>) : {};
   const ga4 = isRecord(tracking.ga4) ? tracking.ga4 : {};
   const googleAds = isRecord(tracking.googleAds) ? tracking.googleAds : {};
+  const metaCapi = isRecord((tracking as Record<string, unknown>).metaCapi) ? ((tracking as Record<string, unknown>).metaCapi as Record<string, unknown>) : {};
   const share = root && isRecord(root.share) ? root.share : {};
+  const perf = root && isRecord((root as Record<string, unknown>).performance) ? ((root as Record<string, unknown>).performance as Record<string, unknown>) : {};
 
   return NextResponse.json(
     {
@@ -41,6 +44,10 @@ export async function GET() {
         autoEventsEnabled: typeof tracking.autoEventsEnabled === "boolean" ? tracking.autoEventsEnabled : true,
         manualOverrideMode: typeof tracking.manualOverrideMode === "boolean" ? tracking.manualOverrideMode : false,
         testEventMode: typeof tracking.testEventMode === "boolean" ? tracking.testEventMode : false,
+        gtm: {
+          enabled: typeof gtm.enabled === "boolean" ? gtm.enabled : false,
+          containerId: typeof gtm.containerId === "string" ? gtm.containerId.trim() : "",
+        },
         ga4: {
           enabled: typeof ga4.enabled === "boolean" ? ga4.enabled : false,
           measurementId: typeof ga4.measurementId === "string" ? ga4.measurementId.trim() : "",
@@ -52,7 +59,14 @@ export async function GET() {
           conversionLabel: typeof googleAds.conversionLabel === "string" ? googleAds.conversionLabel.trim() : "",
         },
         metaPixels: normalizeMetaPixels(tracking.metaPixels),
+        metaCapi: {
+          enabled: typeof metaCapi.enabled === "boolean" ? metaCapi.enabled : false,
+          apiVersion: typeof metaCapi.apiVersion === "string" ? metaCapi.apiVersion.trim() : "v18.0",
+        },
         updatedAt: typeof tracking.updatedAt === "number" ? tracking.updatedAt : 0,
+      },
+      performance: {
+        deferTrackingScripts: typeof perf.deferTrackingScripts === "boolean" ? perf.deferTrackingScripts : false,
       },
       share: {
         enabled: typeof share.enabled === "boolean" ? share.enabled : false,

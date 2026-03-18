@@ -40,6 +40,15 @@ function normalizePayments(v: unknown) {
   const manual = isRecord(root.manual) ? root.manual : {};
   const online = isRecord(root.online) ? root.online : {};
 
+  const activeKindRaw = readString((online as Record<string, unknown>).activeKind, "").toLowerCase();
+  const providers = isRecord((online as Record<string, unknown>).providers)
+    ? ((online as Record<string, unknown>).providers as Record<string, unknown>)
+    : {};
+  const activeProvider = activeKindRaw && isRecord(providers[activeKindRaw])
+    ? (providers[activeKindRaw] as Record<string, unknown>)
+    : null;
+  const activeEnabled = activeProvider ? readBool(activeProvider.enabled, false) : false;
+
   return {
     codEnabled: readBool(root.codEnabled, true),
     manual: {
@@ -48,9 +57,10 @@ function normalizePayments(v: unknown) {
       accounts: readAccounts(manual.accounts),
     },
     online: {
-      enabled: readBool(online.enabled, false),
-      provider: readString(online.provider, ""),
-      instructions: readString(online.instructions, ""),
+      enabled: readBool(online.enabled, false) && (activeKindRaw ? activeEnabled : true),
+      provider: activeProvider ? readString(activeProvider.provider, "") : readString(online.provider, ""),
+      instructions: activeProvider ? readString(activeProvider.instructions, "") : readString(online.instructions, ""),
+      kind: activeKindRaw || readString(online.kind, ""),
     },
   };
 }

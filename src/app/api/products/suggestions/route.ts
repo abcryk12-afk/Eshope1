@@ -5,6 +5,7 @@ import { dbConnect } from "@/lib/db";
 import { buildDealLabel, computeDealPrice } from "@/lib/deals";
 import Deal from "@/models/Deal";
 import Product from "@/models/Product";
+import SiteSetting from "@/models/SiteSetting";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,10 +36,32 @@ export async function GET(req: Request) {
   });
 
   if (!parsed.success) {
-    return NextResponse.json({ items: [] });
+    return NextResponse.json({ items: [] }, { headers: { "Cache-Control": "no-store, max-age=0" } });
   }
 
   await dbConnect();
+
+  const perfDoc = (await SiteSetting.findOne({ key: "global" }).select("performance").lean()) as unknown;
+  const perfRoot = perfDoc && typeof perfDoc === "object" ? (perfDoc as Record<string, unknown>) : {};
+  const perf =
+    perfRoot && typeof perfRoot.performance === "object" && perfRoot.performance
+      ? (perfRoot.performance as Record<string, unknown>)
+      : {};
+
+  const cacheEnabled = typeof perf.productApiCacheEnabled === "boolean" ? perf.productApiCacheEnabled : false;
+  const sMaxAge =
+    typeof perf.productApiCacheSMaxAgeSeconds === "number" && Number.isFinite(perf.productApiCacheSMaxAgeSeconds)
+      ? Math.max(0, Math.min(600, Math.trunc(perf.productApiCacheSMaxAgeSeconds)))
+      : 20;
+  const swr =
+    typeof perf.productApiCacheStaleWhileRevalidateSeconds === "number" &&
+    Number.isFinite(perf.productApiCacheStaleWhileRevalidateSeconds)
+      ? Math.max(0, Math.min(3600, Math.trunc(perf.productApiCacheStaleWhileRevalidateSeconds)))
+      : 60;
+
+  const cacheControl = cacheEnabled
+    ? `public, s-maxage=${sMaxAge}, stale-while-revalidate=${swr}`
+    : "no-store, max-age=0";
 
   const q = parsed.data.q;
   const query = q.trim();
@@ -149,5 +172,5 @@ export async function GET(req: Request) {
     };
   });
 
-  return NextResponse.json({ items });
+  return NextResponse.json({ items }, { headers: { "Cache-Control": cacheControl } });
 }

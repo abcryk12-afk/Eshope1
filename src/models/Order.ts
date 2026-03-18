@@ -38,6 +38,10 @@ const OrderSchema = new Schema(
     shippingAddress: { type: ShippingAddressSchema, required: true },
     paymentMethod: { type: String, required: true, trim: true },
 
+    paymentProvider: { type: String, trim: true, maxlength: 40, index: true },
+    paymentProviderRef: { type: String, trim: true, maxlength: 120, index: true },
+    paymentProviderMeta: { type: Schema.Types.Mixed, default: null },
+
     currency: {
       type: String,
       enum: ["PKR", "USD"],

@@ -21,6 +21,7 @@ type NavItem = {
 
 const nav: NavItem[] = [
   { href: "/admin", label: "Overview", icon: <LayoutDashboard className="h-4 w-4" /> },
+  { href: "/admin/analytics", label: "Analytics", icon: <BarChart3 className="h-4 w-4" /> },
   { href: "/admin/products", label: "Products", icon: <Boxes className="h-4 w-4" /> },
   { href: "/admin/categories", label: "Categories", icon: <Folder className="h-4 w-4" /> },
   { href: "/admin/menu-builder", label: "Menu Builder", icon: <LayoutDashboard className="h-4 w-4" /> },
@@ -36,6 +37,7 @@ const nav: NavItem[] = [
   { href: "/admin/seo-health", label: "SEO Health", icon: <Search className="h-4 w-4" /> },
   { href: "/admin/cms", label: "CMS", icon: <LayoutDashboard className="h-4 w-4" /> },
   { href: "/admin/logs", label: "Logs", icon: <LayoutDashboard className="h-4 w-4" /> },
+  { href: "/admin/payment-events", label: "Payment events", icon: <CreditCard className="h-4 w-4" /> },
   { href: "/admin/settings/appearance", label: "Appearance", icon: <Palette className="h-4 w-4" /> },
   { href: "/admin/theme-builder", label: "Theme Builder", icon: <Palette className="h-4 w-4" /> },
   { href: "/admin/header-builder", label: "Header Builder", icon: <LayoutDashboard className="h-4 w-4" /> },
