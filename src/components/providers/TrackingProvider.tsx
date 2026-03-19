@@ -206,6 +206,71 @@ function readOrCreateClientSessionId() {
   }
 }
 
+function readUtm() {
+  if (typeof window === "undefined") return undefined;
+
+  try {
+    const sp = new URLSearchParams(window.location.search);
+    const source = sp.get("utm_source") ?? undefined;
+    const medium = sp.get("utm_medium") ?? undefined;
+    const campaign = sp.get("utm_campaign") ?? undefined;
+    const term = sp.get("utm_term") ?? undefined;
+    const content = sp.get("utm_content") ?? undefined;
+
+    if (!source && !medium && !campaign && !term && !content) return undefined;
+    return { source, medium, campaign, term, content };
+  } catch {
+    return undefined;
+  }
+}
+
+function logAnalyticsEvent(
+  eventType: "page_view" | "view_item" | "add_to_cart" | "begin_checkout" | "purchase",
+  params?: {
+    productId?: string;
+    orderId?: string;
+    value?: number;
+    currency?: string;
+  }
+) {
+  if (typeof window === "undefined") return;
+
+  const payload = {
+    eventType,
+    url: window.location.href,
+    path: window.location.pathname,
+    sid: readOrCreateClientSessionId(),
+    referrer: typeof document !== "undefined" ? document.referrer : "",
+    utm: readUtm(),
+    productId: params?.productId,
+    orderId: params?.orderId,
+    value: typeof params?.value === "number" ? params.value : undefined,
+    currency: params?.currency,
+  };
+
+  try {
+    const body = JSON.stringify(payload);
+    if (typeof navigator !== "undefined" && typeof navigator.sendBeacon === "function") {
+      const blob = new Blob([body], { type: "application/json" });
+      navigator.sendBeacon("/api/analytics/event", blob);
+      return;
+    }
+  } catch {
+    // ignore
+  }
+
+  try {
+    void fetch("/api/analytics/event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      keepalive: true,
+    });
+  } catch {
+    return;
+  }
+}
+
 function logVisitorPageView(path: string) {
   if (typeof window === "undefined") return;
   if (!path) return;
@@ -549,6 +614,11 @@ export default function TrackingProvider({ children }: Props) {
     fireMeta("AddToCart", payload);
     fireGtag("add_to_cart", {
       items: [{ item_id: it.productId, item_name: it.title, quantity: it.quantity, price: it.unitPrice }],
+    });
+
+    logAnalyticsEvent("add_to_cart", {
+      productId: it.productId,
+      value: typeof it.unitPrice === "number" ? it.unitPrice : undefined,
     });
   }, [allowInit, autoEventsEnabled, cart?.lastAddedAt, cart?.lastAdded, preferGtmEvents]);
 

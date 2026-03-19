@@ -75,7 +75,8 @@ export async function POST(req: NextRequest) {
   let level = 0;
   if (parsed.data.parentId) {
     const parent = await Category.findById(parsed.data.parentId).select("level").lean();
-    const parentLevel = typeof (parent as any)?.level === "number" ? (parent as any).level : 0;
+    const parentObj = parent as unknown as { level?: unknown } | null;
+    const parentLevel = typeof parentObj?.level === "number" ? parentObj.level : 0;
     level = Math.max(0, Math.min(20, Math.trunc(parentLevel + 1)));
   }
 

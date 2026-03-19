@@ -61,13 +61,11 @@ function normalizeItems(items: MobileMenuItem[]): MobileMenuItem[] {
   return walk(items, 0);
 }
 
-function MenuNode({
+function CategoryTileNode({
   item,
-  depth,
   onNavigate,
 }: {
   item: MobileMenuItem;
-  depth: number;
   onNavigate: () => void;
 }) {
   const pathname = usePathname();
@@ -86,16 +84,140 @@ function MenuNode({
   }, [pathname, item.href]);
 
   return (
-    <div className={cn("w-full", depth > 0 ? "pl-3" : "")}
+    <div className="w-full">
+      <div
+        className={cn(
+          "flex items-center gap-2 rounded-2xl border border-border bg-surface px-3 py-2.5",
+          "transition-colors",
+          active ? "bg-muted" : "hover:bg-muted/70",
+          "active:bg-muted"
+        )}
+      >
+        {item.icon ? (
+          <span className="shrink-0 text-muted-foreground">
+            <Icon name={item.icon} />
+          </span>
+        ) : null}
+
+        {hasChildren ? (
+          <button
+            type="button"
+            className="flex min-w-0 flex-1 items-center gap-2 text-left"
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+          >
+            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">{item.title}</span>
+            {item.badgeLabel?.trim() ? (
+              <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-foreground">
+                {item.badgeLabel}
+              </span>
+            ) : null}
+            <span
+              className={cn(
+                "ml-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-muted-foreground",
+                "transition-colors",
+                "hover:bg-muted",
+                "active:bg-muted",
+                open ? "text-foreground" : ""
+              )}
+              aria-hidden="true"
+            >
+              {open ? <Icon name="Minus" /> : <Icon name="Plus" />}
+            </span>
+          </button>
+        ) : (
+          <Link
+            href={item.href}
+            className="flex min-w-0 flex-1 items-center gap-2"
+            onClick={onNavigate}
+            target={item.openInNewTab ? "_blank" : undefined}
+            rel={item.openInNewTab ? "noopener noreferrer" : undefined}
+          >
+            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">{item.title}</span>
+            {item.badgeLabel?.trim() ? (
+              <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-foreground">
+                {item.badgeLabel}
+              </span>
+            ) : null}
+          </Link>
+        )}
+      </div>
+
+      <AnimatePresence initial={false}>
+        {hasChildren && open ? (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            className="overflow-hidden"
+          >
+            <div className="mt-1 grid gap-0.5 pl-4">
+              {normalizedChildren.map((ch) => (
+                <MenuNode key={ch.id} item={ch} depth={1} onNavigate={onNavigate} isLast={false} />
+              ))}
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function MenuNode({
+  item,
+  depth,
+  onNavigate,
+  isLast,
+}: {
+  item: MobileMenuItem;
+  depth: number;
+  onNavigate: () => void;
+  isLast: boolean;
+}) {
+  const pathname = usePathname();
+  const hasChildren = (item.children?.length ?? 0) > 0;
+  const [open, setOpen] = useState(false);
+
+  const normalizedChildren = useMemo(() => {
+    if (!open) return [];
+    return normalizeItems(item.children ?? []);
+  }, [open, item.children]);
+
+  const active = useMemo(() => {
+    const href = item.href || "";
+    if (!href.startsWith("/")) return false;
+    return pathname === href || pathname.startsWith(href + "/");
+  }, [pathname, item.href]);
+
+  return (
+    <div
+      className={cn(
+        "w-full",
+        depth > 0 ? "pl-4" : "",
+        depth === 0 ? "border-b border-border" : "",
+        depth === 0 && isLast ? "border-b-0" : ""
+      )}
       data-depth={depth}
     >
-      <div className="flex items-center gap-2">
-        <div className={cn(
-          "flex min-w-0 flex-1 items-center gap-2 rounded-xl px-3 py-2 text-sm",
-          active ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"
-        )}>
+      <div
+        className={cn(
+          "flex items-center gap-2 px-2",
+          depth === 0 ? "py-1.5" : "py-1"
+        )}
+      >
+        <div
+          className={cn(
+            "flex min-w-0 flex-1 items-center gap-2 rounded-2xl px-3 py-2.5",
+            "transition-colors",
+            active
+              ? "bg-muted text-foreground"
+              : "text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+            "active:bg-muted"
+          )}
+        >
           {item.icon ? (
-            <span className="shrink-0 text-muted-foreground">
+            <span className={cn("shrink-0", depth > 0 ? "text-muted-foreground/80" : "text-muted-foreground")}>
               <Icon name={item.icon} />
             </span>
           ) : null}
@@ -107,20 +229,32 @@ function MenuNode({
               onClick={() => setOpen((v) => !v)}
               aria-expanded={open}
             >
-              <span className="truncate font-semibold text-foreground">{item.title}</span>
+              <span
+                className={cn(
+                  "truncate text-foreground",
+                  depth === 0 ? "text-sm font-semibold" : "text-[13px] font-medium text-foreground/90"
+                )}
+              >
+                {item.title}
+              </span>
               {item.badgeLabel?.trim() ? (
                 <span className="ml-auto shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-foreground">
                   {item.badgeLabel}
                 </span>
-              ) : null}
+              ) : (
+                <span className="ml-auto" />
+              )}
               <span
                 className={cn(
-                  "ml-2 shrink-0 text-muted-foreground transition-transform duration-200",
-                  open ? "rotate-90" : "rotate-0"
+                  "ml-2 inline-flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground",
+                  "transition-colors",
+                  "hover:bg-muted",
+                  "active:bg-muted",
+                  open ? "text-foreground" : ""
                 )}
                 aria-hidden="true"
               >
-                ›
+                {open ? <Icon name="Minus" /> : <Icon name="Plus" />}
               </span>
             </button>
           ) : (
@@ -131,7 +265,14 @@ function MenuNode({
               target={item.openInNewTab ? "_blank" : undefined}
               rel={item.openInNewTab ? "noopener noreferrer" : undefined}
             >
-              <span className="truncate font-semibold text-foreground">{item.title}</span>
+              <span
+                className={cn(
+                  "truncate text-foreground",
+                  depth === 0 ? "text-sm font-semibold" : "text-[13px] font-medium text-foreground/90"
+                )}
+              >
+                {item.title}
+              </span>
               {item.badgeLabel?.trim() ? (
                 <span className="ml-auto shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-foreground">
                   {item.badgeLabel}
@@ -151,9 +292,15 @@ function MenuNode({
             transition={{ duration: 0.18, ease: "easeOut" }}
             className="overflow-hidden"
           >
-            <div className="mt-1 grid gap-1">
-              {normalizedChildren.map((ch) => (
-                <MenuNode key={ch.id} item={ch} depth={depth + 1} onNavigate={onNavigate} />
+            <div className="mt-1 grid gap-0.5 pb-2">
+              {normalizedChildren.map((ch, idx) => (
+                <MenuNode
+                  key={ch.id}
+                  item={ch}
+                  depth={depth + 1}
+                  onNavigate={onNavigate}
+                  isLast={idx === normalizedChildren.length - 1}
+                />
               ))}
             </div>
           </motion.div>
@@ -174,6 +321,11 @@ export default function MobileMenuDrawer({
   rightHeader,
 }: Props) {
   const normalized = useMemo(() => normalizeItems(items), [items]);
+  const [topCategories, otherItems] = useMemo(() => {
+    const cats = normalized.filter((x) => x.type === "category");
+    const rest = normalized.filter((x) => x.type !== "category");
+    return [cats, rest] as const;
+  }, [normalized]);
 
   useEffect(() => {
     if (!open) return;
@@ -253,11 +405,27 @@ export default function MobileMenuDrawer({
               {topFeaturedBanner ? <div className="mb-3">{topFeaturedBanner}</div> : null}
               {topPromoBanner ? <div className="mb-3">{topPromoBanner}</div> : null}
 
-              <div className="grid gap-1">
-                {normalized.map((it) => (
-                  <MenuNode key={it.id} item={it} depth={0} onNavigate={onClose} />
-                ))}
-              </div>
+              {otherItems.length ? (
+                <div className="overflow-hidden rounded-2xl border border-border bg-surface">
+                  {otherItems.map((it, idx) => (
+                    <MenuNode
+                      key={it.id}
+                      item={it}
+                      depth={0}
+                      onNavigate={onClose}
+                      isLast={idx === otherItems.length - 1}
+                    />
+                  ))}
+                </div>
+              ) : null}
+
+              {topCategories.length ? (
+                <div className={cn(otherItems.length ? "mt-4" : "", "grid grid-cols-2 gap-2")}> 
+                  {topCategories.map((it) => (
+                    <CategoryTileNode key={it.id} item={it} onNavigate={onClose} />
+                  ))}
+                </div>
+              ) : null}
             </div>
           </motion.div>
         </motion.div>

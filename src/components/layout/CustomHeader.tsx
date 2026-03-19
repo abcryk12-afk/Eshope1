@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
@@ -42,6 +43,7 @@ function cssVarIf(v: string | undefined) {
 }
 
 export default function CustomHeader({ layout, settings }: Props) {
+  const router = useRouter();
   const normalizedLayout = useMemo(() => normalizeLayout(layout), [layout]);
   const s = useMemo(() => normalizeSettings(settings), [settings]);
 
@@ -56,6 +58,21 @@ export default function CustomHeader({ layout, settings }: Props) {
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [meta, setMeta] = useState<ProductsMeta | null>(null);
+
+  const [searching, setSearching] = useState(false);
+
+  const submitSearch = useCallback(
+    (nextRaw?: string) => {
+      const next = (typeof nextRaw === "string" ? nextRaw : q).trim();
+      if (!next) return;
+
+      setSearching(true);
+      setSuggestionsOpen(false);
+      router.push(`/products?search=${encodeURIComponent(next)}`);
+      window.setTimeout(() => setSearching(false), 800);
+    },
+    [router, q]
+  );
 
   const { config: mobileMenuConfig } = useMobileMenu(mobileMenuOpen);
 
@@ -295,12 +312,32 @@ export default function CustomHeader({ layout, settings }: Props) {
                   <input
                     value={q}
                     onChange={(e) => setQ(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        submitSearch();
+                      }
+                    }}
                     onFocus={() => setSuggestionsOpen(true)}
                     onBlur={() => window.setTimeout(() => setSuggestionsOpen(false), 150)}
                     placeholder="Search products..."
-                    className="h-10 w-full rounded-2xl border border-border bg-background px-4 text-sm outline-none focus:ring-2 focus:ring-foreground/15"
+                    className="h-10 w-full rounded-2xl border border-border bg-background pl-4 pr-11 text-sm outline-none focus:ring-2 focus:ring-foreground/15"
                     aria-label="Search"
                   />
+
+                  <button
+                    type="button"
+                    className={cn(
+                      "absolute right-1.5 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-xl",
+                      "text-muted-foreground hover:bg-muted hover:text-foreground",
+                      searching && "pointer-events-none opacity-60"
+                    )}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => submitSearch()}
+                    aria-label="Search"
+                  >
+                    <span className="text-sm">⌕</span>
+                  </button>
                   {suggestionsOpen && suggestions.length > 0 ? (
                     <div
                       className="absolute left-0 right-0 top-[calc(100%+8px)] overflow-hidden rounded-2xl border border-border bg-background shadow-lg"

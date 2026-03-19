@@ -12,6 +12,7 @@ import Order from "@/models/Order";
 import Product from "@/models/Product";
 import Promotion from "@/models/Promotion";
 import SiteSetting from "@/models/SiteSetting";
+import VisitorEvent from "@/models/VisitorEvent";
 import { sendOrderConfirmationEmail } from "@/lib/email";
 import { sendMail } from "@/lib/mailer";
 import { orderAdminNotifyEmailHtml } from "@/emails/order-admin-notify";
@@ -78,6 +79,41 @@ function normalizePayments(v: unknown) {
 
 function readString(v: unknown) {
   return typeof v === "string" ? v.trim() : "";
+}
+
+function readVisitorSid(req: NextRequest) {
+  const raw = req.cookies.get("visitor.sid")?.value ?? "";
+  const v = raw.trim().slice(0, 80);
+  if (!v) return "";
+  return /^[A-Za-z0-9_-]+$/.test(v) ? v : "";
+}
+
+async function logPurchaseEvent(params: {
+  req: NextRequest;
+  userId?: string;
+  orderId: string;
+  currency: "PKR" | "USD";
+  totalAmount: number;
+}) {
+  const sid = readVisitorSid(params.req);
+  if (!sid) return;
+
+  const userAgent = (params.req.headers.get("user-agent") ?? "").slice(0, 500);
+  const fwd = params.req.headers.get("x-forwarded-for") ?? "";
+  const ip = fwd.split(",")[0]?.trim() || undefined;
+
+  await VisitorEvent.create({
+    sessionId: sid,
+    userId: params.userId || undefined,
+    ip,
+    userAgent,
+    url: "",
+    path: "/checkout/place",
+    eventType: "purchase",
+    orderId: params.orderId,
+    value: params.totalAmount,
+    currency: params.currency,
+  }).catch(() => null);
 }
 
 async function createStripeCheckoutSession(params: {
@@ -728,6 +764,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "Could not start Stripe checkout" }, { status: 500 });
     }
   }
+
+  await logPurchaseEvent({
+    req,
+    userId: userId ? String(userId) : undefined,
+    orderId: order._id.toString(),
+    currency,
+    totalAmount,
+  });
 
   if (couponCode) {
     await Coupon.updateOne({ code: couponCode }, { $inc: { usedCount: 1 } });

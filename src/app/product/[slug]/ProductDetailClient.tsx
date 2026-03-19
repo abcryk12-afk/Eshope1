@@ -279,6 +279,77 @@ function pickDefaultVariant(product: Product) {
   return inStock ?? variants[0] ?? null;
 }
 
+function readOrCreateClientSessionId() {
+  if (typeof window === "undefined") return "";
+
+  try {
+    const existing = window.sessionStorage.getItem("visitor.sid") ?? "";
+    if (existing) return existing;
+
+    const id = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const finalId = String(id).slice(0, 80);
+    window.sessionStorage.setItem("visitor.sid", finalId);
+    return finalId;
+  } catch {
+    return "";
+  }
+}
+
+function readUtm() {
+  if (typeof window === "undefined") return undefined;
+
+  try {
+    const sp = new URLSearchParams(window.location.search);
+    const source = sp.get("utm_source") ?? undefined;
+    const medium = sp.get("utm_medium") ?? undefined;
+    const campaign = sp.get("utm_campaign") ?? undefined;
+    const term = sp.get("utm_term") ?? undefined;
+    const content = sp.get("utm_content") ?? undefined;
+
+    if (!source && !medium && !campaign && !term && !content) return undefined;
+    return { source, medium, campaign, term, content };
+  } catch {
+    return undefined;
+  }
+}
+
+function logAnalyticsViewItem(product: { id: string; title: string; category?: string; price?: number }) {
+  if (typeof window === "undefined") return;
+
+  const payload = {
+    eventType: "view_item" as const,
+    url: window.location.href,
+    path: window.location.pathname,
+    sid: readOrCreateClientSessionId(),
+    referrer: typeof document !== "undefined" ? document.referrer : "",
+    utm: readUtm(),
+    productId: product.id,
+    value: typeof product.price === "number" ? product.price : undefined,
+  };
+
+  try {
+    const body = JSON.stringify(payload);
+    if (typeof navigator !== "undefined" && typeof navigator.sendBeacon === "function") {
+      const blob = new Blob([body], { type: "application/json" });
+      navigator.sendBeacon("/api/analytics/event", blob);
+      return;
+    }
+  } catch {
+    // ignore
+  }
+
+  try {
+    void fetch("/api/analytics/event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      keepalive: true,
+    });
+  } catch {
+    return;
+  }
+}
+
 export default function ProductDetailClient({ slug }: Props) {
   const router = useRouter();
   const dispatch = useAppDispatch();
@@ -412,6 +483,13 @@ export default function ProductDetailClient({ slug }: Props) {
           item_image: image,
         },
       ],
+    });
+
+    logAnalyticsViewItem({
+      id: product._id,
+      title: product.title,
+      category: product.category,
+      price,
     });
   }, [product, selectedVariantId]);
 

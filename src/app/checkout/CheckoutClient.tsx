@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
+import { AnimatePresence, motion } from "framer-motion";
 
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
@@ -85,6 +86,76 @@ type PaymentsApiResponse = { payments: PaymentsSettings };
    return typeof m === "string" ? m : undefined;
  }
 
+ function readOrCreateClientSessionId() {
+   if (typeof window === "undefined") return "";
+
+   try {
+     const existing = window.sessionStorage.getItem("visitor.sid") ?? "";
+     if (existing) return existing;
+
+     const id = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+     const finalId = String(id).slice(0, 80);
+     window.sessionStorage.setItem("visitor.sid", finalId);
+     return finalId;
+   } catch {
+     return "";
+   }
+ }
+
+ function readUtm() {
+   if (typeof window === "undefined") return undefined;
+
+   try {
+     const sp = new URLSearchParams(window.location.search);
+     const source = sp.get("utm_source") ?? undefined;
+     const medium = sp.get("utm_medium") ?? undefined;
+     const campaign = sp.get("utm_campaign") ?? undefined;
+     const term = sp.get("utm_term") ?? undefined;
+     const content = sp.get("utm_content") ?? undefined;
+
+     if (!source && !medium && !campaign && !term && !content) return undefined;
+     return { source, medium, campaign, term, content };
+   } catch {
+     return undefined;
+   }
+ }
+
+ function logBeginCheckout(totalAmount: number) {
+   if (typeof window === "undefined") return;
+
+   const payload = {
+     eventType: "begin_checkout" as const,
+     url: window.location.href,
+     path: window.location.pathname,
+     sid: readOrCreateClientSessionId(),
+     referrer: typeof document !== "undefined" ? document.referrer : "",
+     utm: readUtm(),
+     value: typeof totalAmount === "number" && Number.isFinite(totalAmount) ? totalAmount : undefined,
+   };
+
+   try {
+     const body = JSON.stringify(payload);
+     if (typeof navigator !== "undefined" && typeof navigator.sendBeacon === "function") {
+       const blob = new Blob([body], { type: "application/json" });
+       navigator.sendBeacon("/api/analytics/event", blob);
+       return;
+     }
+   } catch {
+     // ignore
+   }
+
+   try {
+     void fetch("/api/analytics/event", {
+       method: "POST",
+       headers: { "Content-Type": "application/json" },
+       body: JSON.stringify(payload),
+       keepalive: true,
+     });
+   } catch {
+     return;
+   }
+ }
+
 export default function CheckoutClient() {
   const router = useRouter();
   const dispatch = useAppDispatch();
@@ -106,12 +177,23 @@ export default function CheckoutClient() {
   const [placing, setPlacing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"cod" | "manual" | "online">("cod");
   const [step, setStep] = useState<"shipping" | "payment">("shipping");
+  const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
 
   const [paymentSettings, setPaymentSettings] = useState<PaymentsSettings | null>(null);
   const [loadingPayments, setLoadingPayments] = useState(true);
 
   const [guestEmail, setGuestEmail] = useState("");
   const [guestEmailTouched, setGuestEmailTouched] = useState(false);
+
+  const [shippingTouched, setShippingTouched] = useState({
+    fullName: false,
+    phone: false,
+    addressLine1: false,
+    city: false,
+    state: false,
+    postalCode: false,
+    country: false,
+  });
 
   const [shipping, setShipping] = useState<ShippingAddress>({
     fullName: "",
@@ -157,6 +239,18 @@ export default function CheckoutClient() {
     const e = guestEmail.trim();
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
   }, [guestEmail, isGuest]);
+
+  const shippingFieldErrors = useMemo(() => {
+    return {
+      fullName: !shipping.fullName.trim(),
+      phone: !shipping.phone.trim(),
+      addressLine1: !shipping.addressLine1.trim(),
+      city: !shipping.city.trim(),
+      state: !shipping.state.trim(),
+      postalCode: !shipping.postalCode.trim(),
+      country: !shipping.country.trim(),
+    };
+  }, [shipping]);
 
   const canPlace = useMemo(() => {
     if (!quote) return false;
@@ -207,6 +301,22 @@ export default function CheckoutClient() {
 
   const hasFiredInitiateCheckoutRef = useRef(false);
 
+  const totalAmount = useMemo(() => {
+    const v = quote?.totalAmount;
+    return typeof v === "number" && Number.isFinite(v) ? v : 0;
+  }, [quote?.totalAmount]);
+
+  const totalAmountText = useMemo(() => {
+    return formatMoneyFromPkr(totalAmount, currency.selected, currency.pkrPerUsd);
+  }, [totalAmount, currency.selected, currency.pkrPerUsd]);
+
+  const stickyCta = useMemo(() => {
+    const label = onePageCheckoutEnabled || step === "payment" ? "Place order" : "Continue to payment";
+    const disabled = onePageCheckoutEnabled || step === "payment" ? !canPlace || placing : !shippingOk || placing;
+    const action = onePageCheckoutEnabled || step === "payment" ? "place" : "continue";
+    return { label, disabled, action } as const;
+  }, [onePageCheckoutEnabled, step, canPlace, shippingOk, placing]);
+
   useEffect(() => {
     if (!onePageCheckoutEnabled && step !== "payment") return;
     if (!quote) return;
@@ -244,6 +354,8 @@ export default function CheckoutClient() {
       value: quote.totalAmount,
       items,
     });
+
+    logBeginCheckout(quote.totalAmount);
   }, [onePageCheckoutEnabled, step, quote]);
 
   useEffect(() => {
@@ -517,16 +629,83 @@ export default function CheckoutClient() {
   }
 
   return (
-    <div className="min-h-screen bg-background px-4 py-10">
+    <div className="min-h-screen bg-background px-4 py-10 pb-28 md:pb-10">
       <div className="mx-auto w-full max-w-6xl">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            Checkout
-          </h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Checkout — {totalAmountText}</h1>
           <Link href="/" className="text-sm font-semibold text-foreground hover:underline">
             Continue shopping
           </Link>
         </div>
+
+        <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-border bg-surface px-4 py-3 text-sm lg:hidden">
+          <div className="min-w-0">
+            <p className="font-semibold text-foreground">Order summary</p>
+            <p className="mt-0.5 truncate text-muted-foreground">Total {totalAmountText}</p>
+          </div>
+          <button
+            type="button"
+            className={cn(
+              "inline-flex h-10 items-center justify-center rounded-xl border border-border bg-background px-3 font-semibold text-foreground",
+              "hover:bg-muted active:bg-muted"
+            )}
+            onClick={() => setMobileSummaryOpen((v) => !v)}
+            aria-expanded={mobileSummaryOpen}
+          >
+            {mobileSummaryOpen ? "Hide" : "View"}
+          </button>
+        </div>
+
+        <AnimatePresence initial={false}>
+          {mobileSummaryOpen ? (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              className="mt-2 overflow-hidden rounded-2xl border border-border bg-surface lg:hidden"
+            >
+              <div className="p-4">
+                <div className="space-y-3">
+                  {(quote?.items ?? []).slice(0, 6).map((i) => (
+                    <div key={`${i.productId}:${i.variantId}`} className="flex items-start justify-between gap-3 text-sm">
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-foreground">{i.title}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">Qty {i.quantity}</p>
+                      </div>
+                      <p className="shrink-0 font-semibold text-foreground">
+                        {formatMoneyFromPkr(i.lineTotal, currency.selected, currency.pkrPerUsd)}
+                      </p>
+                    </div>
+                  ))}
+
+                  {(quote?.items?.length ?? 0) > 6 ? (
+                    <p className="text-xs font-medium text-muted-foreground">And {(quote!.items.length - 6)} more items…</p>
+                  ) : null}
+
+                  <div className="border-t border-border pt-3 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Subtotal</span>
+                      <span className="font-semibold text-foreground">
+                        {formatMoneyFromPkr(quote?.itemsSubtotal ?? 0, currency.selected, currency.pkrPerUsd)}
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="text-muted-foreground">Shipping</span>
+                      <span className="font-semibold text-foreground">
+                        {formatMoneyFromPkr(quote?.shippingAmount ?? 0, currency.selected, currency.pkrPerUsd)}
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="text-muted-foreground">Total</span>
+                      <span className="font-semibold text-foreground">{totalAmountText}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
 
         {!onePageCheckoutEnabled ? (
           <div className="mt-4 flex items-center gap-2 text-sm">
@@ -572,6 +751,14 @@ export default function CheckoutClient() {
               {onePageCheckoutEnabled ? "Checkout" : step === "shipping" ? "Shipping" : "Payment"}
             </h2>
 
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <span className="inline-flex items-center rounded-full border border-border bg-background px-2 py-1 font-semibold text-foreground">
+                Secure checkout
+              </span>
+              {quote?.deliveryEta?.text ? <span>• {quote.deliveryEta.text}</span> : <span>• Fast delivery</span>}
+              <span>• Easy returns</span>
+            </div>
+
             {step === "shipping" || onePageCheckoutEnabled ? (
               <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                 {isGuest ? (
@@ -583,6 +770,9 @@ export default function CheckoutClient() {
                       onChange={(e) => setGuestEmail(e.target.value)}
                       onBlur={() => setGuestEmailTouched(true)}
                       autoComplete="email"
+                      placeholder="you@example.com"
+                      inputMode="email"
+                      className={cn(guestEmailTouched && guestEmail.trim() && !guestEmailOk && "border-destructive focus-visible:ring-destructive")}
                     />
                     {guestEmailTouched && guestEmail.trim() && !guestEmailOk ? (
                       <p className="text-sm text-destructive">Enter a valid email.</p>
@@ -602,42 +792,98 @@ export default function CheckoutClient() {
 
                 <div className="space-y-2 md:col-span-2">
                   <label className="text-sm font-medium text-foreground">Full name</label>
-                  <Input value={shipping.fullName} onChange={(e) => setShipping((s) => ({ ...s, fullName: e.target.value }))} />
+                  <Input
+                    value={shipping.fullName}
+                    onChange={(e) => setShipping((s) => ({ ...s, fullName: e.target.value }))}
+                    onBlur={() => setShippingTouched((t) => ({ ...t, fullName: true }))}
+                    autoComplete="name"
+                    placeholder="Full name"
+                    className={cn(shippingTouched.fullName && shippingFieldErrors.fullName && "border-destructive focus-visible:ring-destructive")}
+                  />
                 </div>
 
                 <div className="space-y-2 md:col-span-2">
                   <label className="text-sm font-medium text-foreground">Phone</label>
-                  <Input value={shipping.phone} onChange={(e) => setShipping((s) => ({ ...s, phone: e.target.value }))} />
+                  <Input
+                    value={shipping.phone}
+                    onChange={(e) => setShipping((s) => ({ ...s, phone: e.target.value }))}
+                    onBlur={() => setShippingTouched((t) => ({ ...t, phone: true }))}
+                    autoComplete="tel"
+                    inputMode="tel"
+                    placeholder="03xx-xxxxxxx"
+                    className={cn(shippingTouched.phone && shippingFieldErrors.phone && "border-destructive focus-visible:ring-destructive")}
+                  />
                 </div>
 
                 <div className="space-y-2 md:col-span-2">
                   <label className="text-sm font-medium text-foreground">Address line 1</label>
-                  <Input value={shipping.addressLine1} onChange={(e) => setShipping((s) => ({ ...s, addressLine1: e.target.value }))} />
+                  <Input
+                    value={shipping.addressLine1}
+                    onChange={(e) => setShipping((s) => ({ ...s, addressLine1: e.target.value }))}
+                    onBlur={() => setShippingTouched((t) => ({ ...t, addressLine1: true }))}
+                    autoComplete="address-line1"
+                    placeholder="House no, Street, Area"
+                    className={cn(shippingTouched.addressLine1 && shippingFieldErrors.addressLine1 && "border-destructive focus-visible:ring-destructive")}
+                  />
                 </div>
 
                 <div className="space-y-2 md:col-span-2">
                   <label className="text-sm font-medium text-foreground">Address line 2</label>
-                  <Input value={shipping.addressLine2 ?? ""} onChange={(e) => setShipping((s) => ({ ...s, addressLine2: e.target.value }))} />
+                  <Input
+                    value={shipping.addressLine2 ?? ""}
+                    onChange={(e) => setShipping((s) => ({ ...s, addressLine2: e.target.value }))}
+                    autoComplete="address-line2"
+                    placeholder="Apartment, suite, etc (optional)"
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground">City</label>
-                  <Input value={shipping.city} onChange={(e) => setShipping((s) => ({ ...s, city: e.target.value }))} />
+                  <Input
+                    value={shipping.city}
+                    onChange={(e) => setShipping((s) => ({ ...s, city: e.target.value }))}
+                    onBlur={() => setShippingTouched((t) => ({ ...t, city: true }))}
+                    autoComplete="address-level2"
+                    placeholder="City"
+                    className={cn(shippingTouched.city && shippingFieldErrors.city && "border-destructive focus-visible:ring-destructive")}
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground">State</label>
-                  <Input value={shipping.state} onChange={(e) => setShipping((s) => ({ ...s, state: e.target.value }))} />
+                  <Input
+                    value={shipping.state}
+                    onChange={(e) => setShipping((s) => ({ ...s, state: e.target.value }))}
+                    onBlur={() => setShippingTouched((t) => ({ ...t, state: true }))}
+                    autoComplete="address-level1"
+                    placeholder="State / Province"
+                    className={cn(shippingTouched.state && shippingFieldErrors.state && "border-destructive focus-visible:ring-destructive")}
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground">Postal code</label>
-                  <Input value={shipping.postalCode} onChange={(e) => setShipping((s) => ({ ...s, postalCode: e.target.value }))} />
+                  <Input
+                    value={shipping.postalCode}
+                    onChange={(e) => setShipping((s) => ({ ...s, postalCode: e.target.value }))}
+                    onBlur={() => setShippingTouched((t) => ({ ...t, postalCode: true }))}
+                    autoComplete="postal-code"
+                    inputMode="numeric"
+                    placeholder="Postal code"
+                    className={cn(shippingTouched.postalCode && shippingFieldErrors.postalCode && "border-destructive focus-visible:ring-destructive")}
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground">Country</label>
-                  <Input value={shipping.country} onChange={(e) => setShipping((s) => ({ ...s, country: e.target.value }))} />
+                  <Input
+                    value={shipping.country}
+                    onChange={(e) => setShipping((s) => ({ ...s, country: e.target.value }))}
+                    onBlur={() => setShippingTouched((t) => ({ ...t, country: true }))}
+                    autoComplete="country-name"
+                    placeholder="Pakistan"
+                    className={cn(shippingTouched.country && shippingFieldErrors.country && "border-destructive focus-visible:ring-destructive")}
+                  />
                 </div>
               </div>
             ) : (
@@ -715,8 +961,8 @@ export default function CheckoutClient() {
                     (!onlineAllowed || loadingPayments) && "opacity-50"
                   )}
                 >
-                  <p className="text-sm font-semibold text-foreground">JazzCash Transfer</p>
-                  <p className="mt-1 text-sm text-muted-foreground">Pay via JazzCash to confirm your order.</p>
+                  <p className="text-sm font-semibold text-foreground">Mobile Wallet (JazzCash / Easypaisa)</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Pay via mobile wallet to confirm your order.</p>
                 </button>
               </div>
 
@@ -1048,6 +1294,32 @@ export default function CheckoutClient() {
               ) : null}
             </div>
           </aside>
+        </div>
+
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 px-4 py-3 backdrop-blur md:hidden">
+          <div className="mx-auto flex w-full max-w-6xl items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-foreground">
+                {stickyCta.label} — {totalAmountText}
+              </p>
+              <p className="truncate text-xs text-muted-foreground">Review and confirm your order</p>
+            </div>
+            <Button
+              type="button"
+              variant="accent"
+              className="shrink-0"
+              disabled={stickyCta.disabled}
+              onClick={() => {
+                if (stickyCta.action === "continue") {
+                  continueToPayment();
+                  return;
+                }
+                void placeOrder();
+              }}
+            >
+              {placing ? "Processing..." : stickyCta.action === "place" ? "Place order" : "Continue"}
+            </Button>
+          </div>
         </div>
       </div>
     </div>

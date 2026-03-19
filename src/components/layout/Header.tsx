@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Menu, Search, User2 } from "lucide-react";
@@ -33,6 +33,28 @@ type Suggestion = {
   dealLabel: string | null;
 };
 
+type SearchCategoryHit = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
+type SearchProductHit = {
+  id: string;
+  title: string;
+  slug: string;
+  category: string;
+  image: string;
+  price: number;
+};
+
+type SearchResponse = {
+  q: string;
+  products: SearchProductHit[];
+  categories: SearchCategoryHit[];
+  suggestions: string[];
+};
+
 type ProductsMeta = {
   categories: { name: string; slug: string }[];
   price: { min: number; max: number };
@@ -40,6 +62,7 @@ type ProductsMeta = {
 
 export default function Header() {
   const pathname = usePathname();
+  const router = useRouter();
 
   const isAdminPath = pathname.startsWith("/admin");
 
@@ -53,13 +76,88 @@ export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [q, setQ] = useState("");
-  const debouncedQ = useDebouncedValue(q, 200);
+  const debouncedQ = useDebouncedValue(q, 300);
+
+  const [searching, setSearching] = useState(false);
+
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [categories, setCategories] = useState<SearchCategoryHit[]>([]);
+  const [searchSuggestions, setSearchSuggestions] = useState<string[]>([]);
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [trendingSearches, setTrendingSearches] = useState<string[]>([]);
+  const [activeIndex, setActiveIndex] = useState(-1);
 
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [meta, setMeta] = useState<ProductsMeta | null>(null);
 
   const { config: mobileMenuConfig } = useMobileMenu(mobileMenuOpen);
+
+  function normalizeRecent(list: string[]) {
+    const out: string[] = [];
+    for (const raw of list) {
+      const s = String(raw ?? "").trim();
+      if (!s) continue;
+      if (!out.includes(s)) out.push(s);
+      if (out.length >= 8) break;
+    }
+    return out;
+  }
+
+  const loadRecent = useCallback(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem("shop.search.recent.v1");
+      const parsed = raw ? (JSON.parse(raw) as unknown) : [];
+      const arr = Array.isArray(parsed) ? parsed.map((x) => String(x)) : [];
+      setRecentSearches(normalizeRecent(arr));
+    } catch {
+      setRecentSearches([]);
+    }
+  }, []);
+
+  function saveRecent(query: string) {
+    if (typeof window === "undefined") return;
+    const next = query.trim();
+    if (!next) return;
+    try {
+      const merged = normalizeRecent([next, ...recentSearches]);
+      window.localStorage.setItem("shop.search.recent.v1", JSON.stringify(merged));
+      setRecentSearches(merged);
+    } catch {
+      return;
+    }
+  }
+
+  function highlight(text: string, query: string) {
+    const t = String(text ?? "");
+    const q = String(query ?? "").trim();
+    if (!q || q.length < 2) return t;
+    const idx = t.toLowerCase().indexOf(q.toLowerCase());
+    if (idx < 0) return t;
+    const before = t.slice(0, idx);
+    const hit = t.slice(idx, idx + q.length);
+    const after = t.slice(idx + q.length);
+    return (
+      <>
+        {before}
+        <span className="font-semibold text-foreground">{hit}</span>
+        {after}
+      </>
+    );
+  }
+
+  function submitSearch(nextRaw?: string) {
+    const next = (typeof nextRaw === "string" ? nextRaw : q).trim();
+    if (!next) return;
+
+    setSearching(true);
+    setSuggestionsOpen(false);
+    saveRecent(next);
+    router.push(`/products?search=${encodeURIComponent(next)}`);
+
+    window.setTimeout(() => setSearching(false), 800);
+  }
 
   const defaultMenuItems: MobileMenuItem[] = useMemo(() => {
     const cats = (meta?.categories ?? []).slice(0, 50);
@@ -211,31 +309,98 @@ export default function Header() {
 
     let cancelled = false;
 
-    async function loadSuggestions() {
+    async function loadPredictive() {
       const next = debouncedQ.trim();
+
+      setActiveIndex(-1);
 
       if (next.length < 2) {
         setSuggestions([]);
+        setCategories([]);
+        setSearchSuggestions([]);
+        setSearchLoading(false);
         return;
       }
 
-      const res = await fetch(`/api/products/suggestions?q=${encodeURIComponent(next)}`);
+      setSearchLoading(true);
 
-      if (!res.ok) return;
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(next)}&limit=8`, { cache: "no-store" });
+        if (!res.ok) throw new Error("bad");
+        const data = (await res.json()) as SearchResponse;
+        if (!cancelled) {
+          const prods = Array.isArray(data.products) ? data.products : [];
+          const cats = Array.isArray(data.categories) ? data.categories : [];
+          const sugg = Array.isArray(data.suggestions) ? data.suggestions : [];
 
-      const data = (await res.json()) as { items: Suggestion[] };
+          setSuggestions(
+            prods.map((p) => ({
+              _id: p.id,
+              title: p.title,
+              slug: p.slug,
+              category: p.category,
+              image: p.image,
+              pricePkr: p.price,
+              compareAtPricePkr: null,
+              dealLabel: null,
+            }))
+          );
+          setCategories(cats);
+          setSearchSuggestions(sugg);
+        }
+      } catch {
+        const res = await fetch(`/api/products/suggestions?q=${encodeURIComponent(next)}`).catch(() => null);
+        if (!res || !res.ok) {
+          if (!cancelled) {
+            setSuggestions([]);
+            setCategories([]);
+            setSearchSuggestions([]);
+          }
+          setSearchLoading(false);
+          return;
+        }
 
-      if (!cancelled) {
-        setSuggestions(Array.isArray(data.items) ? data.items : []);
+        const data = (await res.json().catch(() => null)) as { items?: Suggestion[] } | null;
+        if (!cancelled) {
+          setSuggestions(Array.isArray(data?.items) ? data!.items! : []);
+          setCategories([]);
+          setSearchSuggestions([]);
+        }
+      } finally {
+        if (!cancelled) setSearchLoading(false);
       }
     }
 
-    loadSuggestions();
+    loadPredictive();
 
     return () => {
       cancelled = true;
     };
   }, [debouncedQ, isAdminPath]);
+
+  useEffect(() => {
+    if (isAdminPath) return;
+    loadRecent();
+  }, [isAdminPath, loadRecent]);
+
+  useEffect(() => {
+    if (isAdminPath) return;
+    if (!suggestionsOpen) return;
+
+    let cancelled = false;
+    async function loadTrending() {
+      const res = await fetch("/api/search/trending", { cache: "no-store" }).catch(() => null);
+      if (!res || !res.ok) return;
+      const json = (await res.json().catch(() => null)) as { queries?: unknown } | null;
+      const queries = Array.isArray(json?.queries) ? json!.queries!.map((x) => String(x)) : [];
+      if (!cancelled) setTrendingSearches(normalizeRecent(queries));
+    }
+
+    void loadTrending();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdminPath, suggestionsOpen]);
 
   useEffect(() => {
     if (isAdminPath) return;
@@ -317,83 +482,207 @@ export default function Header() {
                   setQ(e.target.value);
                   setSuggestionsOpen(true);
                 }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    if (activeIndex >= 0) {
+                      const items = [
+                        ...categories.map((c) => ({ type: "category" as const, slug: c.slug, label: c.name })),
+                        ...suggestions.map((s) => ({ type: "product" as const, slug: s.slug, label: s.title })),
+                        ...searchSuggestions.map((x) => ({ type: "suggestion" as const, slug: "", label: x })),
+                        ...recentSearches.map((x) => ({ type: "recent" as const, slug: "", label: x })),
+                        ...trendingSearches.map((x) => ({ type: "trending" as const, slug: "", label: x })),
+                      ];
+                      const hit = items[activeIndex];
+                      if (hit?.type === "product" && hit.slug) {
+                        setSuggestionsOpen(false);
+                        router.push(`/product/${encodeURIComponent(hit.slug)}`);
+                        return;
+                      }
+                      if (hit?.type === "category" && hit.slug) {
+                        setSuggestionsOpen(false);
+                        router.push(`/category/${encodeURIComponent(hit.slug)}`);
+                        return;
+                      }
+                      if (hit?.label) {
+                        submitSearch(hit.label);
+                        return;
+                      }
+                    }
+                    submitSearch();
+                    return;
+                  }
+
+                  if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    const total =
+                      categories.length +
+                      suggestions.length +
+                      searchSuggestions.length +
+                      (q.trim().length < 2 ? recentSearches.length + trendingSearches.length : 0);
+                    if (total <= 0) return;
+                    setActiveIndex((i) => Math.min(total - 1, i + 1));
+                    return;
+                  }
+
+                  if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    setActiveIndex((i) => Math.max(-1, i - 1));
+                    return;
+                  }
+
+                  if (e.key === "Escape") {
+                    setSuggestionsOpen(false);
+                    setActiveIndex(-1);
+                    return;
+                  }
+                }}
                 onFocus={() => setSuggestionsOpen(true)}
                 onBlur={() => {
                   window.setTimeout(() => setSuggestionsOpen(false), 150);
                 }}
                 placeholder="Search products"
-                className="h-11 w-full rounded-2xl border border-border bg-surface pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="h-11 w-full rounded-2xl border border-border bg-surface pl-9 pr-11 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
 
+              <button
+                type="button"
+                className={cn(
+                  "absolute right-1.5 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-xl",
+                  "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  searching && "pointer-events-none opacity-60"
+                )}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => submitSearch()}
+                aria-label="Search"
+              >
+                <Search className="h-4 w-4" />
+              </button>
+
               <AnimatePresence>
-                {suggestionsOpen && (suggestions.length > 0 || debouncedQ.trim().length >= 2) ? (
+                {suggestionsOpen && (suggestions.length > 0 || categories.length > 0 || debouncedQ.trim().length >= 2 || recentSearches.length > 0 || trendingSearches.length > 0) ? (
                   <motion.div
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 6 }}
-                    className="absolute left-0 right-0 top-full mt-2 overflow-hidden rounded-2xl border border-border bg-surface shadow-xl"
+                    transition={{ duration: 0.15 }}
+                    className="absolute left-0 top-full mt-2 w-full rounded-xl border border-border bg-background/40 p-2"
                   >
-                    <div className="p-2">
-                      {suggestions.map((s) => (
-                        <Link
-                          key={s.slug}
-                          href={`/product/${s.slug}`}
-                          className="block rounded-xl px-3 py-2 hover:bg-muted"
-                        >
-                          <div className="flex items-center gap-3">
-                            <span className="relative block h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-border bg-surface">
-                              {s.image?.trim() ? (
-                                <Image
-                                  src={s.image}
-                                  alt={s.title}
-                                  fill
-                                  className="object-cover"
-                                  unoptimized
-                                  sizes="40px"
-                                />
-                              ) : null}
-                            </span>
+                    {searchLoading ? (
+                      <div className="rounded-lg px-2 py-2 text-sm text-muted-foreground">Searching…</div>
+                    ) : null}
+                    {categories.length > 0 ? (
+                      <div className="mt-2 rounded-xl border border-border bg-background/40 p-2">
+                        <p className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Categories</p>
+                        <div className="space-y-1">
+                          {categories.slice(0, 6).map((c, idx) => {
+                            const isActive = activeIndex === idx;
+                            return (
+                              <Link
+                                key={c.slug}
+                                href={`/category/${encodeURIComponent(c.slug)}`}
+                                className={cn(
+                                  "flex w-full items-center justify-between rounded-lg px-2 py-2 text-left text-sm",
+                                  "hover:bg-muted",
+                                  isActive && "bg-muted"
+                                )}
+                                onMouseDown={(e) => e.preventDefault()}
+                                onMouseEnter={() => setActiveIndex(idx)}
+                                onClick={() => {
+                                  setSuggestionsOpen(false);
+                                  router.push(`/category/${encodeURIComponent(c.slug)}`);
+                                }}
+                              >
+                                <span className="truncate text-foreground">{highlight(c.name, q)}</span>
+                                <span className="text-xs text-muted-foreground">View</span>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : null}
 
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center justify-between gap-3">
-                                <span className="truncate text-sm font-medium text-foreground">{s.title}</span>
-                                <span className="shrink-0 text-sm font-semibold text-foreground">
-                                  {formatMoneyFromPkr(Number(s.pricePkr ?? 0), currency, pkrPerUsd)}
-                                </span>
-                              </div>
-                              <div className="mt-0.5 flex items-center justify-between gap-3">
-                                <span className="truncate text-xs text-muted-foreground">{s.category}</span>
-                                <span className="shrink-0 text-xs text-muted-foreground">
-                                  {typeof s.compareAtPricePkr === "number" && s.compareAtPricePkr > Number(s.pricePkr ?? 0) ? (
-                                    <span className="line-through">
-                                      {formatMoneyFromPkr(Number(s.compareAtPricePkr), currency, pkrPerUsd)}
-                                    </span>
-                                  ) : s.dealLabel ? (
-                                    <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-foreground">
-                                      {s.dealLabel}
-                                    </span>
-                                  ) : null}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </Link>
-                      ))}
+                    {suggestions.length > 0 ? (
+                      <div className="mt-2 rounded-xl border border-border bg-background/40 p-2">
+                        <p className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Products</p>
+                        <div className="space-y-1">
+                          {suggestions.slice(0, 6).map((s, idx) => {
+                            const base = categories.length;
+                            const isActive = activeIndex === base + idx;
+                            return (
+                              <Link
+                                key={s.slug}
+                                href={`/product/${encodeURIComponent(s.slug)}`}
+                                className={cn(
+                                  "flex w-full items-center justify-between rounded-lg px-2 py-2 text-left text-sm",
+                                  "hover:bg-muted",
+                                  isActive && "bg-muted"
+                                )}
+                                onMouseDown={(e) => e.preventDefault()}
+                                onMouseEnter={() => setActiveIndex(base + idx)}
+                                onClick={() => {
+                                  setSuggestionsOpen(false);
+                                  router.push(`/product/${encodeURIComponent(s.slug)}`);
+                                }}
+                              >
+                                <div className="flex min-w-0 flex-1 items-center gap-3">
+                                  <span className="relative block h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-border bg-surface">
+                                    {s.image ? (
+                                      <Image
+                                        src={s.image}
+                                        alt={s.title}
+                                        fill
+                                        className="object-cover"
+                                        unoptimized
+                                        sizes="40px"
+                                      />
+                                    ) : null}
+                                  </span>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center justify-between gap-3">
+                                      <span className="truncate text-sm font-medium text-foreground">{highlight(s.title, q)}</span>
+                                      <span className="shrink-0 text-sm font-semibold text-foreground">
+                                        {formatMoneyFromPkr(Number(s.pricePkr ?? 0), currency, pkrPerUsd)}
+                                      </span>
+                                    </div>
+                                    <div className="mt-0.5 flex items-center justify-between gap-3">
+                                      <span className="truncate text-xs text-muted-foreground">{highlight(s.category, q)}</span>
+                                      <span className="shrink-0 text-xs text-muted-foreground">
+                                        {typeof s.compareAtPricePkr === "number" && s.compareAtPricePkr > Number(s.pricePkr ?? 0) ? (
+                                          <span className="line-through">
+                                            {formatMoneyFromPkr(Number(s.compareAtPricePkr), currency, pkrPerUsd)}
+                                          </span>
+                                        ) : s.dealLabel ? (
+                                          <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-foreground">
+                                            {s.dealLabel}
+                                          </span>
+                                        ) : null}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : null}
 
-                      {debouncedQ.trim().length >= 2 ? (
-                        <Link
-                          href={`/?q=${encodeURIComponent(debouncedQ.trim())}`}
-                          className="mt-1 block rounded-xl px-3 py-2 text-sm font-semibold text-foreground hover:bg-muted"
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            <span className="truncate">View all results for “{debouncedQ.trim()}”</span>
-                            <span className="shrink-0 text-xs font-medium text-muted-foreground">Search</span>
-                          </div>
-                        </Link>
-                      ) : null}
-                    </div>
-                  </motion.div>
-                ) : null}
+                    {debouncedQ.trim().length >= 2 ? (
+                      <Link
+                        href={`/products?search=${encodeURIComponent(debouncedQ.trim())}`}
+                        className="mt-1 block rounded-xl px-3 py-2 text-sm font-semibold text-foreground hover:bg-muted"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => submitSearch(debouncedQ.trim())}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="truncate">View all results for “{debouncedQ.trim()}”</span>
+                          <span className="shrink-0 text-xs font-medium text-muted-foreground">Search</span>
+                        </div>
+                      </Link>
+                    ) : null}
+                </motion.div>
+              ) : null}
               </AnimatePresence>
             </div>
           </div>
