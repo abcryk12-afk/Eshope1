@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { authOptions } from "@/lib/auth";
 import { dbConnect } from "@/lib/db";
+import { buildCategoryTree } from "@/lib/mobileMenu";
 import { pingSitemapIfEnabled } from "@/lib/sitemapPing";
 import { slugify } from "@/lib/slug";
 import Category from "@/models/Category";
@@ -42,10 +43,12 @@ export async function GET() {
 
   const items = await Category.find({})
     .sort({ sortOrder: 1, name: 1 })
-    .select("name slug isActive sortOrder parentId level createdAt")
+    .select("name slug isActive sortOrder parentId level icon menuLabel createdAt")
     .lean();
 
-  return NextResponse.json({ items });
+  const tree = buildCategoryTree(items);
+
+  return NextResponse.json({ items, tree });
 }
 
 export async function POST(req: NextRequest) {

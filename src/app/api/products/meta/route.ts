@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { dbConnect } from "@/lib/db";
+import { buildCategoryTree } from "@/lib/mobileMenu";
 import Category from "@/models/Category";
 import Product from "@/models/Product";
 import SiteSetting from "@/models/SiteSetting";
@@ -36,7 +37,10 @@ export async function GET() {
     : "no-store, max-age=0";
 
   const [categories, priceStats] = await Promise.all([
-    Category.find({ isActive: true }).sort({ sortOrder: 1, name: 1 }).select("name slug").lean(),
+    Category.find({ isActive: true })
+      .sort({ sortOrder: 1, name: 1 })
+      .select("name slug parentId icon menuLabel isActive sortOrder")
+      .lean(),
     Product.aggregate([
       { $match: { isActive: true } },
       {
@@ -69,9 +73,12 @@ export async function GET() {
   const min = priceStats?.[0]?.min ?? 0;
   const max = priceStats?.[0]?.max ?? 0;
 
+  const categoryTree = buildCategoryTree(categories ?? []);
+
   return NextResponse.json(
     {
       categories: (categories ?? []).map((c) => ({ name: c.name, slug: c.slug })),
+      categoryTree,
       price: { min, max },
     },
     {

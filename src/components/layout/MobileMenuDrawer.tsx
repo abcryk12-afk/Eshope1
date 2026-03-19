@@ -61,109 +61,6 @@ function normalizeItems(items: MobileMenuItem[]): MobileMenuItem[] {
   return walk(items, 0);
 }
 
-function CategoryTileNode({
-  item,
-  onNavigate,
-}: {
-  item: MobileMenuItem;
-  onNavigate: () => void;
-}) {
-  const pathname = usePathname();
-  const hasChildren = (item.children?.length ?? 0) > 0;
-  const [open, setOpen] = useState(false);
-
-  const normalizedChildren = useMemo(() => {
-    if (!open) return [];
-    return normalizeItems(item.children ?? []);
-  }, [open, item.children]);
-
-  const active = useMemo(() => {
-    const href = item.href || "";
-    if (!href.startsWith("/")) return false;
-    return pathname === href || pathname.startsWith(href + "/");
-  }, [pathname, item.href]);
-
-  return (
-    <div className="w-full">
-      <div
-        className={cn(
-          "flex items-center gap-2 rounded-2xl border border-border bg-surface px-3 py-2.5",
-          "transition-colors",
-          active ? "bg-muted" : "hover:bg-muted/70",
-          "active:bg-muted"
-        )}
-      >
-        {item.icon ? (
-          <span className="shrink-0 text-muted-foreground">
-            <Icon name={item.icon} />
-          </span>
-        ) : null}
-
-        {hasChildren ? (
-          <button
-            type="button"
-            className="flex min-w-0 flex-1 items-center gap-2 text-left"
-            onClick={() => setOpen((v) => !v)}
-            aria-expanded={open}
-          >
-            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">{item.title}</span>
-            {item.badgeLabel?.trim() ? (
-              <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-foreground">
-                {item.badgeLabel}
-              </span>
-            ) : null}
-            <span
-              className={cn(
-                "ml-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-muted-foreground",
-                "transition-colors",
-                "hover:bg-muted",
-                "active:bg-muted",
-                open ? "text-foreground" : ""
-              )}
-              aria-hidden="true"
-            >
-              {open ? <Icon name="Minus" /> : <Icon name="Plus" />}
-            </span>
-          </button>
-        ) : (
-          <Link
-            href={item.href}
-            className="flex min-w-0 flex-1 items-center gap-2"
-            onClick={onNavigate}
-            target={item.openInNewTab ? "_blank" : undefined}
-            rel={item.openInNewTab ? "noopener noreferrer" : undefined}
-          >
-            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">{item.title}</span>
-            {item.badgeLabel?.trim() ? (
-              <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-foreground">
-                {item.badgeLabel}
-              </span>
-            ) : null}
-          </Link>
-        )}
-      </div>
-
-      <AnimatePresence initial={false}>
-        {hasChildren && open ? (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.18, ease: "easeOut" }}
-            className="overflow-hidden"
-          >
-            <div className="mt-1 grid gap-0.5 pl-4">
-              {normalizedChildren.map((ch) => (
-                <MenuNode key={ch.id} item={ch} depth={1} onNavigate={onNavigate} isLast={false} />
-              ))}
-            </div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
-    </div>
-  );
-}
-
 function MenuNode({
   item,
   depth,
@@ -420,9 +317,16 @@ export default function MobileMenuDrawer({
               ) : null}
 
               {topCategories.length ? (
-                <div className={cn(otherItems.length ? "mt-4" : "", "grid grid-cols-2 gap-2")}> 
-                  {topCategories.map((it) => (
-                    <CategoryTileNode key={it.id} item={it} onNavigate={onClose} />
+                <div className={cn(otherItems.length ? "mt-4" : "", "overflow-hidden rounded-2xl border border-border bg-surface")}
+                >
+                  {topCategories.map((it, idx) => (
+                    <MenuNode
+                      key={it.id}
+                      item={it}
+                      depth={0}
+                      onNavigate={onClose}
+                      isLast={idx === topCategories.length - 1}
+                    />
                   ))}
                 </div>
               ) : null}

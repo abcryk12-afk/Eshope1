@@ -320,6 +320,14 @@ export default function AdminCategoriesClient() {
               >
                 {savingId === node._id ? "Saving..." : savingTree ? "Saving order..." : "Save"}
               </Button>
+              <Link
+                href={`/category/${encodeURIComponent(node.slug)}`}
+                className="inline-flex h-10 items-center justify-center rounded-2xl border border-zinc-200 px-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-900"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Preview
+              </Link>
               <Button
                 type="button"
                 variant="ghost"
@@ -394,6 +402,15 @@ export default function AdminCategoriesClient() {
   }, [load]);
 
   const computedNewSlug = useMemo(() => slugify(newSlug || newName), [newSlug, newName]);
+
+  const slugTaken = useCallback(
+    (slug: string, exceptId?: string) => {
+      const s = slugify(slug);
+      if (!s) return false;
+      return items.some((it) => slugify(it.slug) === s && (!exceptId || it._id !== exceptId));
+    },
+    [items]
+  );
 
   const byId = useMemo(() => {
     const m = new Map<string, CategoryItem>();
@@ -470,6 +487,11 @@ export default function AdminCategoriesClient() {
       return;
     }
 
+    if (slugTaken(slug)) {
+      toast.error("Slug already exists");
+      return;
+    }
+
     const res = await fetch("/api/admin/categories", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -492,6 +514,12 @@ export default function AdminCategoriesClient() {
 
   async function update(id: string, patch: Partial<CategoryItem>) {
     setSavingId(id);
+
+    if (typeof patch.slug === "string" && slugTaken(patch.slug, id)) {
+      toast.error("Slug already exists");
+      setSavingId(null);
+      return;
+    }
 
     const res = await fetch(`/api/admin/categories/${encodeURIComponent(id)}`,
       {
