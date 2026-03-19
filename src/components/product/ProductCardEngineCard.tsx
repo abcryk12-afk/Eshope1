@@ -3,12 +3,17 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Eye, Heart, Star } from "lucide-react";
+import { useRef } from "react";
+import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 import { formatCompactNumber } from "@/lib/numberFormat";
 import { formatMoneyFromPkr } from "@/lib/currency";
+import { useStorefrontSettings } from "@/hooks/useStorefrontSettings";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { addToCart } from "@/store/slices/cartSlice";
 import { toggleWishlist } from "@/store/slices/wishlistSlice";
+import AddToCartButton from "@/components/product/AddToCartButton";
 
 const aspectClassFor = (a: "square" | "portrait" | "auto") => (a === "portrait" ? "aspect-[4/5]" : "aspect-square");
 
@@ -49,6 +54,12 @@ export default function ProductCardEngineCard({ product, onQuickView }: Props) {
   const currency = useAppSelector((s) => s.currency);
   const engine = useAppSelector((s) => s.productCardEngine);
 
+  const { settings } = useStorefrontSettings();
+  const showAddToCartButton = settings?.storefrontUx?.showAddToCartButton ?? true;
+  const enableQuickView = settings?.storefrontUx?.enableQuickView ?? true;
+
+  const imageWrapRef = useRef<HTMLDivElement | null>(null);
+
   const wished = wishlistIds.includes(product._id);
   const s = engine.settings;
   const blocks = engine.blocks;
@@ -57,6 +68,8 @@ export default function ProductCardEngineCard({ product, onQuickView }: Props) {
   const discount = badgeText(product);
   const showRating = s.showRating;
   const showSold = s.showSoldCount;
+
+  const isBestSeller = Number(product.soldCount ?? 0) >= 250;
 
   const aspect = aspectClassFor(s.imageAspect);
   const radius = `${Math.max(0, Math.round(s.radiusPx))}px`;
@@ -84,7 +97,7 @@ export default function ProductCardEngineCard({ product, onQuickView }: Props) {
       {enabledBlocks.map((b) => {
         if (b.type === "image") {
           return (
-            <div key={b.id} className={cn("relative overflow-hidden bg-muted", aspect)}>
+            <div ref={imageWrapRef} key={b.id} className={cn("relative overflow-hidden bg-muted", aspect)}>
               {image ? (
                 <Image
                   src={image}
@@ -100,15 +113,26 @@ export default function ProductCardEngineCard({ product, onQuickView }: Props) {
         }
 
         if (b.type === "badges") {
-          if (!s.showDiscountBadge || !discount) return null;
+          if (!s.showDiscountBadge || (!discount && !isBestSeller)) return null;
           return (
             <div key={b.id} className="absolute left-2 top-2 flex flex-col items-start gap-1.5" data-ds-scope="badge">
-              <span
-                className="bg-accent px-2 py-1 text-[11px] font-extrabold tracking-tight text-accent-foreground shadow-sm ring-1 ring-foreground/10"
-                style={{ borderRadius: "999px" }}
-              >
-                {discount}
-              </span>
+              {discount ? (
+                <span
+                  className="bg-accent px-2 py-1 text-[11px] font-extrabold tracking-tight text-accent-foreground shadow-sm ring-1 ring-foreground/10"
+                  style={{ borderRadius: "999px" }}
+                >
+                  {discount}
+                </span>
+              ) : null}
+
+              {isBestSeller ? (
+                <span
+                  className="bg-surface/90 px-2 py-1 text-[11px] font-semibold tracking-tight text-foreground shadow-sm ring-1 ring-foreground/10"
+                  style={{ borderRadius: "999px" }}
+                >
+                  Best Seller
+                </span>
+              ) : null}
             </div>
           );
         }
@@ -116,20 +140,24 @@ export default function ProductCardEngineCard({ product, onQuickView }: Props) {
         if (b.type === "wishlist") {
           if (!s.showWishlistIcon) return null;
           return (
-            <div key={b.id} className="absolute right-2 top-2 flex gap-2" data-ds-scope="buttons">
-              <button
-                type="button"
-                onClick={() => dispatch(toggleWishlist(product._id))}
-                className={cn(
-                  "inline-flex h-9 w-9 items-center justify-center bg-surface/80 text-foreground shadow-sm ring-1 ring-border/70 backdrop-blur-sm",
-                  wished ? "bg-primary text-primary-foreground ring-0" : ""
-                )}
-                style={{ borderRadius: "999px" }}
-                aria-label="Toggle wishlist"
-              >
-                <Heart className={cn("h-4 w-4", wished ? "fill-current" : "")} />
-              </button>
-            </div>
+            <button
+              key={b.id}
+              type="button"
+              onClick={() => {
+                dispatch(toggleWishlist(product._id));
+                toast.success(wished ? "Removed from wishlist" : "Added to wishlist");
+              }}
+              className={cn(
+                "absolute right-2 top-2 inline-flex items-center justify-center",
+                "bg-surface/90 text-foreground ring-1 ring-foreground/10",
+                "transition hover:bg-surface",
+                s.density === "compact" ? "h-8 w-8" : "h-9 w-9"
+              )}
+              style={{ borderRadius: "999px" }}
+              aria-label={wished ? "Remove from wishlist" : "Add to wishlist"}
+            >
+              <Heart className={cn("h-4 w-4", wished ? "fill-current" : "")} />
+            </button>
           );
         }
 
@@ -179,20 +207,49 @@ export default function ProductCardEngineCard({ product, onQuickView }: Props) {
         }
 
         if (b.type === "actions") {
+          const showQuickView = enableQuickView;
           return (
             <div key={b.id} className="px-2.5 pb-3" data-ds-scope="buttons">
-              <button
-                type="button"
-                onClick={onQuickView}
-                className={cn(
-                  "inline-flex w-full items-center justify-center gap-2 bg-surface/90 text-sm font-semibold text-foreground",
-                  s.density === "compact" ? "h-9" : "h-10"
-                )}
-                style={{ borderRadius: "12px" }}
-              >
-                <Eye className="h-4 w-4" />
-                Quick view
-              </button>
+              <div className="grid grid-cols-1 gap-2">
+                {showAddToCartButton ? (
+                  <AddToCartButton
+                    canAdd={true}
+                    getImageEl={() => imageWrapRef.current}
+                    onAdd={() => {
+                      dispatch(
+                        addToCart({
+                          productId: product._id,
+                          variantId: product._id,
+                          quantity: 1,
+                          title: product.title,
+                          image: product.images?.[0] ?? "",
+                          unitPrice: product.basePrice,
+                        })
+                      );
+                    }}
+                    className={cn(
+                      "w-full rounded-2xl bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground",
+                      "hover:bg-primary/90",
+                      s.density === "compact" ? "h-9" : "h-10"
+                    )}
+                  />
+                ) : null}
+
+                {showQuickView ? (
+                  <button
+                    type="button"
+                    onClick={onQuickView}
+                    className={cn(
+                      "inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-surface text-sm font-semibold text-foreground",
+                      "hover:bg-muted",
+                      s.density === "compact" ? "h-9" : "h-10"
+                    )}
+                  >
+                    <Eye className="h-4 w-4" />
+                    Quick view
+                  </button>
+                ) : null}
+              </div>
             </div>
           );
         }

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import { BarChart3, Boxes, CreditCard, Folder, LayoutDashboard, LogOut, Palette, Search, Settings, Star, Store, Tag, Undo2, Users } from "lucide-react";
+import { BarChart3, Boxes, CreditCard, Folder, LayoutDashboard, LogOut, Palette, Search, Settings, Star, Store, Tag, Undo2, Users, Wand2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { signOutFirebaseIfConfigured } from "@/lib/firebaseClient";
@@ -42,9 +42,11 @@ const nav: NavItem[] = [
   { href: "/admin/theme-builder", label: "Theme Builder", icon: <Palette className="h-4 w-4" /> },
   { href: "/admin/header-builder", label: "Header Builder", icon: <LayoutDashboard className="h-4 w-4" /> },
   { href: "/admin/footer-builder", label: "Footer Builder", icon: <LayoutDashboard className="h-4 w-4" /> },
+  { href: "/admin/settings/footer", label: "Footer Settings", icon: <Settings className="h-4 w-4" /> },
   { href: "/admin/product-card-builder", label: "Product Card Builder", icon: <LayoutDashboard className="h-4 w-4" /> },
   { href: "/admin/tracking-pixels", label: "Tracking & Pixels", icon: <LayoutDashboard className="h-4 w-4" /> },
   { href: "/admin/settings/branding", label: "Branding", icon: <Store className="h-4 w-4" /> },
+  { href: "/admin/settings/storefront-customizer", label: "Storefront Customizer", icon: <Wand2 className="h-4 w-4" /> },
   { href: "/admin/settings/storefront", label: "Storefront", icon: <Settings className="h-4 w-4" /> },
   { href: "/admin/settings/payments", label: "Payments", icon: <CreditCard className="h-4 w-4" /> },
   { href: "/admin/cms/settings", label: "Settings", icon: <Settings className="h-4 w-4" /> },

@@ -419,7 +419,7 @@ export default function Header() {
 
   return (
     <>
-      <header className="sticky top-[var(--announcement-offset,0px)] z-50 border-b border-border bg-header backdrop-blur-xl">
+      <header className="sticky top-(--announcement-offset,0px) z-50 border-b border-border bg-header backdrop-blur-xl">
         <div className="mx-auto flex w-full max-w-6xl items-center gap-3 px-4 py-3">
           <button
             type="button"

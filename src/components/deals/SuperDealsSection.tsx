@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 
 import ProductCardGate from "@/components/product/ProductCardGate";
 import CategoryCarousel from "@/components/storefront/CategoryCarousel";
@@ -66,6 +67,7 @@ function readItems(json: unknown): DealProduct[] {
 export default function SuperDealsSection({ categorySlug, onQuickView }: Props) {
   const { settings } = useStorefrontSettings();
   const style = settings?.storefrontLayout?.productCard?.style ?? "rounded";
+  const viewAllEnabled = settings?.storefrontUx?.superDealsViewAllEnabled ?? true;
   const sectionRadius =
     style === "squared"
       ? "var(--radius-none)"
@@ -155,6 +157,17 @@ export default function SuperDealsSection({ categorySlug, onQuickView }: Props) 
         )}
         renderItem={(p) => <ProductCardGate product={p} onQuickView={() => onQuickView(p.slug)} />}
       />
+
+      {viewAllEnabled ? (
+        <div className="mt-4 flex items-center justify-end">
+          <Link
+            href="/products?tag=super-deals"
+            className="inline-flex h-10 items-center justify-center rounded-2xl border border-border bg-surface px-4 text-sm font-semibold text-foreground hover:bg-muted"
+          >
+            View All
+          </Link>
+        </div>
+      ) : null}
     </div>
   );
 }

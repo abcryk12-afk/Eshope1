@@ -82,6 +82,86 @@ const FooterSocialLinkSchema = new Schema(
   { _id: false }
 );
 
+const FooterEcomLinkSchema = new Schema(
+  {
+    id: { type: String, trim: true, maxlength: 80 },
+    label: { type: String, trim: true, maxlength: 120 },
+    href: { type: String, trim: true, maxlength: 500 },
+    newTab: { type: Boolean, default: false },
+  },
+  { _id: false }
+);
+
+const FooterEcomColumnSchema = new Schema(
+  {
+    id: { type: String, trim: true, maxlength: 80 },
+    title: { type: String, trim: true, maxlength: 80 },
+    links: { type: [FooterEcomLinkSchema], default: [] },
+  },
+  { _id: false }
+);
+
+const FooterEcomTrustBadgeSchema = new Schema(
+  {
+    id: { type: String, trim: true, maxlength: 80 },
+    label: { type: String, trim: true, maxlength: 80 },
+    imageUrl: { type: String, trim: true, maxlength: 800 },
+    href: { type: String, trim: true, maxlength: 500 },
+  },
+  { _id: false }
+);
+
+const FooterEcomSocialSchema = new Schema(
+  {
+    id: { type: String, trim: true, maxlength: 80 },
+    kind: { type: String, trim: true, maxlength: 40 },
+    href: { type: String, trim: true, maxlength: 500 },
+  },
+  { _id: false }
+);
+
+const FooterEcomSchema = new Schema(
+  {
+    enabled: { type: Boolean, default: false },
+    columns: { type: [FooterEcomColumnSchema], default: [] },
+
+    showAppLinks: { type: Boolean, default: true },
+    appLinks: {
+      androidUrl: { type: String, trim: true, maxlength: 500 },
+      iosUrl: { type: String, trim: true, maxlength: 500 },
+      androidBadgeUrl: { type: String, trim: true, maxlength: 800 },
+      iosBadgeUrl: { type: String, trim: true, maxlength: 800 },
+    },
+
+    showPaymentMethods: { type: Boolean, default: true },
+    paymentKinds: { type: [String], default: [] },
+
+    showTrustBadges: { type: Boolean, default: true },
+    trustBadges: { type: [FooterEcomTrustBadgeSchema], default: [] },
+
+    contact: {
+      email: { type: String, trim: true, maxlength: 120 },
+      phone: { type: String, trim: true, maxlength: 60 },
+      addressLines: { type: [String], default: [] },
+    },
+
+    showSocialLinks: { type: Boolean, default: true },
+    socialLinks: { type: [FooterEcomSocialSchema], default: [] },
+
+    newsletter: {
+      enabled: { type: Boolean, default: true },
+      title: { type: String, trim: true, maxlength: 80, default: "Newsletter" },
+      description: { type: String, trim: true, maxlength: 200, default: "Subscribe for updates and deals." },
+      placeholder: { type: String, trim: true, maxlength: 80, default: "Enter your email" },
+      buttonText: { type: String, trim: true, maxlength: 40, default: "Subscribe" },
+    },
+
+    copyrightText: { type: String, trim: true, maxlength: 160, default: "" },
+    updatedAt: { type: Number, default: 0 },
+  },
+  { _id: false }
+);
+
 const FooterSchema = new Schema(
   {
     text: LocalizedTextSchema,
@@ -283,6 +363,22 @@ const MobileMenuSettingsSchema = new Schema(
   { _id: false }
  );
 
+ const StorefrontUxSchema = new Schema(
+  {
+    stickyFiltersEnabled: { type: Boolean, default: true },
+    showAddToCartButton: { type: Boolean, default: true },
+    enableQuickView: { type: Boolean, default: true },
+    productCardVariant: {
+      type: String,
+      trim: true,
+      enum: ["modern", "minimal"],
+      default: "modern",
+    },
+    superDealsViewAllEnabled: { type: Boolean, default: true },
+  },
+  { _id: false }
+ );
+
  const StorefrontLayoutSchema = new Schema(
   {
     grid: { type: StorefrontGridSchema, default: () => ({}) },
@@ -467,6 +563,7 @@ const SiteSettingSchema = new Schema(
     heroBannerSettings: { type: HeroBannerSettingsSchema, default: () => ({}) },
     footerText: { type: String, trim: true, maxlength: 500 },
     footer: { type: FooterSchema, default: () => ({}) },
+    footerEcom: { type: FooterEcomSchema, default: () => ({}) },
     globalSeoTitle: { type: String, trim: true, maxlength: 160 },
     globalSeoDescription: { type: String, trim: true, maxlength: 320 },
     branding: { type: BrandingSchema, default: () => ({}) },
@@ -481,6 +578,7 @@ const SiteSettingSchema = new Schema(
     inventory: { type: InventorySettingsSchema, default: () => ({}) },
     shipping: { type: ShippingSettingsSchema, default: () => ({}) },
     storefrontLayout: { type: StorefrontLayoutSchema, default: () => ({}) },
+    storefrontUx: { type: StorefrontUxSchema, default: () => ({}) },
     cartUx: { type: CartUxSettingsSchema, default: () => ({}) },
     performance: { type: PerformanceSettingsSchema, default: () => ({}) },
     announcementBar: { type: AnnouncementBarSettingsSchema, default: () => ({}) },

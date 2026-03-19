@@ -8,7 +8,7 @@ export default async function SiteFooter() {
   try {
     await dbConnect();
 
-    const doc = (await SiteSetting.findOne({ key: "global" }).select("footer footerText").lean()) as unknown;
+    const doc = (await SiteSetting.findOne({ key: "global" }).select("footer footerText footerEcom").lean()) as unknown;
     const root = (doc && typeof doc === "object" ? (doc as Record<string, unknown>) : null) as
       | Record<string, unknown>
       | null;
@@ -19,8 +19,13 @@ export default async function SiteFooter() {
 
     const footerText = typeof root?.footerText === "string" ? root.footerText : "";
 
-    return <SiteFooterGate footer={footer} legacyFooterText={footerText} />;
+    const footerEcom =
+      (root?.footerEcom && typeof root.footerEcom === "object" ? (root.footerEcom as Record<string, unknown>) : null) as
+        | Record<string, unknown>
+        | null;
+
+    return <SiteFooterGate footer={footer} footerEcom={footerEcom} legacyFooterText={footerText} />;
   } catch {
-    return <SiteFooterGate footer={null} legacyFooterText="" />;
+    return <SiteFooterGate footer={null} footerEcom={null} legacyFooterText="" />;
   }
 }

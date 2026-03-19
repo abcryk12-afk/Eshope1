@@ -37,12 +37,30 @@ const ProductCardSchema = z.object({
   showDiscountBadge: z.boolean(),
 });
 
+const StorefrontUxSchema = z
+  .object({
+    stickyFiltersEnabled: z.boolean().optional().default(true),
+    showAddToCartButton: z.boolean().optional().default(true),
+    enableQuickView: z.boolean().optional().default(true),
+    productCardVariant: z.enum(["modern", "minimal"]).optional().default("modern"),
+    superDealsViewAllEnabled: z.boolean().optional().default(true),
+  })
+  .optional()
+  .default({
+    stickyFiltersEnabled: true,
+    showAddToCartButton: true,
+    enableQuickView: true,
+    productCardVariant: "modern",
+    superDealsViewAllEnabled: true,
+  });
+
 const BodySchema = z.object({
   storefrontLayout: z.object({
     grid: GridSchema,
     productCard: ProductCardSchema,
     listingHeader: ListingHeaderSchema,
   }),
+  storefrontUx: StorefrontUxSchema,
   cartUx: z.object({
     quickCheckoutEnabled: z.boolean(),
     quickCheckoutAutoHideSeconds: z.number().int().min(1).max(30),
@@ -93,12 +111,15 @@ export async function GET() {
 
   await dbConnect();
 
-  const doc = (await SiteSetting.findOne({ key: "global" }).select("storefrontLayout cartUx performance").lean()) as unknown;
+  const doc = (await SiteSetting.findOne({ key: "global" })
+    .select("storefrontLayout storefrontUx cartUx performance")
+    .lean()) as unknown;
   const settings = normalizeStorefrontSettings(doc);
 
   return NextResponse.json(
     {
       storefrontLayout: settings.storefrontLayout,
+      storefrontUx: settings.storefrontUx,
       cartUx: settings.cartUx,
       performance: (() => {
         const root = doc && typeof doc === "object" ? (doc as Record<string, unknown>) : {};
@@ -156,6 +177,7 @@ export async function PUT(req: NextRequest) {
       $set: {
         key: "global",
         storefrontLayout: parsed.data.storefrontLayout,
+        storefrontUx: parsed.data.storefrontUx,
         cartUx: {
           quickCheckoutEnabled: parsed.data.cartUx.quickCheckoutEnabled,
           quickCheckoutAutoHideSeconds: parsed.data.cartUx.quickCheckoutAutoHideSeconds,
@@ -177,7 +199,7 @@ export async function PUT(req: NextRequest) {
     },
     { upsert: true, new: true }
   )
-    .select("storefrontLayout cartUx performance")
+    .select("storefrontLayout storefrontUx cartUx performance")
     .lean()) as unknown;
 
   const settings = normalizeStorefrontSettings(doc);
@@ -189,6 +211,7 @@ export async function PUT(req: NextRequest) {
 
   return NextResponse.json({
     storefrontLayout: settings.storefrontLayout,
+    storefrontUx: settings.storefrontUx,
     cartUx: settings.cartUx,
     performance: {
       apiCacheEnabled: typeof perf.apiCacheEnabled === "boolean" ? perf.apiCacheEnabled : false,

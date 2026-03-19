@@ -38,6 +38,14 @@ type StorefrontLayout = {
   };
 };
 
+type StorefrontUx = {
+  stickyFiltersEnabled: boolean;
+  showAddToCartButton: boolean;
+  enableQuickView: boolean;
+  productCardVariant: "modern" | "minimal";
+  superDealsViewAllEnabled: boolean;
+};
+
 type CartUx = {
   quickCheckoutEnabled: boolean;
   quickCheckoutAutoHideSeconds: number;
@@ -58,6 +66,7 @@ type Performance = {
 
 type ApiResponse = {
   storefrontLayout: StorefrontLayout;
+  storefrontUx: StorefrontUx;
   cartUx: CartUx;
   performance: Performance;
 };
@@ -88,6 +97,13 @@ function emptySettings(): ApiResponse {
         showSort: true,
         enableLayoutSwitcher: false,
       },
+    },
+    storefrontUx: {
+      stickyFiltersEnabled: true,
+      showAddToCartButton: true,
+      enableQuickView: true,
+      productCardVariant: "modern",
+      superDealsViewAllEnabled: true,
     },
     cartUx: { quickCheckoutEnabled: true, quickCheckoutAutoHideSeconds: 4, onePageCheckoutEnabled: false, buyNowEnabled: true },
     performance: {
@@ -121,6 +137,7 @@ function normalizeResponse(json: unknown): ApiResponse {
 
   const cartUx = (root.cartUx && typeof root.cartUx === "object") ? (root.cartUx as Record<string, unknown>) : {};
   const perf = (root.performance && typeof root.performance === "object") ? (root.performance as Record<string, unknown>) : {};
+  const ux = (root.storefrontUx && typeof root.storefrontUx === "object") ? (root.storefrontUx as Record<string, unknown>) : {};
 
   return {
     storefrontLayout: {
@@ -162,6 +179,18 @@ function normalizeResponse(json: unknown): ApiResponse {
         showSort: typeof header.showSort === "boolean" ? header.showSort : true,
         enableLayoutSwitcher: typeof header.enableLayoutSwitcher === "boolean" ? header.enableLayoutSwitcher : false,
       },
+    },
+    storefrontUx: {
+      stickyFiltersEnabled: typeof ux.stickyFiltersEnabled === "boolean" ? ux.stickyFiltersEnabled : true,
+      showAddToCartButton: typeof ux.showAddToCartButton === "boolean" ? ux.showAddToCartButton : true,
+      enableQuickView: typeof ux.enableQuickView === "boolean" ? ux.enableQuickView : true,
+      productCardVariant: (() => {
+        const raw = typeof ux.productCardVariant === "string" ? ux.productCardVariant : "";
+        if (raw === "minimal") return "minimal";
+        return "modern";
+      })(),
+      superDealsViewAllEnabled:
+        typeof ux.superDealsViewAllEnabled === "boolean" ? ux.superDealsViewAllEnabled : true,
     },
     cartUx: {
       quickCheckoutEnabled: typeof cartUx.quickCheckoutEnabled === "boolean" ? cartUx.quickCheckoutEnabled : true,
@@ -222,7 +251,12 @@ export default function AdminStorefrontSettingsClient() {
     const res = await fetch("/api/admin/storefront", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(settings),
+      body: JSON.stringify({
+        storefrontLayout: settings.storefrontLayout,
+        storefrontUx: settings.storefrontUx,
+        cartUx: settings.cartUx,
+        performance: settings.performance,
+      }),
     });
 
     const json = (await res.json().catch(() => null)) as unknown;
@@ -425,6 +459,113 @@ export default function AdminStorefrontSettingsClient() {
                 <option value="compact">Compact</option>
                 <option value="normal">Normal</option>
                 <option value="spacious">Spacious</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+          <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Listing & cards UX</h2>
+          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+            Enable or disable key storefront behaviors without code changes.
+          </p>
+
+          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+            <label className="flex items-center justify-between gap-3 rounded-2xl border border-zinc-200 p-3 text-sm text-zinc-900 dark:border-zinc-800 dark:text-zinc-50">
+              <div>
+                <div className="font-medium">Sticky filters</div>
+                <div className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-400">Makes the filter/sort bar sticky on scroll.</div>
+              </div>
+              <input
+                type="checkbox"
+                checked={settings.storefrontUx.stickyFiltersEnabled}
+                onChange={(e) =>
+                  setSettings((s) =>
+                    s
+                      ? { ...s, storefrontUx: { ...s.storefrontUx, stickyFiltersEnabled: e.target.checked } }
+                      : s
+                  )
+                }
+                className="h-4 w-4 rounded border-zinc-300"
+              />
+            </label>
+
+            <label className="flex items-center justify-between gap-3 rounded-2xl border border-zinc-200 p-3 text-sm text-zinc-900 dark:border-zinc-800 dark:text-zinc-50">
+              <div>
+                <div className="font-medium">Show Add to Cart button</div>
+                <div className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-400">Shows the Add to Cart CTA on cards.</div>
+              </div>
+              <input
+                type="checkbox"
+                checked={settings.storefrontUx.showAddToCartButton}
+                onChange={(e) =>
+                  setSettings((s) =>
+                    s
+                      ? { ...s, storefrontUx: { ...s.storefrontUx, showAddToCartButton: e.target.checked } }
+                      : s
+                  )
+                }
+                className="h-4 w-4 rounded border-zinc-300"
+              />
+            </label>
+
+            <label className="flex items-center justify-between gap-3 rounded-2xl border border-zinc-200 p-3 text-sm text-zinc-900 dark:border-zinc-800 dark:text-zinc-50">
+              <div>
+                <div className="font-medium">Enable Quick View</div>
+                <div className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-400">Shows Quick View action on cards.</div>
+              </div>
+              <input
+                type="checkbox"
+                checked={settings.storefrontUx.enableQuickView}
+                onChange={(e) =>
+                  setSettings((s) =>
+                    s ? { ...s, storefrontUx: { ...s.storefrontUx, enableQuickView: e.target.checked } } : s
+                  )
+                }
+                className="h-4 w-4 rounded border-zinc-300"
+              />
+            </label>
+
+            <label className="flex items-center justify-between gap-3 rounded-2xl border border-zinc-200 p-3 text-sm text-zinc-900 dark:border-zinc-800 dark:text-zinc-50">
+              <div>
+                <div className="font-medium">Super Deals: View All</div>
+                <div className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-400">Shows the View All link on Super Deals section.</div>
+              </div>
+              <input
+                type="checkbox"
+                checked={settings.storefrontUx.superDealsViewAllEnabled}
+                onChange={(e) =>
+                  setSettings((s) =>
+                    s
+                      ? { ...s, storefrontUx: { ...s.storefrontUx, superDealsViewAllEnabled: e.target.checked } }
+                      : s
+                  )
+                }
+                className="h-4 w-4 rounded border-zinc-300"
+              />
+            </label>
+
+            <div className="space-y-2 md:col-span-2">
+              <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Product card style preset</label>
+              <select
+                value={settings.storefrontUx.productCardVariant}
+                onChange={(e) =>
+                  setSettings((s) =>
+                    s
+                      ? {
+                          ...s,
+                          storefrontUx: {
+                            ...s.storefrontUx,
+                            productCardVariant: e.target.value === "minimal" ? "minimal" : "modern",
+                          },
+                        }
+                      : s
+                  )
+                }
+                className="h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+              >
+                <option value="modern">Modern (Default)</option>
+                <option value="minimal">Minimal</option>
               </select>
             </div>
           </div>

@@ -18,11 +18,14 @@ type ProductListSort = Record<string, SortOrder | TextScore>;
 const QuerySchema = z.object({
   q: z.string().trim().min(1).max(200).optional(),
   category: z.string().trim().min(1).max(80).optional(),
+  tag: z.enum(["super-deals"]).optional(),
   priceMin: z.coerce.number().min(0).optional(),
   priceMax: z.coerce.number().min(0).optional(),
   ratingMin: z.coerce.number().min(0).max(5).optional(),
   inStock: z.coerce.boolean().optional(),
-  sort: z.enum(["relevance", "newest", "price_asc", "price_desc", "rating"]).optional(),
+  sort: z
+    .enum(["relevance", "newest", "new_arrivals", "best_selling", "price_asc", "price_desc", "rating"])
+    .optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(48).default(12),
 });
@@ -33,6 +36,7 @@ export async function GET(req: Request) {
   const parsed = QuerySchema.safeParse({
     q: url.searchParams.get("q") ?? undefined,
     category: url.searchParams.get("category") ?? undefined,
+    tag: url.searchParams.get("tag") ?? undefined,
     priceMin: url.searchParams.get("priceMin") ?? undefined,
     priceMax: url.searchParams.get("priceMax") ?? undefined,
     ratingMin: url.searchParams.get("ratingMin") ?? undefined,
@@ -46,7 +50,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ message: "Invalid query" }, { status: 400 });
   }
 
-  const { q, category, priceMin, priceMax, ratingMin, inStock, sort, page, limit } =
+  const { q, category, tag, priceMin, priceMax, ratingMin, inStock, sort, page, limit } =
     parsed.data;
 
   await dbConnect();
@@ -76,6 +80,41 @@ export async function GET(req: Request) {
   const filter: Record<string, unknown> = {
     isActive: true,
   };
+
+  if (tag === "super-deals") {
+    const now = new Date();
+    const dealDocs = await Deal.find({
+      isActive: true,
+      startsAt: { $lte: now },
+      expiresAt: { $gt: now },
+    })
+      .select("productIds")
+      .limit(500)
+      .lean();
+
+    const dealProductIds = new Set<string>();
+    for (const d of dealDocs ?? []) {
+      const ids = Array.isArray((d as unknown as { productIds?: unknown[] }).productIds)
+        ? ((d as unknown as { productIds?: unknown[] }).productIds as unknown[])
+        : [];
+      for (const raw of ids) {
+        const id = String(raw ?? "").trim();
+        if (id) dealProductIds.add(id);
+      }
+    }
+
+    if (dealProductIds.size === 0) {
+      return NextResponse.json(
+        {
+          items: [],
+          pagination: { page: 1, pages: 1, total: 0, limit },
+        },
+        { headers: { "Cache-Control": cacheControl } }
+      );
+    }
+
+    filter._id = { $in: Array.from(dealProductIds) };
+  }
 
   if (category) {
     const cat = await Category.findOne({ slug: category, isActive: true })
@@ -128,9 +167,13 @@ export async function GET(req: Request) {
     sortSpec = { basePrice: 1 };
   } else if (sort === "price_desc") {
     sortSpec = { basePrice: -1 };
+  } else if (sort === "best_selling") {
+    sortSpec = { soldCount: -1, createdAt: -1 };
   } else if (sort === "rating") {
     sortSpec = { ratingAvg: -1, ratingCount: -1 };
   } else if (sort === "newest") {
+    sortSpec = { createdAt: -1 };
+  } else if (sort === "new_arrivals") {
     sortSpec = { createdAt: -1 };
   }
 

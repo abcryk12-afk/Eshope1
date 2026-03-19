@@ -35,6 +35,14 @@ export type StorefrontProductCardSettings = {
   showDiscountBadge: boolean;
 };
 
+export type StorefrontUxSettings = {
+  stickyFiltersEnabled: boolean;
+  showAddToCartButton: boolean;
+  enableQuickView: boolean;
+  productCardVariant: "modern" | "minimal";
+  superDealsViewAllEnabled: boolean;
+};
+
 export type StorefrontLayoutSettings = {
   grid: StorefrontGridSettings;
   productCard: StorefrontProductCardSettings;
@@ -176,6 +184,7 @@ export type StorefrontSettings = {
   inventory: { lowStockThreshold: number };
   shipping: NormalizedShippingSettings;
   storefrontLayout: StorefrontLayoutSettings;
+  storefrontUx: StorefrontUxSettings;
   cartUx: CartUxSettings;
   announcementBar: AnnouncementBarSettings;
   announcements: AnnouncementItem[];
@@ -446,6 +455,15 @@ export function normalizeStorefrontSettings(doc: unknown): StorefrontSettings {
     typeof cartUx.onePageCheckoutEnabled === "boolean" ? cartUx.onePageCheckoutEnabled : false;
   const buyNowEnabled = typeof cartUx.buyNowEnabled === "boolean" ? cartUx.buyNowEnabled : true;
 
+  const ux = isRecord((root as Record<string, unknown>).storefrontUx) ? ((root as Record<string, unknown>).storefrontUx as Record<string, unknown>) : {};
+  const productCardVariantRaw = String(ux.productCardVariant ?? "").trim();
+  const productCardVariant = productCardVariantRaw === "minimal" ? "minimal" : "modern";
+  const stickyFiltersEnabled = typeof ux.stickyFiltersEnabled === "boolean" ? ux.stickyFiltersEnabled : true;
+  const showAddToCartButton = typeof ux.showAddToCartButton === "boolean" ? ux.showAddToCartButton : true;
+  const enableQuickView = typeof ux.enableQuickView === "boolean" ? ux.enableQuickView : true;
+  const superDealsViewAllEnabled =
+    typeof ux.superDealsViewAllEnabled === "boolean" ? ux.superDealsViewAllEnabled : true;
+
   const announcementBar = normalizeAnnouncementBarSettings(
     (root as Record<string, unknown>).announcementBar
   );
@@ -520,6 +538,13 @@ export function normalizeStorefrontSettings(doc: unknown): StorefrontSettings {
         showDiscountBadge,
       },
       listingHeader: { showSearch, showFilters, spacing, showSort, enableLayoutSwitcher },
+    },
+    storefrontUx: {
+      stickyFiltersEnabled,
+      showAddToCartButton,
+      enableQuickView,
+      productCardVariant,
+      superDealsViewAllEnabled,
     },
     cartUx: { quickCheckoutEnabled, quickCheckoutAutoHideSeconds, onePageCheckoutEnabled, buyNowEnabled },
     announcementBar,

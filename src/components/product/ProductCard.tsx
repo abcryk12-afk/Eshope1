@@ -4,13 +4,17 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Eye, Heart, Star } from "lucide-react";
+import { useRef } from "react";
+import { toast } from "sonner";
 
 import { formatMoneyFromPkr } from "@/lib/currency";
 import { formatCompactNumber } from "@/lib/numberFormat";
 import { cn } from "@/lib/utils";
 import { useStorefrontSettings } from "@/hooks/useStorefrontSettings";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { addToCart } from "@/store/slices/cartSlice";
 import { toggleWishlist } from "@/store/slices/wishlistSlice";
+import AddToCartButton from "@/components/product/AddToCartButton";
 
 type ProductListItem = {
   _id: string;
@@ -37,11 +41,18 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
   const currency = useAppSelector((s) => s.currency);
   const wished = wishlistIds.includes(product._id);
 
+  const imageWrapRef = useRef<HTMLDivElement | null>(null);
+
   const { settings } = useStorefrontSettings();
   const card = settings?.storefrontLayout?.productCard;
   const style = card?.style ?? "rounded";
   const density = card?.density ?? "balanced";
   const imageAspect = card?.imageAspect ?? "square";
+
+  const ux = settings?.storefrontUx;
+  const showAddToCartButton = ux?.showAddToCartButton ?? true;
+  const enableQuickView = ux?.enableQuickView ?? true;
+  const variant = ux?.productCardVariant ?? "modern";
 
   const showRating = card?.showRating ?? true;
   const showSoldCount = card?.showSoldCount ?? true;
@@ -65,6 +76,8 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
           return pct >= 5 ? `${pct}% OFF` : "Sale";
         })()
       : "";
+
+  const isBestSeller = Number(product.soldCount ?? 0) >= 250;
 
   const aspectClass = imageAspect === "portrait" ? "aspect-[4/5]" : "aspect-square";
   const objectClass = imageAspect === "auto" ? "object-contain" : "object-cover";
@@ -98,12 +111,12 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
     <motion.div
       layout
       className={cn(
-        "group relative overflow-hidden border border-border bg-surface shadow-sm transition",
+        "group relative flex h-full flex-col overflow-hidden border border-border bg-surface shadow-sm transition",
         "transition-transform md:hover:-translate-y-0.5 md:hover:shadow-md"
       )}
       style={{ borderRadius: cardRadius }}
     >
-      <div className={cn("relative overflow-hidden bg-muted", aspectClass)}>
+      <div ref={imageWrapRef} className={cn("relative overflow-hidden bg-muted", aspectClass)}>
         {image ? (
           <Image
             src={image}
@@ -119,9 +132,18 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
           {showDiscountBadge && discountBadge ? (
             <span
               className="bg-accent px-2 py-1 text-[11px] font-extrabold tracking-tight text-accent-foreground shadow-sm ring-1 ring-foreground/10"
-              style={{ borderRadius: "var(--radius-pill)" }}
+              style={{ borderRadius: "999px" }}
             >
               {discountBadge}
+            </span>
+          ) : null}
+
+          {isBestSeller ? (
+            <span
+              className="bg-surface/90 px-2 py-1 text-[11px] font-semibold tracking-tight text-foreground shadow-sm ring-1 ring-foreground/10"
+              style={{ borderRadius: "999px" }}
+            >
+              Best Seller
             </span>
           ) : null}
 
@@ -136,24 +158,26 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
         </div>
 
         {showWishlistIcon ? (
-          <div className="absolute right-2 top-2 flex gap-2">
-            <button
-              type="button"
-              onClick={() => dispatch(toggleWishlist(product._id))}
-              className={cn(
-                "inline-flex items-center justify-center bg-surface/80 text-foreground shadow-sm ring-1 ring-border/70 backdrop-blur-sm",
-                iconBtnClass,
-                wished && "bg-primary text-primary-foreground ring-0"
-              )}
-              style={{ borderRadius: "var(--radius-pill)" }}
-              aria-label="Toggle wishlist"
-            >
-              <Heart className={cn("h-4 w-4", wished && "fill-current")} />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => {
+              dispatch(toggleWishlist(product._id));
+              toast.success(wished ? "Removed from wishlist" : "Added to wishlist");
+            }}
+            className={cn(
+              "absolute right-2 top-2 inline-flex items-center justify-center",
+              "bg-surface/90 text-foreground ring-1 ring-foreground/10",
+              "transition hover:bg-surface",
+              iconBtnClass
+            )}
+            style={{ borderRadius: "999px" }}
+            aria-label={wished ? "Remove from wishlist" : "Add to wishlist"}
+          >
+            <Heart className={cn("h-4 w-4", wished && "fill-current")} />
+          </button>
         ) : null}
 
-        {isPoster ? null : (
+        {isPoster || !enableQuickView ? null : (
           <div className="absolute bottom-2 left-2 right-2 flex gap-2 opacity-0 transition group-hover:opacity-100">
             <button
               type="button"
@@ -201,45 +225,78 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
       </div>
 
       {isPoster ? null : (
-        <div className={cn(contentPadClass, contentGapClass)}>
-        <Link
-          href={`/product/${product.slug}`}
+        <div
           className={cn(
-            "line-clamp-2 font-semibold tracking-tight text-foreground hover:underline",
-            titleClass
+            contentPadClass,
+            contentGapClass,
+            "flex flex-1 flex-col",
+            variant === "minimal" && density !== "compact" ? "pb-2" : ""
           )}
         >
-          {product.title}
-        </Link>
-
-        {showRating && product.ratingCount > 0 ? (
-          <div
+          <Link
+            href={`/product/${product.slug}`}
             className={cn(
-              "flex items-center gap-2 text-xs text-muted-foreground",
-              density === "compact" ? "-mt-0.5" : ""
+              "line-clamp-2 font-semibold tracking-tight text-foreground hover:underline",
+              titleClass
             )}
           >
-            <Star className="h-4 w-4 fill-primary text-primary" />
-            <span className="font-semibold text-foreground">{product.ratingAvg.toFixed(1)}</span>
-            <span>({product.ratingCount})</span>
-            {showSoldCount && Number(product.soldCount ?? 0) > 0 ? (
-              <span className="truncate">• {formatCompactNumber(Number(product.soldCount ?? 0))} sold</span>
+            {product.title}
+          </Link>
+
+          {showRating && product.ratingCount > 0 ? (
+            <div
+              className={cn(
+                "flex items-center gap-2 text-xs text-muted-foreground",
+                density === "compact" ? "-mt-0.5" : ""
+              )}
+            >
+              <Star className="h-4 w-4 fill-primary text-primary" />
+              <span className="font-semibold text-foreground">{product.ratingAvg.toFixed(1)}</span>
+              <span>({product.ratingCount})</span>
+              {showSoldCount && Number(product.soldCount ?? 0) > 0 ? (
+                <span className="truncate">• {formatCompactNumber(Number(product.soldCount ?? 0))} sold</span>
+              ) : null}
+            </div>
+          ) : showSoldCount && Number(product.soldCount ?? 0) > 0 ? (
+            <p className="text-xs text-muted-foreground">{formatCompactNumber(Number(product.soldCount ?? 0))} sold</p>
+          ) : null}
+
+          <div className={cn("mt-auto", showAddToCartButton ? "space-y-2" : "space-y-0")}
+          >
+            <div>
+              <p className={cn("font-semibold text-foreground", density === "compact" ? "text-sm" : "text-sm")}>
+                {formatMoneyFromPkr(product.basePrice, currency.selected, currency.pkrPerUsd)}
+              </p>
+              {hasDiscount ? (
+                <p className="text-xs text-muted-foreground line-through">
+                  {formatMoneyFromPkr(product.compareAtPrice!, currency.selected, currency.pkrPerUsd)}
+                </p>
+              ) : null}
+            </div>
+
+            {showAddToCartButton ? (
+              <AddToCartButton
+                canAdd={true}
+                getImageEl={() => imageWrapRef.current}
+                onAdd={() => {
+                  dispatch(
+                    addToCart({
+                      productId: product._id,
+                      variantId: product._id,
+                      quantity: 1,
+                      title: product.title,
+                      image: product.images?.[0] ?? "",
+                      unitPrice: product.basePrice,
+                    })
+                  );
+                }}
+                className={cn(
+                  "w-full rounded-2xl bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground",
+                  "hover:bg-primary/90"
+                )}
+              />
             ) : null}
           </div>
-        ) : showSoldCount && Number(product.soldCount ?? 0) > 0 ? (
-          <p className="text-xs text-muted-foreground">{formatCompactNumber(Number(product.soldCount ?? 0))} sold</p>
-        ) : null}
-
-        <div>
-          <p className={cn("font-semibold text-foreground", density === "compact" ? "text-sm" : "text-sm")}>
-            {formatMoneyFromPkr(product.basePrice, currency.selected, currency.pkrPerUsd)}
-          </p>
-          {hasDiscount ? (
-            <p className="text-xs text-muted-foreground line-through">
-              {formatMoneyFromPkr(product.compareAtPrice!, currency.selected, currency.pkrPerUsd)}
-            </p>
-          ) : null}
-        </div>
         </div>
       )}
     </motion.div>

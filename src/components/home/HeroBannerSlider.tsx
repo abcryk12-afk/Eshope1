@@ -113,7 +113,7 @@ export default function HeroBannerSlider({ banners, settings }: Props) {
       className={cn(
         "w-full",
         heightMode
-          ? "h-[var(--hero-h-mobile)] md:h-[var(--hero-h-desktop)]"
+          ? "h-(--hero-h-mobile) md:h-(--hero-h-desktop)"
           : "h-auto"
       )}
       style={rootStyle}
@@ -162,6 +162,7 @@ export default function HeroBannerSlider({ banners, settings }: Props) {
                   sizes="100vw"
                   className={cn(imgClass, "hidden md:block")}
                   priority={idx === 0}
+                  unoptimized
                 />
                 <Image
                   src={mobileSrc}
@@ -170,6 +171,7 @@ export default function HeroBannerSlider({ banners, settings }: Props) {
                   sizes="100vw"
                   className={cn(imgClass, "block md:hidden")}
                   priority={idx === 0}
+                  unoptimized
                 />
               </div>
 

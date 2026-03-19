@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import ProductCardGate from "@/components/product/ProductCardGate";
@@ -93,6 +94,8 @@ function readNumber(v: string | string[] | undefined) {
 const SORT_OPTIONS = [
   { label: "Relevance", value: "relevance" },
   { label: "Newest", value: "newest" },
+  { label: "New Arrivals", value: "new_arrivals" },
+  { label: "Best Selling", value: "best_selling" },
   { label: "Price: Low to High", value: "price_asc" },
   { label: "Price: High to Low", value: "price_desc" },
   { label: "Top Rated", value: "rating" },
@@ -123,8 +126,11 @@ export default function StorefrontClient({
   const [page, setPage] = useState(readNumber(initialSearchParams.page) ?? 1);
 
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [items, setItems] = useState<ProductListItem[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
+
+  const lastQueryKeyRef = useRef<string>("");
 
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [mobileSortOpen, setMobileSortOpen] = useState(false);
@@ -254,22 +260,28 @@ export default function StorefrontClient({
     if (typeof ratingMin === "number") params.set("ratingMin", String(ratingMin));
     if (inStock) params.set("inStock", "true");
     if (sort) params.set("sort", sort);
-    if (page && page !== 1) params.set("page", String(page));
-
     return params.toString();
-  }, [q, category, priceMin, priceMax, ratingMin, inStock, sort, page, fixedCategory]);
+  }, [q, category, priceMin, priceMax, ratingMin, inStock, sort, fixedCategory]);
+
+  const pagedQueryString = useMemo(() => {
+    const params = new URLSearchParams(queryString);
+    if (page && page !== 1) params.set("page", String(page));
+    return params.toString();
+  }, [queryString, page]);
 
   useEffect(() => {
     let cancelled = false;
     const controller = new AbortController();
 
     async function loadProducts() {
-      setLoading(true);
+      const isPaging = page > 1 && lastQueryKeyRef.current === queryString;
+      if (isPaging) setLoadingMore(true);
+      else setLoading(true);
 
       let res: Response;
 
       try {
-        res = await fetch(`/api/products?${queryString}`, {
+        res = await fetch(`/api/products?${pagedQueryString}`, {
           cache: "no-store",
           signal: controller.signal,
         });
@@ -299,9 +311,12 @@ export default function StorefrontClient({
       const data = (await res.json()) as ListResponse;
 
       if (!cancelled) {
-        setItems(data.items ?? []);
+        const nextItems = Array.isArray(data.items) ? data.items : [];
+        setItems((prev) => (isPaging ? [...prev, ...nextItems] : nextItems));
         setPagination(data.pagination ?? null);
+        lastQueryKeyRef.current = queryString;
         setLoading(false);
+        setLoadingMore(false);
       }
     }
 
@@ -311,7 +326,7 @@ export default function StorefrontClient({
       cancelled = true;
       controller.abort();
     };
-  }, [queryString]);
+  }, [queryString, pagedQueryString, page]);
 
   const hasActiveFilters =
     q.trim().length > 0 ||
@@ -335,6 +350,9 @@ export default function StorefrontClient({
 
   const { settings: storefrontSettings } = useStorefrontSettings();
   const headerSettings = storefrontSettings?.storefrontLayout?.listingHeader;
+
+  const stickyFiltersEnabled = storefrontSettings?.storefrontUx?.stickyFiltersEnabled ?? true;
+  const quickViewEnabled = storefrontSettings?.storefrontUx?.enableQuickView ?? true;
 
   const cardStyle = storefrontSettings?.storefrontLayout?.productCard?.style ?? "rounded";
   const cardRadius =
@@ -370,7 +388,6 @@ export default function StorefrontClient({
     router.push(targetPath);
   }, [fixedCategory, router, targetPath]);
 
-  const canGoPrev = (pagination?.page ?? 1) > 1;
   const canGoNext = (pagination?.page ?? 1) < (pagination?.pages ?? 1);
 
   const priceFloor = meta?.price?.min ?? 0;
@@ -395,27 +412,202 @@ export default function StorefrontClient({
               <HomeBanners banners={homeBanners} loading={homeBannersLoading} />
               <SuperDealsSection
                 categorySlug={dealsCategorySlug}
-                onQuickView={(slug) => setQuickViewSlug(slug)}
+                onQuickView={(slug) => {
+                  if (!quickViewEnabled) return;
+                  setQuickViewSlug(slug);
+                }}
               />
             </>
           ) : null}
 
-          <ListingTopBar
-            title={pageTitle?.trim() || "Products"}
-            spacing={headerSpacing}
-            showSearch={showSearch}
-            qInput={qInput}
-            onQInputChange={setQInput}
-            showFilters={showFilters}
-            activeFilterCount={activeFilterCount}
-            onOpenFilters={() => setMobileFiltersOpen(true)}
-            showSort={showSort}
-            sortLabel={sortLabel}
-            onOpenSort={() => setMobileSortOpen(true)}
-            showLayoutSwitcher={showLayoutSwitcher}
-            layoutMode={layoutMode}
-            onLayoutModeChange={showLayoutSwitcher ? setLayoutMode : undefined}
-          />
+          <div
+            className={cn(
+              stickyFiltersEnabled && "sticky top-(--announcement-offset,0px) z-30",
+              "-mx-4 px-4"
+            )}
+          >
+            <div className="rounded-3xl border border-border bg-background/95 p-3 backdrop-blur supports-backdrop-filter:bg-background/80">
+              <ListingTopBar
+                title={pageTitle?.trim() || "Products"}
+                spacing={headerSpacing}
+                showSearch={showSearch}
+                qInput={qInput}
+                onQInputChange={setQInput}
+                showFilters={showFilters}
+                activeFilterCount={activeFilterCount}
+                onOpenFilters={() => setMobileFiltersOpen(true)}
+                showSort={showSort}
+                sortLabel={sortLabel}
+                onOpenSort={() => setMobileSortOpen(true)}
+                showLayoutSwitcher={showLayoutSwitcher}
+                layoutMode={layoutMode}
+                onLayoutModeChange={showLayoutSwitcher ? setLayoutMode : undefined}
+              />
+
+              <div
+                className={cn(
+                  "flex flex-wrap items-center gap-2",
+                  headerSpacing === "compact" ? "mt-2" : "mt-3"
+                )}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !inStock;
+                    setPage(1);
+                    setInStock(next);
+                    applyFilters({ inStock: next, page: 1 });
+                  }}
+                  className={cn(
+                    "inline-flex h-9 items-center gap-2 rounded-full border px-3 text-sm font-medium",
+                    inStock
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border bg-surface text-foreground hover:bg-muted"
+                  )}
+                >
+                  In stock
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = ratingMin === 4 ? undefined : 4;
+                    setPage(1);
+                    setRatingMin(next);
+                    applyFilters({ ratingMin: next, page: 1 });
+                  }}
+                  className={cn(
+                    "inline-flex h-9 items-center gap-2 rounded-full border px-3 text-sm font-medium",
+                    ratingMin === 4
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border bg-surface text-foreground hover:bg-muted"
+                  )}
+                >
+                  4★ & up
+                </button>
+
+                {hasActiveFilters ? (
+                  <button
+                    type="button"
+                    onClick={clearAll}
+                    className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-surface px-3 text-sm font-medium text-foreground hover:bg-muted"
+                  >
+                    Clear
+                  </button>
+                ) : null}
+              </div>
+
+              {hasActiveFilters ? (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+              {q.trim() ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQ("");
+                    setQInput("");
+                    setPage(1);
+                    applyFilters({ q: "", page: 1 });
+                  }}
+                  className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-surface px-3 text-sm font-medium text-foreground hover:bg-muted"
+                >
+                  <span className="max-w-[18ch] truncate">{q.trim()}</span>
+                  <X className="h-4 w-4 text-muted-foreground" />
+                </button>
+              ) : null}
+
+              {!fixedCategory && category ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCategory("");
+                    setPage(1);
+                    applyFilters({ category: "", page: 1 });
+                  }}
+                  className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-surface px-3 text-sm font-medium text-foreground hover:bg-muted"
+                >
+                  <span className="max-w-[18ch] truncate">{category}</span>
+                  <X className="h-4 w-4 text-muted-foreground" />
+                </button>
+              ) : null}
+
+              {typeof priceMin === "number" ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPriceMin(undefined);
+                    setPage(1);
+                    applyFilters({ priceMin: undefined, page: 1 });
+                  }}
+                  className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-surface px-3 text-sm font-medium text-foreground hover:bg-muted"
+                >
+                  <span>Min: {priceMin}</span>
+                  <X className="h-4 w-4 text-muted-foreground" />
+                </button>
+              ) : null}
+
+              {typeof priceMax === "number" ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPriceMax(undefined);
+                    setPage(1);
+                    applyFilters({ priceMax: undefined, page: 1 });
+                  }}
+                  className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-surface px-3 text-sm font-medium text-foreground hover:bg-muted"
+                >
+                  <span>Max: {priceMax}</span>
+                  <X className="h-4 w-4 text-muted-foreground" />
+                </button>
+              ) : null}
+
+              {typeof ratingMin === "number" ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRatingMin(undefined);
+                    setPage(1);
+                    applyFilters({ ratingMin: undefined, page: 1 });
+                  }}
+                  className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-surface px-3 text-sm font-medium text-foreground hover:bg-muted"
+                >
+                  <span>{ratingMin}★+</span>
+                  <X className="h-4 w-4 text-muted-foreground" />
+                </button>
+              ) : null}
+
+              {inStock ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setInStock(false);
+                    setPage(1);
+                    applyFilters({ inStock: false, page: 1 });
+                  }}
+                  className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-surface px-3 text-sm font-medium text-foreground hover:bg-muted"
+                >
+                  <span>In stock</span>
+                  <X className="h-4 w-4 text-muted-foreground" />
+                </button>
+              ) : null}
+
+              {sort && sort !== "relevance" ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSort("relevance");
+                    setPage(1);
+                    applyFilters({ sort: "relevance", page: 1 });
+                  }}
+                  className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-surface px-3 text-sm font-medium text-foreground hover:bg-muted"
+                >
+                  <span className="max-w-[18ch] truncate">Sort: {sortLabel || sort}</span>
+                  <X className="h-4 w-4 text-muted-foreground" />
+                </button>
+              ) : null}
+                </div>
+              ) : null}
+            </div>
+          </div>
 
           <div
             className={cn(
@@ -565,7 +757,10 @@ export default function StorefrontClient({
               {!isHome ? (
                 <SuperDealsSection
                   categorySlug={dealsCategorySlug}
-                  onQuickView={(slug) => setQuickViewSlug(slug)}
+                  onQuickView={(slug) => {
+                    if (!quickViewEnabled) return;
+                    setQuickViewSlug(slug);
+                  }}
                 />
               ) : null}
 
@@ -591,16 +786,37 @@ export default function StorefrontClient({
               ) : (
                 <ProductGrid>
                   {items.map((p) => (
-                    <ProductCardGate key={p._id} product={p} onQuickView={() => setQuickViewSlug(p.slug)} />
+                    <ProductCardGate
+                      key={p._id}
+                      product={p}
+                      onQuickView={() => {
+                        if (!quickViewEnabled) return;
+                        setQuickViewSlug(p.slug);
+                      }}
+                    />
                   ))}
+
+                  {loadingMore
+                    ? Array.from({ length: 6 }).map((_, idx) => (
+                        <div
+                          key={`more-${idx}`}
+                          className="border border-border bg-surface p-3"
+                          style={{ borderRadius: cardRadius }}
+                        >
+                          <Skeleton className="aspect-square w-full" style={{ borderRadius: cardRadius }} />
+                          <Skeleton className="mt-3 h-4 w-3/4" />
+                          <Skeleton className="mt-2 h-4 w-1/2" />
+                        </div>
+                      ))
+                    : null}
                 </ProductGrid>
               )}
 
-              <div className="mt-8 flex items-center justify-between">
+              <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm text-muted-foreground">
                   {pagination ? (
                     <>
-                      Page {pagination.page} of {pagination.pages} - {pagination.total} items
+                      Showing {items.length} of {pagination.total}
                     </>
                   ) : null}
                 </p>
@@ -611,29 +827,16 @@ export default function StorefrontClient({
                       className={cn(
                         "h-11 rounded-2xl border border-border bg-surface px-4 text-sm font-medium text-foreground",
                         "hover:bg-muted",
-                        !canGoPrev && "pointer-events-none opacity-50"
-                      )}
-                      onClick={() => {
-                        const next = Math.max(1, page - 1);
-                        setPage(next);
-                        applyFilters({ page: next });
-                      }}
-                    >
-                      Prev
-                    </button>
-                    <button
-                      className={cn(
-                        "h-11 rounded-2xl border border-border bg-surface px-4 text-sm font-medium text-foreground",
-                        "hover:bg-muted",
-                        !canGoNext && "pointer-events-none opacity-50"
+                        (!canGoNext || loadingMore) && "pointer-events-none opacity-50"
                       )}
                       onClick={() => {
                         const next = Math.min(pagination.pages, page + 1);
+                        if (next === page) return;
                         setPage(next);
                         applyFilters({ page: next });
                       }}
                     >
-                      Next
+                      {loadingMore ? "Loading…" : canGoNext ? "Load more" : "No more"}
                     </button>
                   </div>
                 ) : null}
@@ -644,7 +847,7 @@ export default function StorefrontClient({
       </div>
 
       <QuickViewModal
-        open={!!quickViewSlug}
+        open={quickViewEnabled && !!quickViewSlug}
         slug={quickViewSlug}
         onClose={() => setQuickViewSlug(null)}
       />

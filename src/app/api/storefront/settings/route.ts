@@ -12,7 +12,7 @@ export async function GET() {
 
   const doc = (await SiteSetting.findOne({ key: "global" })
     .select(
-      "inventory shipping storefrontLayout cartUx announcementBar announcements branding brandingUpdatedAt whatsAppSalesPhone whatsAppProductTemplate performance"
+      "inventory shipping storefrontLayout storefrontUx cartUx announcementBar announcements branding brandingUpdatedAt whatsAppSalesPhone whatsAppProductTemplate performance"
     )
     .lean()) as unknown;
   const settings = normalizeStorefrontSettings(doc);
